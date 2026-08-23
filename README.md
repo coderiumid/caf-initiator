@@ -1,0 +1,255 @@
+# caf-initiator
+
+CLI that automates the initial setup of the **Coderium Agent Framework (CAF)** in any repository.
+
+Instead of manually creating knowledge-base files, agent definitions, workflow docs, and golden examples one by one, `caf-init` detects your project's stack, tracker, and conventions — then scaffolds the entire CAF structure for you.
+
+---
+
+## What is CAF?
+
+CAF (Coderium Agent Framework) is a framework for turning AI into a full engineering team member that can work on tickets from planning through to Pull Request — autonomously. It defines a layered structure (knowledge base → agent definitions → artifact handoff → quality gates → orchestration) that lives inside your repo and improves over time.
+
+See [`CAF.md`](./CAF.md) for the full specification.
+
+---
+
+## Features
+
+- **Auto-detection** — scans `package.json`, monorepo configs, ORM schemas, and CI files to identify your stack (frameworks, package manager, apps/packages structure)
+- **Existing tool audit** — checks for `.claude/`, `.cursor/`, `.kiro/`, `.opencode/` and warns before overwriting
+- **Tracker detection** — identifies Linear, Jira, or GitHub Issues usage from repo signals
+- **Draft generation** — creates `CLAUDE.md`, `AGENTS.md`, and `.ai/tasks/README.md` tailored to your detected stack
+- **Golden examples selector** — scans source files and helps you pick the best-written ones as AI reference material, always paired with a `RULES.md` do/don't skeleton (and offers to backfill one for pre-existing golden-examples folders that predate this pairing)
+- **Reference docs scaffolder** — optional, read-only Layer 1 docs (`docs/product/prd.md`, Feature Specs, `docs/architecture/system-overview.md`, `docs/api-contract.md`, `docs/schema/erd.md`, `docs/testing-strategy.md`); never required, asks per item, `api-contract.md` only offered when FE+BE are detected as separate apps in the repo
+- **ADR draft generator** — detects technical decisions already made (ORMs, frameworks, auth patterns) and drafts Architecture Decision Records
+- **Agent scaffolder** — generates agent definition files (Planner, Architect, QA, Reviewer, per-app implementation agents, etc.)
+- **Multi-target publish** — copies agent definitions to other AI runner directories (`.kiro/agents/`, `.opencode/agents/`, etc.)
+- **Workflow docs generator** — creates `piv-workflow.md` and `agent-handoff.md` from your agent roster
+- **Interactive menu** — run `caf-init` without arguments for a guided experience
+- **Dry-run mode** — preview what would be generated without writing any files
+
+---
+
+## Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/ganjardbc/caf-initiator.git
+cd caf-initiator
+
+# Install dependencies
+npm install
+
+# Link globally (makes `caf-init` available everywhere)
+npm link
+```
+
+### Requirements
+
+- **Node.js** ≥ 18
+
+---
+
+## Usage
+
+Run from within your target repository, or pass `--dir` to point at one.
+
+### Interactive Mode
+
+```bash
+caf-init
+```
+
+Launches a menu where you can pick which step to run:
+
+```
+? Mau jalankan apa?
+  * Setup awal (audit + deteksi + draft CLAUDE.md/AGENTS.md)
+  * Golden examples selector
+  * Reference docs (opsional: PRD, Feature Spec, system-overview, api-contract, ERD, testing-strategy)
+  * ADR draft generator
+  * Agent definitions scaffolder
+  * Agent multi-target publish
+  * Task completion (Definition of Done) generator
+  * Workflow docs generator (piv-workflow + agent-handoff)
+  * Feature catalog sync command generator
+  * Jalankan semua berurutan (Setup → Golden Examples → ADR → Agents → Task Completion → Workflow)
+  * Keluar
+```
+
+### Run Everything
+
+```bash
+caf-init scaffold [--dir <path>] [--dry-run] [--agent-dir <path>]
+```
+
+Executes **Setup → Golden Examples → ADR → Agents → Task Completion → Workflow** sequentially, with a skip-confirmation before each step after Setup. `docs` (Reference Docs) and `feature-catalog-sync` are never part of this chain — both are opt-in, run them explicitly (see below).
+
+### Run One Part
+
+```bash
+caf-init scaffold <target> [--dir <path>] [--dry-run] [--app <app-path>] [--agent-dir <path>] [--command-dir <path>]
+```
+
+`<target>` is one of `golden-examples`, `adr`, `agents`, `task-completion`, `workflow`, `feature-catalog-sync`. Behavior is identical to running that part standalone — `scaffold` is purely an access point, not a different pipeline. `scaffold workflow` without an existing agent roster in `--agent-dir` fails with a clear error (run `scaffold agents` first).
+
+---
+
+## Commands
+
+### `caf-init` (default)
+
+Interactive menu — pick which step to run.
+
+| Option | Description | Default |
+|---|---|---|
+| `--dir <path>` | Target repo directory | `cwd` |
+| `--dry-run` | Show detection results without writing anything | `false` |
+| `--workspace-glob <pattern...>` | Override app/package glob detection | auto-detect |
+
+### `caf-init scaffold`
+
+Bare: run **Setup → Golden Examples → ADR → Agents → Task Completion → Workflow** in sequence, with a skip-confirmation before each step after Setup — see "Run Everything" above. With a target argument, run only that part.
+
+| Option | Description | Default |
+|---|---|---|
+| `--dir <path>` | Target repo directory | `cwd` |
+| `--dry-run` | Show detection results without writing anything | `false` |
+| `--app <app-path>` | Restrict to a specific app path — used by `golden-examples`/`adr`/`agents`/`task-completion` targets | all apps |
+| `--agent-dir <path>` | Directory to read/write agent definitions | `.claude/agents` |
+| `--command-dir <path>` | Directory to write companion slash commands — used by `agents`/`feature-catalog-sync` targets | `.claude/commands` |
+
+#### `caf-init scaffold golden-examples`
+
+Scan the target repo and interactively select candidate files for `.caf/knowledge/golden-examples/`.
+
+Every generated `.caf/knowledge/golden-examples/{{app}}/` folder is paired with a `RULES.md` do/don't skeleton (content always left `TODO` — reasoning is a human call). If an app's golden-examples folder already has files but no `RULES.md` (e.g. from before this pairing existed), the command flags the gap and offers to backfill it.
+
+### `caf-init docs`
+
+Scaffold optional, read-only Layer 1 reference docs: `docs/product/prd.md`, `docs/product/features/{{feature-name}}.md` (Feature Specs), `docs/architecture/system-overview.md`, `docs/api-contract.md`, `docs/schema/erd.md`, `docs/testing-strategy.md`. None of these are ever required for the CAF pipeline to run — existing files are never overwritten, and interactive mode asks per item before creating a placeholder.
+
+| Option | Description | Default |
+|---|---|---|
+| `--dir <path>` | Target repo directory | `cwd` |
+| `--dry-run` | Show detection results without writing anything | `false` |
+| `--include <items...>` | Non-interactive: only generate these items (`product`, `architecture`, `schema`, `testing-strategy`, `api-contract`) | interactive prompts |
+| `--feature <name...>` | Non-interactive: Feature Spec names to generate placeholders for | interactive prompt |
+
+`docs/api-contract.md` is only offered when the detected stack has separate frontend and backend apps in the same repo — skipped for a pure-frontend consumer of an external API.
+
+#### `caf-init scaffold adr`
+
+Detect technical decisions already made in the target repo and draft ADR skeletons for `.caf/knowledge/decisions/`.
+
+#### `caf-init scaffold agents`
+
+Interactively scaffold agent definitions (Planner, Architect, per-app implementation, QA, Reviewer, Documentation, DevOps, Auditor, PM, UX Designer) into `.claude/agents/` or equivalent.
+
+#### `caf-init scaffold task-completion`
+
+Draft `.caf/workflows/task-completion.md` (Definition of Done) from verify scripts detected in `package.json`.
+
+#### `caf-init scaffold workflow`
+
+Draft `.caf/workflows/piv-workflow.md` and `agent-handoff.md` from the agent roster already generated in `.claude/agents/`. Fails with a clear error if the agent roster is empty — run `caf-init scaffold agents` first.
+
+#### `caf-init scaffold feature-catalog-sync`
+
+Generate the `/caf-feature-catalog-sync` slash command, with the code-scan strategy baked in from the detected architecture (controller-based / DDD-layer). Only reachable via this explicit target — never part of bare `scaffold`, since its output needs manual review (a `TODO`-filled catalog) before it's usable.
+
+### `caf-init export`
+
+Copy already-generated agent definitions to other AI runner targets, with explicit enforcement-risk warnings.
+
+| Option | Description | Default |
+|---|---|---|
+| `--dir <path>` | Target repo directory | `cwd` |
+| `--agent-dir <path>` | Source directory containing existing agent definitions | `.claude/agents` |
+
+### `caf-init curate`
+
+Audit report (read-only, Layer 1-4 compliance) then offer to sync missing sections into `.claude/agents/*.md`. Bare runs both; `--audit-only`/`--sync-only` isolate one side for CI gates or direct use.
+
+| Option | Description | Default |
+|---|---|---|
+| `--dir <path>` | Target repo directory | `cwd` |
+| `--agent-dir <path>` | Directory containing existing agent definitions | `.claude/agents` |
+| `--output <file>` | Also save the audit report as markdown to this path | none |
+| `--audit-only` | Report only, non-interactive — exit code 1 on required gaps (for CI gates) | `false` |
+| `--sync-only` | Skip the audit report, go straight to the sync flow | `false` |
+| `--dry-run` | With `--sync-only`: show what would be added without writing or prompting | `false` |
+
+---
+
+## Project Structure
+
+```
+caf-initiator/
+├── src/
+│   ├── index.js                 # CLI entry point (commander setup)
+│   ├── util.js                  # Shared file I/O helpers
+│   ├── commands/
+│   │   ├── setup.js             # Orchestrates audit → detect → draft
+│   │   ├── golden-examples.js   # Source file scanner + selector (+ RULES.md pairing)
+│   │   ├── reference-docs.js    # Optional Layer 1 reference docs scaffolder
+│   │   ├── adr.js               # ADR detection + skeleton drafter
+│   │   ├── agents.js            # Agent definition scaffolder
+│   │   ├── export.js    # Multi-runner target publisher
+│   │   ├── agents-sync.js       # Add missing sections to already-generated agent defs
+│   │   ├── task-completion.js   # Definition of Done generator
+│   │   ├── workflow.js          # Workflow docs generator
+│   │   ├── feature-catalog-sync.js # /caf-feature-catalog-sync command generator
+│   │   ├── audit.js             # Layer 1-4 compliance audit report
+│   │   ├── curate.js            # audit.js + agents-sync.js, one entry point
+│   │   ├── scaffold.js          # `scaffold` bare chain + `scaffold <target>` dispatch
+│   │   └── interactive-menu.js  # Interactive CLI menu
+│   ├── steps/
+│   │   ├── 01-audit-existing-tools.js  # Check for existing AI tool configs
+│   │   ├── 02-detect-stack.js          # Framework/monorepo/DB detection
+│   │   ├── 03-detect-tracker.js        # Linear/Jira/GitHub Issues detection
+│   │   └── 04-generate-drafts.js       # CLAUDE.md / AGENTS.md drafter
+│   ├── templates/
+│   │   ├── claude-md.js         # CLAUDE.md template generator
+│   │   ├── agents-md.js         # AGENTS.md template generator
+│   │   ├── agent-md.js          # Individual agent definition template
+│   │   ├── adr.js               # ADR skeleton template
+│   │   ├── piv-workflow-md.js   # PIV workflow doc template
+│   │   ├── agent-handoff-md.js  # Agent handoff doc template
+│   │   ├── tasks-readme.js      # .ai/tasks/README.md template
+│   │   ├── reference-docs-md.js       # PRD/Feature Spec/system-overview/api-contract/ERD/testing-strategy templates
+│   │   └── golden-example-rules-md.js # RULES.md template for golden-examples/{{app}}/
+│   └── utils/
+│       ├── decision-signatures.js  # Heuristic signatures for ADR detection
+│       ├── package-scripts.js      # package.json script parser
+│       ├── read-agent-roster.js    # Parse existing agent definitions
+│       ├── read-caf-config.js      # CAF configuration reader
+│       ├── runner-targets.js       # AI runner directory mapping
+│       └── scoring.js              # Golden example candidate scoring
+├── CAF.md                       # Full CAF specification
+├── package.json
+└── .gitignore
+```
+
+---
+
+## How It Works
+
+1. **Audit** — checks if any AI coding tool configs (`.claude/`, `.cursor/`, `.kiro/`, etc.) already exist and asks how to proceed
+2. **Detect stack** — reads `package.json`, monorepo configs (`turbo.json`, `nx.json`, `pnpm-workspace.yaml`), ORM schemas, and directory structure to identify your apps, frameworks, and package manager
+3. **Detect tracker** — looks for Linear, Jira, or GitHub Issues signals in the repo
+4. **Generate drafts** — produces `CLAUDE.md`, `AGENTS.md`, and `.ai/tasks/README.md` populated with your detected stack info
+5. **Golden examples** — scores source files by quality heuristics and lets you pick the best as reference material
+6. **ADR detection** — identifies existing technical decisions (ORMs, auth, state management, etc.) and drafts ADR skeletons
+7. **Agent scaffolding** — generates agent definition files for all CAF roles based on your stack
+8. **Task completion** — drafts `.caf/workflows/task-completion.md` (Definition of Done) from verify scripts detected in `package.json`
+9. **Workflow generation** — creates PIV workflow and agent handoff documentation from your agent roster
+
+All file writes are **non-destructive** — existing files are never overwritten.
+
+---
+
+## License
+
+UNLICENSED
