@@ -1,4 +1,4 @@
-# caf-initiator
+# CAF Initiator
 
 CLI that automates the initial setup of the **Coderium Agent Framework (CAF)** in any repository.
 
