@@ -53,30 +53,7 @@ npm link
 
 ## Usage
 
-Run from within your target repository, or pass `--dir` to point at one.
-
-### Interactive Mode
-
-```bash
-caf-init
-```
-
-Launches a menu where you can pick which step to run:
-
-```
-? Mau jalankan apa?
-  * Setup awal (audit + deteksi + draft CLAUDE.md/AGENTS.md)
-  * Golden examples selector
-  * Reference docs (opsional: PRD, Feature Spec, system-overview, api-contract, ERD, testing-strategy)
-  * ADR draft generator
-  * Agent definitions scaffolder
-  * Agent multi-target publish
-  * Task completion (Definition of Done) generator
-  * Workflow docs generator (piv-workflow + agent-handoff)
-  * Feature catalog sync command generator
-  * Jalankan semua berurutan (Setup → Golden Examples → ADR → Agents → Task Completion → Workflow)
-  * Keluar
-```
+Run from within your target repository, or pass `--dir` to point at one. `caf-init` with no subcommand prints help — there's no interactive top-level menu; pick a subcommand explicitly (`scaffold`, `export`, `curate`, `docs`).
 
 ### Run Everything
 
@@ -98,15 +75,9 @@ caf-init scaffold <target> [--dir <path>] [--dry-run] [--app <app-path>] [--agen
 
 ## Commands
 
-### `caf-init` (default)
+### `caf-init` (no subcommand)
 
-Interactive menu — pick which step to run.
-
-| Option | Description | Default |
-|---|---|---|
-| `--dir <path>` | Target repo directory | `cwd` |
-| `--dry-run` | Show detection results without writing anything | `false` |
-| `--workspace-glob <pattern...>` | Override app/package glob detection | auto-detect |
+Prints help. `--dir`/`--dry-run`/`--workspace-glob` are declared on the root program but only take effect when a subcommand consumes them.
 
 ### `caf-init scaffold`
 
@@ -167,6 +138,8 @@ Copy already-generated agent definitions to other AI runner targets, with explic
 |---|---|---|
 | `--dir <path>` | Target repo directory | `cwd` |
 | `--agent-dir <path>` | Source directory containing existing agent definitions | `.claude/agents` |
+| `--kind <agent\|command\|both>` | What to publish — agent definitions, companion slash commands, or both | `agent` |
+| `--dry-run` | Show what would be published without writing anything | `false` |
 
 ### `caf-init curate`
 
@@ -196,15 +169,14 @@ caf-initiator/
 │   │   ├── reference-docs.js    # Optional Layer 1 reference docs scaffolder
 │   │   ├── adr.js               # ADR detection + skeleton drafter
 │   │   ├── agents.js            # Agent definition scaffolder
-│   │   ├── export.js    # Multi-runner target publisher
+│   │   ├── export.js            # Multi-runner target publisher (agents and/or commands)
 │   │   ├── agents-sync.js       # Add missing sections to already-generated agent defs
 │   │   ├── task-completion.js   # Definition of Done generator
 │   │   ├── workflow.js          # Workflow docs generator
 │   │   ├── feature-catalog-sync.js # /caf-feature-catalog-sync command generator
 │   │   ├── audit.js             # Layer 1-4 compliance audit report
 │   │   ├── curate.js            # audit.js + agents-sync.js, one entry point
-│   │   ├── scaffold.js          # `scaffold` bare chain + `scaffold <target>` dispatch
-│   │   └── interactive-menu.js  # Interactive CLI menu
+│   │   └── scaffold.js          # `scaffold` bare chain + `scaffold <target>` dispatch
 │   ├── steps/
 │   │   ├── 01-audit-existing-tools.js  # Check for existing AI tool configs
 │   │   ├── 02-detect-stack.js          # Framework/monorepo/DB detection
@@ -218,14 +190,35 @@ caf-initiator/
 │   │   ├── piv-workflow-md.js   # PIV workflow doc template
 │   │   ├── agent-handoff-md.js  # Agent handoff doc template
 │   │   ├── tasks-readme.js      # .ai/tasks/README.md template
+│   │   ├── task-completion-md.js      # Definition of Done template
 │   │   ├── reference-docs-md.js       # PRD/Feature Spec/system-overview/api-contract/ERD/testing-strategy templates
-│   │   └── golden-example-rules-md.js # RULES.md template for golden-examples/{{app}}/
+│   │   ├── golden-example-rules-md.js # RULES.md template for golden-examples/{{app}}/
+│   │   ├── knowledge-index-md.js      # Knowledge base index template
+│   │   ├── feature-catalog.js         # Feature catalog template (TODO-filled, needs review)
+│   │   ├── artifact-by-role.js        # Artifact-by-role reference template
+│   │   ├── audit-commands.js          # curate audit report command snippets
+│   │   ├── audit-report-format.js     # curate audit report formatting
+│   │   ├── discovery-commands.js      # Discovery-phase slash command templates
+│   │   ├── discovery-to-ticket.js     # Discovery-to-ticket handoff template
+│   │   ├── review-command.js          # Review slash command template
+│   │   ├── fix-review-command.js      # Fix-review slash command template
+│   │   ├── run-pipeline-command.js    # Run-pipeline slash command template
+│   │   └── ticket-preview-commands.js # Ticket preview slash command templates
 │   └── utils/
 │       ├── decision-signatures.js  # Heuristic signatures for ADR detection
+│       ├── architecture-signatures.js # Controller-based vs DDD-layer detection
 │       ├── package-scripts.js      # package.json script parser
 │       ├── read-agent-roster.js    # Parse existing agent definitions
 │       ├── read-caf-config.js      # CAF configuration reader
 │       ├── runner-targets.js       # AI runner directory mapping
+│       ├── runner-command.js       # AI runner command-dir mapping
+│       ├── opencode-agent-transform.js   # Agent def → OpenCode format transform
+│       ├── opencode-command-transform.js # Command def → OpenCode format transform
+│       ├── agent-sections.js       # Canonical agent-def section parsing
+│       ├── canonical-sections.js   # Canonical Layer 1-4 section definitions
+│       ├── section-headers.js      # Section header parsing helpers
+│       ├── collision-check.js      # Detects filename collisions across targets
+│       ├── sync-state.js           # curate sync-state tracking
 │       └── scoring.js              # Golden example candidate scoring
 ├── CAF.md                       # Full CAF specification
 ├── package.json
