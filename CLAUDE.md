@@ -16,28 +16,43 @@ this repo.
 
 ## Commands
 
-- Run the CLI: `node src/index.js [--dir <path>] [--dry-run]` (or `npm start`)
+- Run the CLI: `node src/index.js <command> [options]` (bin name `caf-init` once installed/linked).
+  Bare `node src/index.js` (or `npm start`) with no subcommand just prints help — there is no
+  default action at the root.
+- Main subcommands: `scaffold [target]` (init pipeline — see Architecture), `curate`
+  (Layer 1-4 compliance audit + optional sync into `.claude/agents/*.md`), `export` (copy agent
+  definitions to other AI runner targets), `docs` (optional Layer 1 reference docs). Run
+  `node src/index.js --help` or `<command> --help` for full flags.
 - No test suite, linter, or build step is configured in `package.json` — don't invent commands
   that don't exist there.
-- Try it end-to-end against a scratch directory before trusting changes: `node src/index.js --dir /tmp/some-repo --dry-run`.
+- Try it end-to-end against a scratch directory before trusting changes:
+  `node src/index.js scaffold --dir /tmp/some-repo --dry-run`.
 
 ## Architecture
 
-Linear 4-step pipeline, driven by `src/index.js`, each step in `src/steps/`:
+`src/index.js` is a `commander`-based CLI; each top-level command's logic lives in
+`src/commands/`. The init pipeline itself is `caf-init scaffold`:
 
-1. **`01-audit-existing-tools.js`** — scans the target dir for existing AI-tool config
-   (`.claude`, `.kiro`, `.opencode`, `openspec`, `.cursor`). If found, prompts the user to
-   coexist, consolidate (manual, not automated), or cancel. Returns `{ action: 'continue' | 'stop' }`;
-   `index.js` exits early on `'stop'`.
-2. **`02-detect-stack.js`** — reads `package.json`, lockfiles, and monorepo markers
-   (`turbo.json`, `nx.json`, `lerna.json`, `pnpm-workspace.yaml`) to detect package manager,
-   monorepo apps (`apps/*/package.json`, `packages/*/package.json`), per-app framework
-   (via dependency-name signatures, most-specific-first order), and database (from
-   `prisma/schema.prisma` or `.env.example`).
-3. **`03-detect-tracker.js`** — detects Linear/Jira from marker files or README mentions;
-   otherwise prompts the user. Never silently defaults to a tracker.
-4. **`04-generate-drafts.js`** — renders templates from `src/templates/` and writes them via
-   `writeIfAbsent`/`ensureDir`.
+- **`src/commands/setup.js`** (`runSetup`) — the "Setup" step, a linear 4-step pipeline over
+  `src/steps/`:
+  1. **`01-audit-existing-tools.js`** — scans the target dir for existing AI-tool config
+     (`.claude`, `.kiro`, `.opencode`, `openspec`, `.cursor`). If found, prompts the user to
+     coexist, consolidate (manual, not automated), or cancel. Returns
+     `{ action: 'continue' | 'stop' }`; `runSetup` exits early on `'stop'`.
+  2. **`02-detect-stack.js`** — reads `package.json`, lockfiles, and monorepo markers
+     (`turbo.json`, `nx.json`, `lerna.json`, `pnpm-workspace.yaml`) to detect package manager,
+     monorepo apps (`apps/*/package.json`, `packages/*/package.json`), per-app framework
+     (via dependency-name signatures, most-specific-first order), and database (from
+     `prisma/schema.prisma` or `.env.example`).
+  3. **`03-detect-tracker.js`** — detects Linear/Jira from marker files or README mentions;
+     otherwise prompts the user. Never silently defaults to a tracker.
+  4. **`04-generate-drafts.js`** — renders templates from `src/templates/` and writes them via
+     `writeIfAbsent`/`ensureDir`.
+- **`src/commands/scaffold.js`** (`runScaffold`/`runScaffoldTarget`) — chains Setup → Golden
+  Examples → ADR → Agents → Task Completion → Workflow, each step confirmed interactively (bare
+  `scaffold`), or runs one target standalone (`scaffold <target>`).
+- Other top-level commands (`audit.js`/`curate.js`, `export.js`, `reference-docs.js`) are layered
+  on top of the same `detectStack`/`writeIfAbsent` primitives but are not part of the init chain.
 
 `src/util.js` provides the shared file-system primitives. **`writeIfAbsent` never overwrites an
 existing file** — this is the core safety guarantee of the tool (target repos may already have

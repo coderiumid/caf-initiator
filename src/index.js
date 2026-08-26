@@ -16,14 +16,7 @@ program.enablePositionalOptions();
 
 program
   .name('caf-init')
-  .description('Automate the initial setup of the Coderium Agent Framework (CAF) in a repo')
-  .option('--dir <path>', 'target repo directory', process.cwd())
-  .option('--dry-run', 'show detection results without writing anything', false)
-  .option(
-    '--workspace-glob <pattern...>',
-    'override app/package glob detection (e.g. --workspace-glob "layers/*" "modules/*"). ' +
-      'Use when repo structure is not apps/*, packages/*, and has no "workspaces" field.'
-  );
+  .description('Automate the initial setup of the Coderium Agent Framework (CAF) in a repo');
 
 // scaffold: `caf-init scaffold` runs the default Setup → Golden Examples → ADR → Agents →
 // Task Completion → Workflow chain; `caf-init scaffold <target>` runs one target standalone

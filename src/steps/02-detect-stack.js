@@ -210,7 +210,7 @@ export async function detectStack({ dir, explicitGlobs }) {
   if (confidence === 'guessed' && globAppCount === 0) {
     console.log(
       kleur.yellow(
-        '  warning: no "workspaces" field found and default apps/*, packages/* patterns matched nothing — treating repo as single-package. Use --workspace-glob if this is wrong.'
+        '  warning: no "workspaces" field found and default apps/*, packages/* patterns matched nothing — treating repo as single-package. Add a "workspaces" field to package.json if this is wrong.'
       )
     );
   } else if (confidence === 'guessed' && globAppCount > 0) {
