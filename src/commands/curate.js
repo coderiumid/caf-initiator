@@ -29,11 +29,11 @@ export async function curate({ dir, agentDir, output, mode = 'default', dryRun =
     return auditResult;
   }
 
-  console.log(kleur.bold(`${syncableGaps.length} gap bisa langsung di-sync ke .claude/agents/*.md.`));
+  console.log(kleur.bold(`${syncableGaps.length} gap(s) can be synced directly into .claude/agents/*.md.`));
   const { proceed } = await prompts({
     type: 'confirm',
     name: 'proceed',
-    message: 'Lanjut ke sync flow sekarang?',
+    message: 'Proceed to the sync flow now?',
     initial: true,
   });
 
