@@ -30,11 +30,20 @@ export function generateDrafts({ dir, dryRun, stack, tracker }) {
   const tasksReadme = buildTasksReadme({ tracker: tracker.tracker });
   track(writeIfAbsent(tasksReadmePath, tasksReadme, { dryRun }), tasksReadmePath);
 
-  // Per-ticket subfolders under .caf/tasks/ are agent scratch/archive, not meant for git —
-  // README.md is the one file in that tree that should stay tracked.
+  // Only audits/discovery are agent scratch output, not meant for git — tasks stay tracked.
+  // README.md is the one file in each tree that should stay tracked.
   const gitignorePath = path.join(dir, '.gitignore');
   track(
-    appendLinesIfMissing(gitignorePath, ['.caf/tasks/*/', '!.caf/tasks/README.md'], { dryRun }),
+    appendLinesIfMissing(
+      gitignorePath,
+      [
+        '.caf/discovery/*/',
+        '!.caf/discovery/README.md',
+        '.caf/audits/*/',
+        '!.caf/audits/README.md',
+      ],
+      { dryRun }
+    ),
     gitignorePath
   );
 
