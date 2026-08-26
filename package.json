@@ -16,7 +16,8 @@
     "node": ">=18"
   },
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "release": "scripts/release.sh"
   },
   "dependencies": {
     "commander": "^12.1.0",
