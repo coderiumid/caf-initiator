@@ -6,12 +6,49 @@ import kleur from 'kleur';
 import { section, writeIfAbsent, readFileSafe } from '../util.js';
 import { RUNNER_TARGETS, CLAUDE_CODE_STATUS_ROW, ANTIGRAVITY_STATUS_ROW } from '../utils/runner-targets.js';
 import { toolsArrayToMap } from '../utils/opencode-agent-transform.js';
-import { stripCommandFrontmatter, rewriteAgentPaths, addReviewNotice } from '../utils/opencode-command-transform.js';
+import {
+  stripCommandFrontmatter,
+  rewriteAgentPaths,
+  addReviewNotice,
+  toKiroSteeringFrontmatter,
+} from '../utils/opencode-command-transform.js';
 
-// Per-kind source/target/transform config. Only 'opencode' has a verified target dir for
-// kind='command' — .opencode/commands/ (plural) was confirmed against umkm-pos's hand-written
-// ground truth. cline/cursor/kiro command paths/schemas are unverified, so they're excluded
-// from the command publish menu entirely (TODO once verified against a real example).
+// Per-kind source/target/transform config.
+//
+// Command target dirs verified per-runner:
+// - opencode: .opencode/commands/ (plural) — confirmed against umkm-pos's hand-written ground truth.
+// - cursor: .cursor/commands/ — plain markdown files, listed in the `/` command menu (cursor.com/changelog/1-6).
+// - cline: .clinerules/workflows/ — plain markdown "workflows" invoked via slash command (docs.cline.bot/customization/cline-rules).
+// - kiro: no dedicated commands dir. A slash command is a steering file (.kiro/steering/*.md) with
+//   `inclusion: manual` in its frontmatter (kiro.dev/docs/chat/slash-commands) — different enough
+//   from the other three that it needs its own frontmatter transform (toKiroSteeringFrontmatter).
+const COMMAND_TARGET_DIRS = {
+  opencode: '.opencode/commands',
+  cursor: '.cursor/commands',
+  cline: '.clinerules/workflows',
+  kiro: '.kiro/steering',
+};
+
+// Agent dir each target actually publishes to (agentsPublish kind='agent'), used to rewrite
+// `.claude/agents/foo.md` references inside command bodies.
+const AGENT_DIR_FOR_COMMAND_PATHS = {
+  opencode: '.opencode/agent',
+  cursor: '.cursor/agents',
+  cline: '.cline/agents',
+  kiro: '.kiro/agents',
+};
+
+function transformCommand(target, raw) {
+  const targetDir = COMMAND_TARGET_DIRS[target.id];
+  if (!targetDir) return raw;
+
+  const agentDir = AGENT_DIR_FOR_COMMAND_PATHS[target.id];
+  if (target.id === 'kiro') {
+    return addReviewNotice(toKiroSteeringFrontmatter(rewriteAgentPaths(raw, agentDir)), target.label);
+  }
+  return addReviewNotice(rewriteAgentPaths(stripCommandFrontmatter(raw), agentDir), target.label);
+}
+
 const KIND_CONFIG = {
   agent: {
     defaultSourceDir: '.claude/agents',
@@ -20,9 +57,8 @@ const KIND_CONFIG = {
   },
   command: {
     defaultSourceDir: '.claude/commands',
-    targetDirFor: (target) => (target.id === 'opencode' ? '.opencode/commands' : null),
-    transform: (target, raw) =>
-      target.id === 'opencode' ? addReviewNotice(rewriteAgentPaths(stripCommandFrontmatter(raw))) : raw,
+    targetDirFor: (target) => COMMAND_TARGET_DIRS[target.id] || null,
+    transform: transformCommand,
   },
 };
 
