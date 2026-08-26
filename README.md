@@ -33,6 +33,20 @@ See [`CAF.md`](./CAF.md) for the full specification.
 
 ## Installation
 
+### From npm
+
+```bash
+npm install -g caf-initiator
+```
+
+Or run without installing:
+
+```bash
+npx -p caf-initiator caf-init scaffold
+```
+
+### From source
+
 ```bash
 # Clone the repository
 git clone https://github.com/ganjardbc/caf-initiator.git
