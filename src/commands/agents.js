@@ -63,23 +63,25 @@ function candidateApps(stack, appOpt) {
   return [app];
 }
 
+// CAF-MULTIAPP-01: multiselect so a role can be assigned more than one app (e.g. caf-frontend
+// covering both apps/web and apps/landing). This naturally also covers the old single-app
+// "pick it or leave it unassigned" choice — no special-casing needed for apps.length === 1, a
+// checkbox list with one item still lets the user pick zero or one.
 async function pickRoleApps(apps) {
   const roleApp = {};
   for (const role of FIXED_ROLES) {
     if (apps.length === 0) {
-      roleApp[role] = null;
+      roleApp[role] = [];
       continue;
     }
     const { picked } = await prompts({
-      type: 'select',
+      type: 'multiselect',
       name: 'picked',
-      message: `Pick the app acting as "${role}" (leave empty if none):`,
-      choices: [
-        { title: '(none)', value: null },
-        ...apps.map((a) => ({ title: `${a.name} (${a.path})`, value: a })),
-      ],
+      message: `Pick the app(s) acting as "${role}" (leave empty if none — pick more than one if this role covers more than one app):`,
+      instructions: false,
+      choices: apps.map((a) => ({ title: `${a.name} (${a.path})`, value: a })),
     });
-    roleApp[role] = picked ?? null;
+    roleApp[role] = picked || [];
   }
   return roleApp;
 }
@@ -116,9 +118,7 @@ function roleAppLabel(app) {
 }
 
 function buildCandidates(roleApp, extraApps) {
-  const implementationAppPaths = FIXED_ROLES.map((role) => roleApp[role])
-    .filter(Boolean)
-    .map((app) => app.path);
+  const implementationAppPaths = FIXED_ROLES.flatMap((role) => roleApp[role] || []).map((app) => app.path);
 
   const candidates = [
     {
@@ -138,14 +138,15 @@ function buildCandidates(roleApp, extraApps) {
   ];
 
   for (const role of FIXED_ROLES) {
-    const app = roleApp[role];
-    if (!app) continue;
+    const apps = roleApp[role];
+    if (!apps || apps.length === 0) continue;
+    const labels = apps.map(roleAppLabel).join(', ');
     candidates.push({
       kind: role,
-      app,
-      name: `${role[0].toUpperCase()}${role.slice(1)} (${roleAppLabel(app)})`,
-      role: `Implements code changes in ${roleAppLabel(app)} per the Planner's plan (role: ${role}).`,
-      scope: `\`${app.path}/**\``,
+      apps,
+      name: `${role[0].toUpperCase()}${role.slice(1)} (${labels})`,
+      role: `Implements code changes in ${labels} per the Planner's plan (role: ${role}).`,
+      scope: apps.length === 1 ? `\`${apps[0].path}/**\`` : apps.map((a) => `\`${a.path}/**\``).join(', '),
     });
   }
 
@@ -235,7 +236,7 @@ export async function agents({ dir, app: appOpt, agentDir: agentDirOpt, commandD
   const apps = candidateApps(stack, appOpt);
 
   const roleApp = await pickRoleApps(apps);
-  const assignedPaths = new Set(Object.values(roleApp).filter(Boolean).map((a) => a.path));
+  const assignedPaths = new Set(Object.values(roleApp).flat().map((a) => a.path));
   const remaining = apps.filter((a) => !assignedPaths.has(a.path));
   const extraApps = await pickExtraApps(remaining);
 
@@ -299,13 +300,34 @@ export async function agents({ dir, app: appOpt, agentDir: agentDirOpt, commandD
   const skipped = [];
   const collisions = [];
   for (const candidate of selected) {
-    const scripts = candidate.app ? matchVerifyScripts(dir, candidate.app.path) : null;
-    const packageManager = candidate.app ? candidate.app.packageManager || stack.packageManager : null;
-    // Only meaningful in a monorepo: at root scope the bare `<pm> run <script>` form is right.
-    const packageName = candidate.app && stack.isMonorepo ? readPackageName(dir, candidate.app.path) : null;
+    // CAF-MULTIAPP-01: frontend/backend candidates carry `apps` (array, possibly >1) instead of
+    // a single `app` — everything else (implementation/extraApps, and the whole-repo roles that
+    // never had an app to begin with) is untouched, still single `app` or null.
+    let scripts = null;
+    let packageManager = null;
+    let packageName = null;
+    let scopeApps = null;
+    let verifyApps = null;
+
+    if (candidate.apps) {
+      scopeApps = candidate.apps;
+      verifyApps = candidate.apps.map((app) => ({
+        scripts: matchVerifyScripts(dir, app.path),
+        packageManager: app.packageManager || stack.packageManager,
+        // Only meaningful in a monorepo: at root scope the bare `<pm> run <script>` form is right.
+        packageName: stack.isMonorepo ? readPackageName(dir, app.path) : null,
+        appPath: app.path,
+      }));
+    } else if (candidate.app) {
+      scripts = matchVerifyScripts(dir, candidate.app.path);
+      packageManager = candidate.app.packageManager || stack.packageManager;
+      packageName = stack.isMonorepo ? readPackageName(dir, candidate.app.path) : null;
+    }
 
     // Computed before the content: it is both the filename stem and the frontmatter `name`
-    // Claude Code dispatches on, so the two must come from the same value.
+    // Claude Code dispatches on, so the two must come from the same value. `candidate.app` is
+    // undefined for frontend/backend candidates, but agentSlug() never reads it for those kinds
+    // (only for 'implementation').
     const slug = agentSlug(candidate.kind, candidate.app);
 
     const content =
@@ -317,9 +339,11 @@ export async function agents({ dir, app: appOpt, agentDir: agentDirOpt, commandD
               name: candidate.name,
               role: candidate.role,
               scope: candidate.scope,
+              scopeApps,
               scripts,
               packageManager,
               packageName,
+              verifyApps,
               kind: candidate.kind,
               appNames: candidate.appNames,
               slug,
@@ -364,11 +388,12 @@ export async function agents({ dir, app: appOpt, agentDir: agentDirOpt, commandD
     (c) => c.kind === 'frontend' || c.kind === 'backend' || c.kind === 'implementation'
   );
   const implementationRoles = implementationCandidates.map((c) => agentSlug(c.kind, c.app));
-  // role -> app path, for explicit commit scoping in /caf-run-pipeline (see plan.md
-  // CAF-RUNPIPELINE-AUTOPR-01 section 3) — c.app.path is already '.' for a single-app
-  // non-monorepo repo (see 02-detect-stack.js), so no special-casing is needed here.
+  // role -> app path(s), for explicit commit scoping in /caf-run-pipeline (see plan.md
+  // CAF-RUNPIPELINE-AUTOPR-01 section 3). Always an array now (CAF-MULTIAPP-01): frontend/backend
+  // candidates carry `apps` (possibly >1), implementation/extraApps candidates carry a single
+  // `app` — c.app.path is already '.' for a single-app non-monorepo repo (see 02-detect-stack.js).
   const appPaths = Object.fromEntries(
-    implementationCandidates.map((c) => [agentSlug(c.kind, c.app), c.app.path])
+    implementationCandidates.map((c) => [agentSlug(c.kind, c.app), (c.apps || [c.app]).map((a) => a.path)])
   );
 
   if (plannerPicked && implementationRoles.length > 0) {
