@@ -49,10 +49,14 @@ ${table}
 
 ## Format \`verify-report.md\`
 
+Use the literal word \`SUCCESS\` on success — not \`PASS\`/\`DONE\`/\`OK\`. If this project uses
+caf-orchestrator, it greps this file for \`\\bSUCCESS\\b\`; anything else is read as
+\`NEEDS_HUMAN\` and stops the pipeline before QA/Reviewer/PR creation.
+
 \`\`\`markdown
 # Verify Report
 
-Status: PASS | NEEDS_HUMAN
+Status: SUCCESS | NEEDS_HUMAN
 
 ## Checklist
 - [ ] lint
