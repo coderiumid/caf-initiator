@@ -151,7 +151,7 @@ async function confirmRisk(targets) {
   return Boolean(confirmed);
 }
 
-async function publishOneKind(kind, { dir, sourceDirOpt, dryRun }) {
+async function publishOneKind(kind, { dir, sourceDirOpt, dryRun, overwrite }) {
   const config = KIND_CONFIG[kind];
   const label = kind === 'command' ? 'command definition' : 'agent definition';
 
@@ -195,7 +195,7 @@ async function publishOneKind(kind, { dir, sourceDirOpt, dryRun }) {
       const raw = readFileSafe(path.join(sourceDir, file));
       if (raw == null) continue;
       const content = config.transform(target, raw);
-      const result = writeIfAbsent(path.join(targetDir, file), content, { dryRun });
+      const result = writeIfAbsent(path.join(targetDir, file), content, { dryRun, overwrite });
       if (result === 'written') written += 1;
       else if (result === 'skipped') skipped += 1;
     }
@@ -209,10 +209,20 @@ async function publishOneKind(kind, { dir, sourceDirOpt, dryRun }) {
   }
 }
 
-export async function agentsPublish({ dir, agentDir: agentDirOpt, kind = 'agent', dryRun = false }) {
+export async function agentsPublish({ dir, agentDir: agentDirOpt, kind = 'agent', dryRun = false, overwrite = false }) {
   section('agents publish — copy generated agent/command definitions to other AI runner targets');
 
   printEnforcementTable();
+
+  if (overwrite) {
+    console.log(
+      kleur.yellow(
+        '⚠ --force is set: every file this run publishes WILL overwrite an existing file at the\n' +
+          '  destination, including any manual edits made to it since the last publish. Review your\n' +
+          '  working tree / git diff after this run.'
+      )
+    );
+  }
 
   const kindsToRun = kind === 'both' ? ['agent', 'command'] : [kind];
   for (const oneKind of kindsToRun) {
@@ -221,6 +231,6 @@ export async function agentsPublish({ dir, agentDir: agentDirOpt, kind = 'agent'
     // --agent-dir only overrides the agent source dir (existing flag); command source dir is
     // always the default '.claude/commands' for now.
     const sourceDirOpt = oneKind === 'agent' ? agentDirOpt : undefined;
-    await publishOneKind(oneKind, { dir, sourceDirOpt, dryRun });
+    await publishOneKind(oneKind, { dir, sourceDirOpt, dryRun, overwrite });
   }
 }

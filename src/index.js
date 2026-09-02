@@ -75,9 +75,21 @@ program
   .option('--agent-dir <path>', 'source directory containing existing agent definitions', '.claude/agents')
   .option('--kind <agent|command|both>', 'what to publish', 'agent')
   .option('--dry-run', 'show what would be published without writing anything', false)
+  .option(
+    '--force',
+    'overwrite files that already exist at the destination instead of skipping them — ' +
+      'opt-in escape hatch for writeIfAbsent\'s normal "never overwrite" guarantee, use with care',
+    false
+  )
   .action(async (cmdOpts) => {
     const dir = path.resolve(cmdOpts.dir);
-    await agentsPublish({ dir, agentDir: cmdOpts.agentDir, kind: cmdOpts.kind, dryRun: Boolean(cmdOpts.dryRun) });
+    await agentsPublish({
+      dir,
+      agentDir: cmdOpts.agentDir,
+      kind: cmdOpts.kind,
+      dryRun: Boolean(cmdOpts.dryRun),
+      overwrite: Boolean(cmdOpts.force),
+    });
   });
 
 // Same nested-command flag-shadowing quirk as export above — separate top-level
