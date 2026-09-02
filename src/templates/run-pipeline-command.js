@@ -202,11 +202,15 @@ Artifact: \`.caf/tasks/{TICKET-ID}/${artifact}\`.`;
  * still gated because if stage 4 was never generated into this command, nobody in this run could
  * possibly write to that path — see audit
  * CAF-RUNPIPELINE-AUTOPR-01/audit-documentation-scope.md points 1-2.
+ *
+ * `appPaths[role]` is an array (CAF-MULTIAPP-01: a role can cover more than one app) — one
+ * whitelist line is rendered per path, so a role with a single app still renders exactly one
+ * line, byte-identical to the pre-multi-app format.
  */
 function commitScopeList(implementationRoles, appPaths, hasDocumentation) {
-  const appLines = implementationRoles
-    .filter((role) => appPaths[role])
-    .map((role) => `- \`${role}\`: \`${appPaths[role]}/\``);
+  const appLines = implementationRoles.flatMap((role) =>
+    (appPaths[role] || []).map((appPath) => `- \`${role}\`: \`${appPath}/\``)
+  );
   const docLines = hasDocumentation
     ? [`- \`caf-documentation\`: \`README.md\``, `- \`caf-documentation\`: \`CHANGELOG.md\``, `- \`caf-documentation\`: \`docs/\``]
     : [];
@@ -219,9 +223,10 @@ function commitScopeList(implementationRoles, appPaths, hasDocumentation) {
  * @param {object} opts
  * @param {string} opts.agentDir            relative path to the agent folder (e.g. `.claude/agents`)
  * @param {string[]} opts.implementationRoles  implementation roles generated ('frontend'/'backend'/app slug)
- * @param {Record<string,string>} opts.appPaths  role -> relative app path (e.g. 'apps/web', or
- *   '.' for a single-app non-monorepo repo) — used for the commit scope whitelist in section 7,
- *   see plan.md CAF-RUNPIPELINE-AUTOPR-01 section 3.
+ * @param {Record<string,string[]>} opts.appPaths  role -> relative app path(s) (e.g. ['apps/web'],
+ *   or ['apps/web', 'apps/landing'] for a role covering more than one app, or ['.'] for a
+ *   single-app non-monorepo repo) — used for the commit scope whitelist in section 7, see plan.md
+ *   CAF-RUNPIPELINE-AUTOPR-01 section 3 and CAF-MULTIAPP-01.
  * @param {boolean} opts.hasArchitect
  * @param {boolean} opts.hasDocumentation
  */

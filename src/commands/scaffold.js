@@ -22,7 +22,7 @@ import { featureCatalogSync } from './feature-catalog-sync.js';
 export const TARGETS = {
   'golden-examples': { label: 'Golden Examples Selector', run: (ctx) => goldenExamples({ dir: ctx.dir, dryRun: ctx.dryRun }) },
   adr: { label: 'ADR Draft Generator', run: (ctx) => adr({ dir: ctx.dir, dryRun: ctx.dryRun }) },
-  agents: { label: 'Agent Definitions Scaffolder', run: (ctx) => agents({ dir: ctx.dir, agentDir: ctx.agentDir, dryRun: ctx.dryRun }) },
+  agents: { label: 'Agent Definitions Scaffolder', run: (ctx) => agents({ dir: ctx.dir, agentDir: ctx.agentDir, dryRun: ctx.dryRun, overwrite: ctx.overwrite }) },
   'task-completion': { label: 'Task Completion Generator', run: (ctx) => taskCompletion({ dir: ctx.dir, dryRun: ctx.dryRun }) },
   workflow: { label: 'Workflow Docs Generator', run: (ctx) => workflow({ dir: ctx.dir, agentDir: ctx.agentDir, dryRun: ctx.dryRun }) },
   'feature-catalog-sync': { label: 'Feature Catalog Sync Command Generator', run: (ctx) => featureCatalogSync({ dir: ctx.dir, agentDir: ctx.agentDir, dryRun: ctx.dryRun }) },
@@ -49,7 +49,7 @@ function printSummary(summary) {
  * `scaffold` bare: Setup → Golden Examples → ADR → Agents → Task Completion → Workflow,
  * per-step confirm (default yes). Identical to the old `full` chain minus Reference Docs.
  */
-export async function runScaffold({ dir, dryRun, explicitGlobs, agentDir }) {
+export async function runScaffold({ dir, dryRun, explicitGlobs, agentDir, overwrite }) {
   section('scaffold — run Setup → Golden Examples → ADR → Agents → Task Completion → Workflow in sequence');
 
   const summary = [];
@@ -62,7 +62,7 @@ export async function runScaffold({ dir, dryRun, explicitGlobs, agentDir }) {
   }
   summary.push({ step: 'Setup', ran: true, written: setupResult.written.length, skipped: setupResult.skipped.length });
 
-  const ctx = { dir, dryRun, agentDir };
+  const ctx = { dir, dryRun, agentDir, overwrite };
 
   for (const key of CHAIN_ORDER) {
     const { label, run } = TARGETS[key];
@@ -103,7 +103,7 @@ export async function runScaffold({ dir, dryRun, explicitGlobs, agentDir }) {
  * `scaffold <target>`: run a single target standalone, behavior identical to the old
  * individual command.
  */
-export async function runScaffoldTarget(target, { dir, dryRun, agentDir, app, commandDir }) {
+export async function runScaffoldTarget(target, { dir, dryRun, agentDir, app, commandDir, overwrite }) {
   if (!TARGETS[target]) {
     console.error(kleur.red(`scaffold: unknown target "${target}" (choices: ${Object.keys(TARGETS).join(', ')})`));
     process.exitCode = 1;
@@ -116,7 +116,7 @@ export async function runScaffoldTarget(target, { dir, dryRun, agentDir, app, co
     case 'adr':
       return adr({ dir, app, dryRun });
     case 'agents':
-      return agents({ dir, app, agentDir, commandDir, dryRun });
+      return agents({ dir, app, agentDir, commandDir, dryRun, overwrite });
     case 'task-completion':
       return taskCompletion({ dir, app, dryRun });
     case 'workflow':

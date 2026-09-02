@@ -41,11 +41,18 @@ program
     'directory to write companion slash commands into — only used by agents/feature-catalog-sync targets',
     '.claude/commands'
   )
+  .option(
+    '--force',
+    'overwrite files that already exist instead of skipping them (only used by the agents target) — ' +
+      'opt-in escape hatch for writeIfAbsent\'s normal "never overwrite" guarantee, use with care',
+    false
+  )
   .action(async (target, cmdOpts) => {
     const dir = path.resolve(cmdOpts.dir);
     const dryRun = Boolean(cmdOpts.dryRun);
+    const overwrite = Boolean(cmdOpts.force);
     if (!target) {
-      await runScaffold({ dir, dryRun, explicitGlobs: undefined, agentDir: cmdOpts.agentDir });
+      await runScaffold({ dir, dryRun, explicitGlobs: undefined, agentDir: cmdOpts.agentDir, overwrite });
       return;
     }
     await runScaffoldTarget(target, {
@@ -54,6 +61,7 @@ program
       agentDir: cmdOpts.agentDir,
       app: cmdOpts.app,
       commandDir: cmdOpts.commandDir,
+      overwrite,
     });
   });
 
@@ -67,9 +75,21 @@ program
   .option('--agent-dir <path>', 'source directory containing existing agent definitions', '.claude/agents')
   .option('--kind <agent|command|both>', 'what to publish', 'agent')
   .option('--dry-run', 'show what would be published without writing anything', false)
+  .option(
+    '--force',
+    'overwrite files that already exist at the destination instead of skipping them — ' +
+      'opt-in escape hatch for writeIfAbsent\'s normal "never overwrite" guarantee, use with care',
+    false
+  )
   .action(async (cmdOpts) => {
     const dir = path.resolve(cmdOpts.dir);
-    await agentsPublish({ dir, agentDir: cmdOpts.agentDir, kind: cmdOpts.kind, dryRun: Boolean(cmdOpts.dryRun) });
+    await agentsPublish({
+      dir,
+      agentDir: cmdOpts.agentDir,
+      kind: cmdOpts.kind,
+      dryRun: Boolean(cmdOpts.dryRun),
+      overwrite: Boolean(cmdOpts.force),
+    });
   });
 
 // Same nested-command flag-shadowing quirk as export above — separate top-level

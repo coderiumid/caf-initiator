@@ -33,7 +33,7 @@ function verifyLine(label, script, packageManager, packageName) {
 
 // packageName scopes each command to the agent's own workspace — without it the agent, which
 // runs from the repo root, would trigger the root script (in a monorepo: every workspace).
-function buildVerifyChecklist(scripts, packageManager, packageName) {
+function buildVerifyChecklistSingle(scripts, packageManager, packageName) {
   if (!scripts) {
     return [
       '- [ ] TODO: this agent\'s scope is not a single app — no reference package.json for auto-detecting scripts',
@@ -46,6 +46,28 @@ function buildVerifyChecklist(scripts, packageManager, packageName) {
     verifyLine('test', scripts.test, packageManager, packageName),
     verifyLine('build', scripts.build, packageManager, packageName),
   ].join('\n');
+}
+
+// verifyApps: array of { scripts, packageManager, packageName, appPath } — one entry per app
+// this agent covers (CAF-MULTIAPP-01). Empty/undefined renders the same "not a single app" TODO
+// as before. Exactly one entry renders byte-identical to the pre-multi-app format (no per-app
+// header) — this is what keeps single-app projects and single-app roles regression-safe.
+// More than one entry groups the checklist under a `#### <appPath>` header per app.
+function buildVerifyChecklist(verifyApps) {
+  if (!verifyApps || verifyApps.length === 0) {
+    return buildVerifyChecklistSingle(null, null, null);
+  }
+  if (verifyApps.length === 1) {
+    const { scripts, packageManager, packageName } = verifyApps[0];
+    return buildVerifyChecklistSingle(scripts, packageManager, packageName);
+  }
+  const groups = verifyApps
+    .map(
+      ({ scripts, packageManager, packageName, appPath }) =>
+        `#### ${appPath}\n${buildVerifyChecklistSingle(scripts, packageManager, packageName)}`
+    )
+    .join('\n\n');
+  return `${groups}\n\nRun only the checklist for the app(s) actually touched by this task — not every app every time.`;
 }
 
 // Planner/Architect may optionally read Layer 1 reference docs (CAF.md Layer 2) — these are
@@ -112,6 +134,18 @@ export function buildInputSection(kind, appNames = []) {
       'ticket description alone as usual (not a hard requirement):',
       '1. `docs/product/features/{{feature-name}}.md` (Feature Spec, if the ticket is linked to one)',
       '2. `docs/product/prd.md`',
+      '',
+      '### App-tag requirement — multi-app Frontend/Backend agents',
+      '',
+      'Before writing the `## Frontend Tasks` / `## Backend Tasks` sections in `tasks.md`, first',
+      'read `## Scope` in this project\'s `caf-frontend.md` / `caf-backend.md` (the agent that will',
+      'receive that section):',
+      '- Scope lists **more than one app** → every task line under that section MUST start with',
+      '  the target app path in parentheses, e.g. `- [ ] (apps/web) Fix email validation`. An',
+      '  untagged line forces the implementation agent to stop and ask which app is meant instead',
+      '  of guessing — don\'t leave a line untagged when the scope has more than one app.',
+      '- Scope lists exactly **one app** → do not add a tag, keep the plain `- [ ] ...` format',
+      '  (unchanged from before).',
     ].join('\n');
   }
   if (kind === 'architect') {
@@ -323,18 +357,55 @@ model: ${model}
 `;
 }
 
+// CAF-MULTIAPP-01: one app renders byte-identical to the pre-multi-app single-line scope (this
+// is the regression guarantee for non-monorepo projects and single-app roles). More than one app
+// lists every scope plus the app-tag instruction the implementation agent must follow when
+// reading tasks.md (mirrors the Planner-side instruction in buildInputSection('planner')).
+function buildScopeSection(apps) {
+  if (apps.length === 1) return `\`${apps[0].path}/**\``;
+  const list = apps.map((a) => `\`${a.path}/**\``).join(', ');
+  return [
+    list,
+    '',
+    'This agent covers more than one app. Every task line assigned to this agent in `tasks.md`',
+    'MUST be tagged with the app it targets, e.g. `- [ ] (apps/web) Fix email validation` — match',
+    'the tag against the scopes above before touching any file. If a task has no tag, or the tag',
+    'does not match any scope above, STOP and ask the user which app is meant — do not guess.',
+  ].join('\n');
+}
+
 /**
  * Build a single agent definition draft. `scope` is a human-readable description (path glob
- * or "TODO"), `scripts`/`packageManager` come from matchVerifyScripts for app-scoped agents,
- * or null for whole-repo agents (Planner, QA, Reviewer, Documentation, DevOps). `packageName`
- * (readPackageName for the same app) scopes the Verify Checklist commands to that workspace;
- * null means root scope. `kind` selects
- * the Input section — Planner/Architect get an explicit list of optional Layer 1 reference docs.
+ * or "TODO"), used as-is unless `scopeApps` (array of detected apps, CAF-MULTIAPP-01) is given —
+ * when given, it takes over rendering (see buildScopeSection).
+ * `scripts`/`packageManager`/`packageName` come from matchVerifyScripts for a single app-scoped
+ * agent, or null for whole-repo agents (Planner, QA, Reviewer, Documentation, DevOps). For an
+ * agent covering more than one app, pass `verifyApps` instead (array of
+ * `{ scripts, packageManager, packageName, appPath }`, one per app) — it takes over rendering
+ * the Verify Checklist and `scripts`/`packageManager`/`packageName` are ignored.
+ * `kind` selects the Input section — Planner/Architect get an explicit list of optional Layer 1
+ * reference docs.
  * `slug` must be the filename stem the file is written as (agentSlug(kind, app)) — Claude Code
  * dispatches on the frontmatter `name`, so a mismatch with the filename is a latent bug.
  */
-export function buildAgentMd({ name, role, scope, scripts, packageManager, packageName = null, kind, appNames, slug, model = 'sonnet' }) {
+export function buildAgentMd({
+  name,
+  role,
+  scope,
+  scopeApps = null,
+  scripts,
+  packageManager,
+  packageName = null,
+  verifyApps = null,
+  kind,
+  appNames,
+  slug,
+  model = 'sonnet',
+}) {
   const agentName = slug || kind;
+  const scopeText = scopeApps && scopeApps.length > 0 ? buildScopeSection(scopeApps) : scope;
+  const verifyChecklist =
+    verifyApps !== null ? buildVerifyChecklist(verifyApps) : buildVerifyChecklist(scripts ? [{ scripts, packageManager, packageName }] : []);
   return `${buildFrontmatter({ slug: agentName, name, role, kind, model })}
 # Agent: ${name}
 
@@ -345,7 +416,7 @@ export function buildAgentMd({ name, role, scope, scripts, packageManager, packa
 ${role}
 
 ## Scope
-${scope}
+${scopeText}
 
 ## Allowed Tools
 ${buildToolsSection(kind)}
@@ -362,7 +433,7 @@ ${buildBatasanSection(kind)}
 3. VERIFY — run the Verify Checklist below before declaring done
 
 ## Verify Checklist
-${buildVerifyChecklist(scripts, packageManager, packageName)}
+${verifyChecklist}
 
 ## Retry Logic
 Verify fails → fix, retry up to 3x → if still failing, stop and write

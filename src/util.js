@@ -32,21 +32,26 @@ export function readJsonSafe(p) {
 }
 
 /**
- * Write a file only if it doesn't already exist. Never overwrites.
+ * Write a file only if it doesn't already exist. Never overwrites — UNLESS `overwrite: true`
+ * is explicitly passed (CAF-MULTIAPP-01: opt-in escape hatch for regenerating drafts, e.g.
+ * `caf-init scaffold agents --force`, without requiring the user to delete the file by hand
+ * first). Default behavior (no `overwrite`) is unchanged — this is additive, not a relaxed
+ * default; preserve that when touching this function.
  * Returns 'written' | 'skipped' | 'dry-run'.
  */
-export function writeIfAbsent(filePath, content, { dryRun = false } = {}) {
-  if (exists(filePath)) {
+export function writeIfAbsent(filePath, content, { dryRun = false, overwrite = false } = {}) {
+  const alreadyExists = exists(filePath);
+  if (alreadyExists && !overwrite) {
     console.log(kleur.dim(`  skip  ${filePath} (already exists)`));
     return 'skipped';
   }
   if (dryRun) {
-    console.log(kleur.yellow(`  would write  ${filePath}`));
+    console.log(kleur.yellow(`  would ${alreadyExists ? 'overwrite' : 'write'}  ${filePath}`));
     return 'dry-run';
   }
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, content, 'utf8');
-  console.log(kleur.green(`  created  ${filePath}`));
+  console.log(kleur.green(`  ${alreadyExists ? 'overwritten' : 'created'}  ${filePath}`));
   return 'written';
 }
 
