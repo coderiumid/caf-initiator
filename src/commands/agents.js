@@ -226,11 +226,23 @@ function buildCandidates(roleApp, extraApps) {
   return candidates;
 }
 
-export async function agents({ dir, app: appOpt, agentDir: agentDirOpt, commandDir: commandDirOpt, dryRun = false }) {
+export async function agents({ dir, app: appOpt, agentDir: agentDirOpt, commandDir: commandDirOpt, dryRun = false, overwrite = false }) {
   section('agents — draft agent definitions into .claude/agents/ (or equivalent)');
 
   console.log(kleur.yellow(CAF_WARNING));
   console.log('');
+
+  if (overwrite) {
+    console.log(
+      kleur.yellow(
+        '⚠ --force is set: every file this run selects to (re)generate WILL be overwritten if it\n' +
+          '  already exists, including any manual edits made to it since the last generate. This is\n' +
+          '  the opt-in escape hatch for writeIfAbsent\'s normal "never overwrite" guarantee — review\n' +
+          '  your working tree / git diff after this run.'
+      )
+    );
+    console.log('');
+  }
 
   const stack = await detectStack({ dir, explicitGlobs: undefined });
   const apps = candidateApps(stack, appOpt);
@@ -350,7 +362,7 @@ export async function agents({ dir, app: appOpt, agentDir: agentDirOpt, commandD
             });
 
     const filePath = path.join(agentDirPath, `${slug}.md`);
-    const result = writeIfAbsentGuarded(filePath, content, { dryRun }, collisions);
+    const result = writeIfAbsentGuarded(filePath, content, { dryRun, overwrite }, collisions);
     if (result === 'written') written.push(filePath);
     else if (result === 'skipped') skipped.push(filePath);
   }
@@ -369,7 +381,7 @@ export async function agents({ dir, app: appOpt, agentDir: agentDirOpt, commandD
 
     const content = preview.build({ agentDir: relativeAgentDir });
     const filePath = path.join(commandDirPath, preview.file);
-    const result = writeIfAbsentGuarded(filePath, content, { dryRun }, collisions);
+    const result = writeIfAbsentGuarded(filePath, content, { dryRun, overwrite }, collisions);
     if (result === 'written') written.push(filePath);
     else if (result === 'skipped') skipped.push(filePath);
 
@@ -434,7 +446,7 @@ export async function agents({ dir, app: appOpt, agentDir: agentDirOpt, commandD
         hasDocumentation: selected.some((c) => c.kind === 'documentation'),
       });
       const filePath = path.join(commandDirPath, 'caf-run-pipeline.md');
-      const result = writeIfAbsentGuarded(filePath, content, { dryRun }, collisions);
+      const result = writeIfAbsentGuarded(filePath, content, { dryRun, overwrite }, collisions);
       if (result === 'written') written.push(filePath);
       else if (result === 'skipped') skipped.push(filePath);
 
@@ -482,7 +494,7 @@ export async function agents({ dir, app: appOpt, agentDir: agentDirOpt, commandD
     if (generateFixReview) {
       const content = buildFixReviewMd({ agentDir: relativeAgentDir });
       const filePath = path.join(commandDirPath, 'caf-fix-review.md');
-      const result = writeIfAbsentGuarded(filePath, content, { dryRun }, collisions);
+      const result = writeIfAbsentGuarded(filePath, content, { dryRun, overwrite }, collisions);
       if (result === 'written') written.push(filePath);
       else if (result === 'skipped') skipped.push(filePath);
 
@@ -525,7 +537,7 @@ export async function agents({ dir, app: appOpt, agentDir: agentDirOpt, commandD
     if (generateReview) {
       const content = buildReviewMd({ agentDir: relativeAgentDir });
       const filePath = path.join(commandDirPath, 'caf-review.md');
-      const result = writeIfAbsentGuarded(filePath, content, { dryRun }, collisions);
+      const result = writeIfAbsentGuarded(filePath, content, { dryRun, overwrite }, collisions);
       if (result === 'written') written.push(filePath);
       else if (result === 'skipped') skipped.push(filePath);
 
@@ -545,13 +557,13 @@ export async function agents({ dir, app: appOpt, agentDir: agentDirOpt, commandD
 
     const scanContent = buildAuditScanMd({ agentDir: relativeAgentDir });
     const scanPath = path.join(commandDirPath, 'caf-audit-scan.md');
-    const scanResult = writeIfAbsentGuarded(scanPath, scanContent, { dryRun }, collisions);
+    const scanResult = writeIfAbsentGuarded(scanPath, scanContent, { dryRun, overwrite }, collisions);
     if (scanResult === 'written') written.push(scanPath);
     else if (scanResult === 'skipped') skipped.push(scanPath);
 
     const ticketContent = buildAuditToTicketMd({ tracker, agentDir: relativeAgentDir });
     const ticketPath = path.join(commandDirPath, 'caf-audit-to-ticket.md');
-    const ticketResult = writeIfAbsentGuarded(ticketPath, ticketContent, { dryRun }, collisions);
+    const ticketResult = writeIfAbsentGuarded(ticketPath, ticketContent, { dryRun, overwrite }, collisions);
     if (ticketResult === 'written') written.push(ticketPath);
     else if (ticketResult === 'skipped') skipped.push(ticketPath);
 
@@ -570,13 +582,13 @@ export async function agents({ dir, app: appOpt, agentDir: agentDirOpt, commandD
       hasUxDesigner: uxSelected,
     });
     const startPath = path.join(commandDirPath, 'caf-discovery-start.md');
-    const startResult = writeIfAbsentGuarded(startPath, startContent, { dryRun }, collisions);
+    const startResult = writeIfAbsentGuarded(startPath, startContent, { dryRun, overwrite }, collisions);
     if (startResult === 'written') written.push(startPath);
     else if (startResult === 'skipped') skipped.push(startPath);
 
     const discoveryTicketContent = buildDiscoveryToTicketMd({ tracker, agentDir: relativeAgentDir });
     const discoveryTicketPath = path.join(commandDirPath, 'caf-discovery-to-ticket.md');
-    const discoveryTicketResult = writeIfAbsentGuarded(discoveryTicketPath, discoveryTicketContent, { dryRun }, collisions);
+    const discoveryTicketResult = writeIfAbsentGuarded(discoveryTicketPath, discoveryTicketContent, { dryRun, overwrite }, collisions);
     if (discoveryTicketResult === 'written') written.push(discoveryTicketPath);
     else if (discoveryTicketResult === 'skipped') skipped.push(discoveryTicketPath);
 

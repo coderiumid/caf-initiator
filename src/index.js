@@ -41,11 +41,18 @@ program
     'directory to write companion slash commands into — only used by agents/feature-catalog-sync targets',
     '.claude/commands'
   )
+  .option(
+    '--force',
+    'overwrite files that already exist instead of skipping them (only used by the agents target) — ' +
+      'opt-in escape hatch for writeIfAbsent\'s normal "never overwrite" guarantee, use with care',
+    false
+  )
   .action(async (target, cmdOpts) => {
     const dir = path.resolve(cmdOpts.dir);
     const dryRun = Boolean(cmdOpts.dryRun);
+    const overwrite = Boolean(cmdOpts.force);
     if (!target) {
-      await runScaffold({ dir, dryRun, explicitGlobs: undefined, agentDir: cmdOpts.agentDir });
+      await runScaffold({ dir, dryRun, explicitGlobs: undefined, agentDir: cmdOpts.agentDir, overwrite });
       return;
     }
     await runScaffoldTarget(target, {
@@ -54,6 +61,7 @@ program
       agentDir: cmdOpts.agentDir,
       app: cmdOpts.app,
       commandDir: cmdOpts.commandDir,
+      overwrite,
     });
   });
 
