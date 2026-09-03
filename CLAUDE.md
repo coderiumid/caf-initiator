@@ -100,3 +100,11 @@ section reads as `UNTRACKED` (never a false `IN_SYNC`/`DRIFT`). `caf-init curate
 backfills the manifest from current content as-is — it deliberately never edits file content
 and never infers a baseline from git history (see `.ai/tasks/CAF-CURATE-DIFF-01/requirements.md`
 for why that was rejected).
+
+`parseSections` (`src/utils/agent-sections.js`, shared by `replaceSectionBody` and by
+`section-diff.js`'s `extractSection`/`hashSection`) is fence-aware: a `## ...` line inside a
+` ``` ` fenced code block is not treated as a section boundary (CAF-SECTIONPARSE-01 — caf-auditor.md's
+`## Report Format` embeds a report skeleton with literal `## Audit:`/`## Summary`/etc. lines
+inside a fence). A `## `-style heading used as example content in a new template section MUST be
+wrapped in a fenced code block for this reason — an unfenced example heading is still misread as
+a real section boundary and will corrupt `curate sync` output.
