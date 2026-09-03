@@ -252,7 +252,11 @@ function toolsForKind(kind) {
   return TOOLS_BY_KIND[kind] || ['Read'];
 }
 
-function buildToolsSection(kind) {
+// Exported (alongside buildInputSection/buildOutputSection) so utils/agent-sections.js can
+// regenerate this section's canonical content from `kind` alone for content-level drift
+// detection (CAF-CURATE-DIFF-01) — same reasoning as Input/Output, this section has no
+// per-project data baked in, so its template content IS fully recoverable post-generation.
+export function buildToolsSection(kind) {
   const list = toolsForKind(kind)
     .map((t) => `\`${t}\``)
     .join(', ');
@@ -277,14 +281,16 @@ function buildToolsSection(kind) {
 // literal `## ...` lines inside a fenced block, and the section parser in utils/agent-sections.js
 // is fence-unaware. Keeping them at the end means those lines can never split a real section or
 // become an insertion anchor for agents-sync.
-function buildAuditContractSections(kind) {
-  if (kind !== 'auditor') return '';
-  return `
-## What to Look For
-${WHAT_TO_LOOK_FOR}
+// auditor-only — returns null for every other kind so callers (curate's content-drift check)
+// can tell "not applicable to this kind" apart from "empty content".
+export function buildWhatToLookForSection(kind) {
+  if (kind !== 'auditor') return null;
+  return WHAT_TO_LOOK_FOR;
+}
 
-## Report Format
-Save the report to \`.caf/audits/<DATE>/audit-report.md\` (this name is reserved for a full-repo
+export function buildReportFormatSection(kind) {
+  if (kind !== 'auditor') return null;
+  return `Save the report to \`.caf/audits/<DATE>/audit-report.md\` (this name is reserved for a full-repo
 scan by this agent — the scoped \`/caf-audit-scan\` command uses the suffix \`-{scope-slug}\`).
 
 The frontmatter \`tools\` above deliberately does NOT grant \`Write\` (this agent is read-only
@@ -300,8 +306,38 @@ ${reportSkeleton({
 
 The cap of 5 Priority Findings applies specifically to this agent because it scans the entire
 repo (budget control for the weekly AI run). \`/caf-audit-scan\` has no cap because it's scoped to
-whatever area the user requested.
+whatever area the user requested.`;
+}
+
+function buildAuditContractSections(kind) {
+  if (kind !== 'auditor') return '';
+  return `
+## What to Look For
+${buildWhatToLookForSection(kind)}
+
+## Report Format
+${buildReportFormatSection(kind)}
 `;
+}
+
+// Both fixed, kind-independent text — same reasoning as buildToolsSection: fully recoverable
+// post-generation, so curate's content-drift check can regenerate and compare them.
+export function buildWorkingPatternSection() {
+  return [
+    '1. PLAN — write a plan first, don\'t touch code yet',
+    '2. IMPLEMENT — execute per the plan',
+    '3. VERIFY — run the Verify Checklist below before declaring done',
+  ].join('\n');
+}
+
+export function buildRetryLogicSection() {
+  return [
+    'Verify passes → write `verify-report.md` with **`Status: SUCCESS`** (this exact literal word —',
+    'caf-orchestrator greps for `\\bSUCCESS\\b` and treats anything else, including "PASS"/"DONE"/"OK",',
+    'as `NEEDS_HUMAN`, which stops the whole pipeline and skips QA/Reviewer/PR creation).',
+    'Verify fails → fix, retry up to 3x → if still failing, stop and write',
+    '`verify-report.md` with Status: NEEDS_HUMAN',
+  ].join('\n');
 }
 
 // Planner-only: makes the headless-vs-interactive escalation branch in buildInputSection() an
@@ -428,18 +464,12 @@ ${buildInputSection(kind, appNames)}
 ${buildOutputSection(kind)}
 ${buildBatasanSection(kind)}
 ## Working Pattern (PIV)
-1. PLAN — write a plan first, don't touch code yet
-2. IMPLEMENT — execute per the plan
-3. VERIFY — run the Verify Checklist below before declaring done
+${buildWorkingPatternSection()}
 
 ## Verify Checklist
 ${verifyChecklist}
 
 ## Retry Logic
-Verify passes → write \`verify-report.md\` with **\`Status: SUCCESS\`** (this exact literal word —
-caf-orchestrator greps for \`\\bSUCCESS\\b\` and treats anything else, including "PASS"/"DONE"/"OK",
-as \`NEEDS_HUMAN\`, which stops the whole pipeline and skips QA/Reviewer/PR creation).
-Verify fails → fix, retry up to 3x → if still failing, stop and write
-\`verify-report.md\` with Status: NEEDS_HUMAN
+${buildRetryLogicSection()}
 ${buildAuditContractSections(kind)}`;
 }

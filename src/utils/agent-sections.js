@@ -1,6 +1,15 @@
 import path from 'node:path';
 
-import { buildInputSection, CAF_PREFIXED_KINDS } from '../templates/agent-md.js';
+import {
+  buildInputSection,
+  buildOutputSection,
+  buildToolsSection,
+  buildWorkingPatternSection,
+  buildRetryLogicSection,
+  buildWhatToLookForSection,
+  buildReportFormatSection,
+  CAF_PREFIXED_KINDS,
+} from '../templates/agent-md.js';
 
 export const TEMPLATE_SECTION_ORDER = [
   'Role',
@@ -19,11 +28,24 @@ export const TEMPLATE_SECTION_ORDER = [
 
 // Sections we can safely regenerate default content for without instance-specific data
 // (role/scope/verify scripts, all captured only at `caf-init scaffold agents` generation time and
-// not recoverable from the file alone). Only "Input" qualifies today — its content depends
-// solely on `kind`. Add new entries here as buildAgentMd grows sections that are kind-only.
-// Shared by agents-sync.js (apply) and audit.js (read-only report) so the two never drift.
+// not recoverable from the file alone). Every section here is either kind-only (Allowed Tools,
+// Input, Output, What to Look For, Report Format) or fully constant (Working Pattern, Retry
+// Logic) — CAF-CURATE-DIFF-01 extended this from "Input" alone specifically so content drift in
+// Retry Logic (the CDR-38 case: a template fix to the SUCCESS-literal instruction) is detectable
+// and auto-syncable, not just missing-section presence. Role/Scope/Verify Checklist are excluded
+// on purpose — they embed real per-project data captured only at generation time.
+// A builder may return null for a given kind (e.g. auditor-only sections for a non-auditor kind)
+// to mean "this section isn't part of that kind's template at all" — callers must skip it, not
+// treat it as a content mismatch. Shared by agents-sync.js (apply) and audit.js (read-only
+// report) so the two never drift.
 export const SYNCABLE_SECTIONS = {
+  'Allowed Tools': (kind) => buildToolsSection(kind),
   Input: (kind) => buildInputSection(kind),
+  Output: (kind) => buildOutputSection(kind),
+  'Working Pattern (PIV)': () => buildWorkingPatternSection(),
+  'Retry Logic': () => buildRetryLogicSection(),
+  'What to Look For': (kind) => buildWhatToLookForSection(kind),
+  'Report Format': (kind) => buildReportFormatSection(kind),
 };
 
 // 'auditor', 'pm', 'ux-designer' added alongside the caf- rename: buildInputSection/
@@ -88,4 +110,19 @@ export function insertSection(lines, sections, header, body) {
   if (insertAt == null) insertAt = lines.length;
   const block = ['', `## ${header}`, body, ''];
   return [...lines.slice(0, insertAt), ...block, ...lines.slice(insertAt)].join('\n');
+}
+
+/**
+ * Replaces the body of an existing `## header` block in place, leaving the heading line and
+ * every other section byte-for-byte untouched. Only ever called for sections that compared as
+ * DRIFT (file content provably unchanged since the last baseline) — see agents-sync.js.
+ * Preserves the original block's trailing blank lines so replacing a section never reflows
+ * the spacing of the sections around it.
+ */
+export function replaceSectionBody(lines, s, body) {
+  const original = lines.slice(s.startLine + 1, s.endLine);
+  let trailingBlanks = 0;
+  for (let i = original.length - 1; i >= 0 && original[i].trim() === ''; i -= 1) trailingBlanks += 1;
+  const replacement = [...body.split('\n'), ...Array(trailingBlanks).fill('')];
+  return [...lines.slice(0, s.startLine + 1), ...replacement, ...lines.slice(s.endLine)].join('\n');
 }

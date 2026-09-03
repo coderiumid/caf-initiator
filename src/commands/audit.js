@@ -8,6 +8,8 @@ import { SYNCABLE_SECTIONS, detectKind, parseSections, sectionBody } from '../ut
 import { readSyncState, contentHash, getDecision } from '../utils/sync-state.js';
 import { canonicalHeaders } from '../utils/canonical-sections.js';
 import { extractHeaders } from '../utils/section-headers.js';
+import { hashSection, compareSection, SECTION_STATUS } from '../utils/section-diff.js';
+import { readManifest, getBaselineHash } from '../utils/generate-manifest.js';
 
 const SYMBOL = { ok: '✓', gap: '✗', declined: '⊘' };
 const COLOR = { ok: kleur.green, gap: kleur.red, declined: kleur.yellow };
@@ -148,18 +150,37 @@ function auditKnowledgeBase(dir, stack) {
   return entries;
 }
 
-function auditAgentDefinitions(dir, agentDirOpt) {
+const SECTION_STATUS_MESSAGE = {
+  [SECTION_STATUS.DRIFT]: (header) =>
+    `section \`## ${header}\` differs from the latest template (DRIFT — untouched since last generate/sync, safe to auto-sync)`,
+  [SECTION_STATUS.CUSTOMIZATION]: (header) =>
+    `section \`## ${header}\` differs from its baseline (CUSTOMIZATION — edited manually since last sync, will NOT be auto-synced)`,
+  [SECTION_STATUS.CONFLICT]: (header) =>
+    `section \`## ${header}\` differs from both its baseline and the latest template (CONFLICT — both changed, needs manual review)`,
+  [SECTION_STATUS.UNTRACKED]: (header) =>
+    `section \`## ${header}\` present but has no manifest baseline yet (UNTRACKED — run \`caf-init curate baseline\` first)`,
+};
+
+export function auditAgentDefinitions(dir, agentDirOpt) {
   const agentDirPath = path.join(dir, agentDirOpt || '.claude/agents');
-  if (!fs.existsSync(agentDirPath)) return [];
+  if (!fs.existsSync(agentDirPath)) return { entries: [], sectionCounts: {} };
 
   const files = fs
     .readdirSync(agentDirPath)
     .filter((f) => f.endsWith('.md'))
     .sort();
-  if (files.length === 0) return [];
+  if (files.length === 0) return { entries: [], sectionCounts: {} };
 
   const state = readSyncState(agentDirPath);
+  const manifest = readManifest(dir);
   const entries = [];
+  const sectionCounts = {
+    [SECTION_STATUS.IN_SYNC]: 0,
+    [SECTION_STATUS.DRIFT]: 0,
+    [SECTION_STATUS.CUSTOMIZATION]: 0,
+    [SECTION_STATUS.CONFLICT]: 0,
+    [SECTION_STATUS.UNTRACKED]: 0,
+  };
 
   for (const file of files) {
     const relPath = path.join(agentDirOpt || '.claude/agents', file);
@@ -173,23 +194,31 @@ function auditAgentDefinitions(dir, agentDirOpt) {
 
     for (const header of Object.keys(SYNCABLE_SECTIONS)) {
       const proposed = SYNCABLE_SECTIONS[header](kind);
-      const hash = contentHash(proposed);
+      if (proposed == null) continue; // section not part of this kind's template at all
 
       if (presentHeaders.has(header)) {
         const existingSection = sections.find((s) => s.header === header);
         const body = sectionBody(lines, existingSection);
-        if (body !== proposed.trim()) {
+        const status = compareSection({
+          baselineHash: getBaselineHash(manifest, relPath, header),
+          currentHash: hashSection(body),
+          templateHash: hashSection(proposed),
+        });
+        sectionCounts[status] += 1;
+        if (status !== SECTION_STATUS.IN_SYNC) {
           fileEntries.push(
             entry({
-              status: 'declined',
+              status: status === SECTION_STATUS.DRIFT ? 'gap' : 'declined',
               filePath: relPath,
-              message: `section \`## ${header}\` differs from the latest template (review manually if needed)`,
+              message: SECTION_STATUS_MESSAGE[status](header),
+              syncCommand: status === SECTION_STATUS.DRIFT ? 'caf-init curate --sync-only' : null,
             })
           );
         }
         continue;
       }
 
+      const hash = contentHash(proposed);
       const decision = getDecision(state, file, header, hash);
       if (decision === 'skipped') {
         fileEntries.push(
@@ -215,7 +244,7 @@ function auditAgentDefinitions(dir, agentDirOpt) {
     entries.push(...(fileEntries.length > 0 ? fileEntries : [entry({ status: 'ok', filePath: relPath, message: 'already in sync' })]));
   }
 
-  return entries;
+  return { entries, sectionCounts };
 }
 
 function auditArtifactHandoff(dir) {
@@ -260,10 +289,11 @@ export async function audit({ dir, agentDir: agentDirOpt, output }) {
   section('audit — read-only compliance report against caf-initiator templates (never writes)');
 
   const stack = await detectStack({ dir, explicitGlobs: undefined });
+  const agentDefsResult = auditAgentDefinitions(dir, agentDirOpt);
 
   const layers = [
     { name: 'Layer 1 (Knowledge Base)', entries: auditKnowledgeBase(dir, stack) },
-    { name: 'Layer 2 (Agent Definitions)', entries: auditAgentDefinitions(dir, agentDirOpt) },
+    { name: 'Layer 2 (Agent Definitions)', entries: agentDefsResult.entries },
     { name: 'Layer 3 (Artifact Handoff)', entries: auditArtifactHandoff(dir) },
     { name: 'Layer 4 (Quality Gates)', entries: auditQualityGates(dir) },
   ];
@@ -281,6 +311,15 @@ export async function audit({ dir, agentDir: agentDirOpt, output }) {
 
   console.log(kleur.bold('Summary'));
   console.log(`  ${requiredGaps.length} required gap(s), ${optionalGaps.length} optional document(s) missing, ${declined.length} need manual review (section name mismatch/declined/customized)`);
+
+  const sc = agentDefsResult.sectionCounts;
+  const trackedSectionTotal = sc ? Object.values(sc).reduce((a, b) => a + b, 0) : 0;
+  if (trackedSectionTotal > 0) {
+    console.log(
+      `  agent sections tracked: ${sc[SECTION_STATUS.IN_SYNC]} in-sync, ${sc[SECTION_STATUS.DRIFT]} drift, ` +
+        `${sc[SECTION_STATUS.CUSTOMIZATION]} customization, ${sc[SECTION_STATUS.CONFLICT]} conflict, ${sc[SECTION_STATUS.UNTRACKED]} untracked`
+    );
+  }
 
   const commandsByGap = new Map();
   for (const e of requiredGaps) {
@@ -332,5 +371,5 @@ export async function audit({ dir, agentDir: agentDirOpt, output }) {
   // never required for the pipeline). Required gaps do, so `audit` is usable as a CI gate.
   if (requiredGaps.length > 0) process.exitCode = 1;
 
-  return { layers, requiredGaps, optionalGaps, declined };
+  return { layers, requiredGaps, optionalGaps, declined, sectionCounts: agentDefsResult.sectionCounts };
 }

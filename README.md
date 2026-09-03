@@ -157,7 +157,7 @@ Copy already-generated agent definitions to other AI runner targets, with explic
 
 ### `caf-init curate`
 
-Audit report (read-only, Layer 1-4 compliance) then offer to sync missing sections into `.claude/agents/*.md`. Bare runs both; `--audit-only`/`--sync-only` isolate one side for CI gates or direct use.
+Audit report (read-only, Layer 1-4 compliance) then offer to sync missing/drifted sections into `.claude/agents/*.md`. Bare runs both; `--audit-only`/`--sync-only` isolate one side for CI gates or direct use.
 
 | Option | Description | Default |
 |---|---|---|
@@ -166,7 +166,50 @@ Audit report (read-only, Layer 1-4 compliance) then offer to sync missing sectio
 | `--output <file>` | Also save the audit report as markdown to this path | none |
 | `--audit-only` | Report only, non-interactive — exit code 1 on required gaps (for CI gates) | `false` |
 | `--sync-only` | Skip the audit report, go straight to the sync flow | `false` |
-| `--dry-run` | With `--sync-only`: show what would be added without writing or prompting | `false` |
+| `--dry-run` | With `--sync-only`: show what would be added/updated without writing or prompting | `false` |
+
+#### Content-level section tracking
+
+`curate audit`/`curate sync` compare section *content*, not just heading presence, for a
+fixed set of kind-only/constant sections (`Allowed Tools`, `Input`, `Output`,
+`Working Pattern (PIV)`, `Retry Logic`, and the Auditor-only `What to Look For`/`Report
+Format`). `Role`/`Scope`/`Verify Checklist` are excluded — they hold real per-project data
+that isn't recoverable from `kind` alone.
+
+Each such section is tracked in a per-project manifest at `.caf/.generate-manifest.json`
+(hash of the section content at the last generate/sync). A 3-way comparison — baseline vs.
+current file content vs. current template — classifies every present section into one of
+five statuses:
+
+| Status | Meaning | `curate sync` behavior |
+|---|---|---|
+| `IN_SYNC` | Matches both baseline and template | no action |
+| `DRIFT` | File untouched since baseline, template has since changed | auto-synced, manifest re-baselined |
+| `CUSTOMIZATION` | File edited since baseline, template unchanged | **never written** — reported, needs manual review |
+| `CONFLICT` | Both file and template changed since baseline | **never written** — reported, needs manual review |
+| `UNTRACKED` | Section present, no manifest baseline yet | **never written** — run `curate baseline` first |
+
+The core safety guarantee: `curate sync` only ever writes a section whose status is `DRIFT`
+— which by construction requires the file's current content to exactly match its last known
+baseline. A section you've hand-edited since then can never satisfy that, so it can never be
+silently overwritten. `CUSTOMIZATION`/`CONFLICT`/`UNTRACKED` sections are always printed at
+the end of the run (git-status style), never silently skipped.
+
+### `caf-init curate baseline`
+
+Backfill for projects that used `caf-init curate` before this manifest-tracking feature
+existed (no `.caf/.generate-manifest.json` yet — every section reads as `UNTRACKED`).
+Records the **current** content of every untracked, syncable section as its baseline exactly
+as-is — it never edits file content, and never guesses whether that content matches the
+latest template. Review sections manually first if you haven't already; after baselining,
+`curate sync` treats content unchanged since that moment as safe to auto-sync.
+
+| Option | Description | Default |
+|---|---|---|
+| `--dir <path>` | Target repo directory | `cwd` |
+| `--agent-dir <path>` | Directory containing existing agent definitions | `.claude/agents` |
+| `--dry-run` | Show what would be baselined without writing or prompting | `false` |
+| `--yes` | Skip the confirmation prompt | `false` |
 
 ---
 
@@ -188,8 +231,9 @@ caf-initiator/
 │   │   ├── task-completion.js   # Definition of Done generator
 │   │   ├── workflow.js          # Workflow docs generator
 │   │   ├── feature-catalog-sync.js # /caf-feature-catalog-sync command generator
-│   │   ├── audit.js             # Layer 1-4 compliance audit report
+│   │   ├── audit.js             # Layer 1-4 compliance audit report (+ per-section status)
 │   │   ├── curate.js            # audit.js + agents-sync.js, one entry point
+│   │   ├── curate-baseline.js   # `curate baseline` — manifest backfill for untracked sections
 │   │   └── scaffold.js          # `scaffold` bare chain + `scaffold <target>` dispatch
 │   ├── steps/
 │   │   ├── 01-audit-existing-tools.js  # Check for existing AI tool configs
@@ -232,7 +276,9 @@ caf-initiator/
 │       ├── canonical-sections.js   # Canonical Layer 1-4 section definitions
 │       ├── section-headers.js      # Section header parsing helpers
 │       ├── collision-check.js      # Detects filename collisions across targets
-│       ├── sync-state.js           # curate sync-state tracking
+│       ├── sync-state.js           # curate sync-state tracking (missing-section decline decisions)
+│       ├── section-diff.js         # Section hashing + 3-way IN_SYNC/DRIFT/CUSTOMIZATION/CONFLICT/UNTRACKED comparison
+│       ├── generate-manifest.js    # .caf/.generate-manifest.json read/write (per-section baseline hashes)
 │       └── scoring.js              # Golden example candidate scoring
 ├── CAF.md                       # Full CAF specification
 ├── package.json
