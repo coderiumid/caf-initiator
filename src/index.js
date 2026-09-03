@@ -5,6 +5,7 @@ import kleur from 'kleur';
 
 import { agentsPublish } from './commands/export.js';
 import { curate } from './commands/curate.js';
+import { curateBaseline } from './commands/curate-baseline.js';
 import { referenceDocs } from './commands/reference-docs.js';
 import { runScaffold, runScaffoldTarget, TARGETS } from './commands/scaffold.js';
 
@@ -93,25 +94,46 @@ program
   });
 
 // Same nested-command flag-shadowing quirk as export above — separate top-level
-// command instead of `agents.command('curate')`.
+// command instead of `agents.command('curate')`. `baseline` is an optional positional
+// sub-action (same pattern as `scaffold [target]`) rather than a commander nested command,
+// which would collide with this same top-level `curate` name (commander disallows two
+// commands with the same name at the same level).
 program
   .command('curate')
   .description(
-    'audit report (read-only, Layer 1-4 compliance) then offer to sync missing sections into .claude/agents/*.md — bare runs both, --audit-only/--sync-only isolate one side for CI gates or direct use'
+    'audit report (read-only, Layer 1-4 compliance) then offer to sync missing sections into .claude/agents/*.md — bare runs both, --audit-only/--sync-only isolate one side for CI gates or direct use. `curate baseline` is a separate backfill flow for projects without manifest tracking yet.'
   )
+  .argument('[subaction]', 'optional: "baseline" — backfill manifest for untracked sections without editing file content')
   .option('--dir <path>', 'target repo directory', process.cwd())
   .option('--agent-dir <path>', 'directory containing existing agent definitions', '.claude/agents')
   .option('--output <file>', 'also save the audit report as markdown to this path (relative to --dir unless absolute)')
   .option('--audit-only', 'report only, non-interactive — exit code 1 on required gaps (for CI gates)', false)
   .option('--sync-only', 'skip the audit report, go straight to the sync flow — non-interactive prompts still apply per section', false)
-  .option('--dry-run', 'with --sync-only: show what would be added without writing anything or prompting', false)
-  .action(async (cmdOpts) => {
+  .option('--dry-run', 'with --sync-only or baseline: show what would happen without writing anything or prompting', false)
+  .option('--yes', 'with baseline: skip the confirmation prompt', false)
+  .action(async (subaction, cmdOpts) => {
+    const dir = path.resolve(cmdOpts.dir);
+
+    if (subaction === 'baseline') {
+      await curateBaseline({
+        dir,
+        agentDir: cmdOpts.agentDir,
+        dryRun: Boolean(cmdOpts.dryRun),
+        yes: Boolean(cmdOpts.yes),
+      });
+      return;
+    }
+    if (subaction) {
+      console.error(`curate: unknown subaction "${subaction}" (only "baseline" is recognized)`);
+      process.exitCode = 1;
+      return;
+    }
+
     if (cmdOpts.auditOnly && cmdOpts.syncOnly) {
       console.error('curate: --audit-only and --sync-only are mutually exclusive');
       process.exitCode = 1;
       return;
     }
-    const dir = path.resolve(cmdOpts.dir);
     const mode = cmdOpts.auditOnly ? 'audit-only' : cmdOpts.syncOnly ? 'sync-only' : 'default';
     await curate({
       dir,
