@@ -1,6 +1,6 @@
 {
   "name": "caf-initiator",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "CLI that automates the initial setup of Coderium Agent Framework (CAF) in any repo",
   "type": "module",
   "bin": {
