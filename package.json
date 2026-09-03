@@ -17,6 +17,7 @@
   },
   "scripts": {
     "start": "node src/index.js",
+    "test": "node --test test/*.test.js",
     "release": "scripts/release.sh"
   },
   "dependencies": {
