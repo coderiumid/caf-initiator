@@ -69,7 +69,16 @@ export function parseSections(content) {
   const lines = content.split(/\r?\n/);
   const sections = [];
   let current = null;
+  let inFencedBlock = false;
   lines.forEach((line, idx) => {
+    // A `## ...` line inside a fenced code block (e.g. the report skeleton embedded in
+    // caf-auditor.md's "Report Format" section) is example content, not a real section
+    // boundary — see CAF-SECTIONPARSE-01.
+    if (/^```/.test(line)) {
+      inFencedBlock = !inFencedBlock;
+      return;
+    }
+    if (inFencedBlock) return;
     const m = line.match(/^##\s+(.*)$/);
     if (m) {
       if (current) current.endLine = idx;
