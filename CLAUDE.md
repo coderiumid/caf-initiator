@@ -20,11 +20,13 @@ this repo.
   Bare `node src/index.js` (or `npm start`) with no subcommand just prints help — there is no
   default action at the root.
 - Main subcommands: `scaffold [target]` (init pipeline — see Architecture), `curate`
-  (Layer 1-4 compliance audit + optional sync into `.claude/agents/*.md`), `export` (copy agent
+  (Layer 1-4 compliance audit + optional sync into `.claude/agents/*.md`, plus `curate baseline`
+  for manifest backfill — see "Content-level section tracking" below), `export` (copy agent
   definitions to other AI runner targets), `docs` (optional Layer 1 reference docs). Run
   `node src/index.js --help` or `<command> --help` for full flags.
-- No test suite, linter, or build step is configured in `package.json` — don't invent commands
-  that don't exist there.
+- `npm test` runs `node --test test/*.test.js` (Node's built-in test runner, no extra dependency).
+  No linter or build step is configured in `package.json` — don't invent commands that don't
+  exist there.
 - Try it end-to-end against a scratch directory before trusting changes:
   `node src/index.js scaffold --dir /tmp/some-repo --dry-run`.
 
@@ -69,3 +71,32 @@ touching the filesystem — keep write paths and dry-run paths going through the
 template-literal strings for the generated Markdown files. When adding a new generated file,
 follow this same pattern: a pure `build*` function taking detection results, called from
 `04-generate-drafts.js` and written via `writeIfAbsent`.
+
+## Content-level section tracking (`curate audit`/`curate sync`/`curate baseline`)
+
+`curate` doesn't just check whether a `## Heading` exists in an already-generated
+`.claude/agents/*.md` file — for a fixed set of kind-only/constant sections (listed in
+`SYNCABLE_SECTIONS`, `src/utils/agent-sections.js`) it compares actual content against the
+current template. This closes the gap where a template bugfix (e.g. adding the `SUCCESS`
+literal to Retry Logic — CDR-38) never propagated to already-generated files even via
+`curate sync`.
+
+The mechanism is a 3-way comparison (`src/utils/section-diff.js`, `compareSection`):
+`baseline` (hash recorded in `.caf/.generate-manifest.json`, `src/utils/generate-manifest.js`,
+at the last generate/sync) vs. `current` (hash of the file's content now) vs. `template` (hash
+of what the template would produce now). This yields one of `IN_SYNC` / `DRIFT` /
+`CUSTOMIZATION` / `CONFLICT` / `UNTRACKED`.
+
+**Non-negotiable invariant**: `curate sync` only ever writes a section whose status is
+`DRIFT` — which requires `current === baseline` by construction. A section edited since its
+baseline can never be `DRIFT`, so it can never reach the write path
+(`src/commands/agents-sync.js` — see the `if (status !== SECTION_STATUS.DRIFT) { ...; continue; }`
+gate). Any change to this comparison or that gate must preserve that property; do not weaken
+it for convenience, and add a byte-for-byte "file unchanged after sync" test for any new
+status/branch that touches the write path.
+
+A project that used `caf-init curate` before this feature existed has no manifest, so every
+section reads as `UNTRACKED` (never a false `IN_SYNC`/`DRIFT`). `caf-init curate baseline`
+backfills the manifest from current content as-is — it deliberately never edits file content
+and never infers a baseline from git history (see `.ai/tasks/CAF-CURATE-DIFF-01/requirements.md`
+for why that was rejected).
