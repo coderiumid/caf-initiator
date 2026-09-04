@@ -1,6 +1,7 @@
 import { verifyCommand, unresolvedPmTodo } from '../utils/runner-command.js';
 import { ARTIFACT_BY_ROLE } from './artifact-by-role.js';
 import { WHAT_TO_LOOK_FOR, reportSkeleton } from './audit-report-format.js';
+import { DISCOVERY_RETRY_LOGIC } from './discovery-commands.js';
 
 function slugifyAppPath(appPath) {
   return appPath
@@ -330,7 +331,20 @@ export function buildWorkingPatternSection() {
   ].join('\n');
 }
 
-export function buildRetryLogicSection() {
+// Discovery (CAF.md Cluster 1) kinds. Their agent definitions are NOT rendered by buildAgentMd
+// at all — discovery-commands.js/discoveryAgentMd() writes them — but detectKind() does return
+// these kinds for caf-pm.md/caf-ux-designer.md, so every builder `curate` regenerates from a
+// bare `kind` has to answer for them too. See DISCOVERY_GUARDED_SECTIONS in
+// utils/agent-sections.js for the sections that currently can't.
+export const DISCOVERY_KINDS = ['pm', 'ux-designer'];
+
+// Role-aware since CAF-RETRYLOGIC-01. Discovery agents produce `prd.md`/`flow.md` for a human to
+// read; they never enter the pipeline that greps `verify-report.md`, so the Delivery wording
+// below (write `Status: SUCCESS`) is actively wrong for them — `curate sync` wrote it into two
+// production repos' caf-pm.md/caf-ux-designer.md before this branch existed. The Delivery text
+// is unchanged, byte for byte, from before that fix.
+export function buildRetryLogicSection(kind) {
+  if (DISCOVERY_KINDS.includes(kind)) return DISCOVERY_RETRY_LOGIC;
   return [
     'Verify passes → write `verify-report.md` with **`Status: SUCCESS`** (this exact literal word —',
     'caf-orchestrator greps for `\\bSUCCESS\\b` and treats anything else, including "PASS"/"DONE"/"OK",',
@@ -470,6 +484,6 @@ ${buildWorkingPatternSection()}
 ${verifyChecklist}
 
 ## Retry Logic
-${buildRetryLogicSection()}
+${buildRetryLogicSection(kind)}
 ${buildAuditContractSections(kind)}`;
 }

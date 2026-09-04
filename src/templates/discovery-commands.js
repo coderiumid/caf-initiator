@@ -170,6 +170,17 @@ convert it into a ticket — with per-item approval, not auto-create.
 `;
 }
 
+// The Discovery (Cluster 1) Retry Logic contract. Exported because agent-md.js's
+// buildRetryLogicSection(kind) must return this exact text for kind 'pm'/'ux-designer' —
+// `curate audit` regenerates the section from `kind` alone and compares it against what is
+// actually in the file, so the two must be the same string or a correctly-generated Discovery
+// agent reads as DRIFT and `curate sync` overwrites it with the Delivery version
+// (CAF-RETRYLOGIC-01 — that is exactly what happened to caf-pm.md/caf-ux-designer.md).
+export const DISCOVERY_RETRY_LOGIC = `Verify fails → complete the missing part, retry up to 3x → if it still fails because the
+information genuinely isn't available yet (not an agent mistake), STOP and write the open
+question in \`## Open Questions\` then report to the human that this discovery needs their
+input.`;
+
 // Without a YAML frontmatter block at the very top, Claude Code does NOT register this file as
 // an agent type — the file is only read as extra instructions and spawning falls back to
 // general-purpose. `slug` must match the file name (agentSlug in agent-md.js: 'caf-pm',
@@ -236,7 +247,7 @@ Feature name/slug from the \`/caf-discovery-start\` command (required).${focus.i
 ## Output
 ${focus.output}
 
-## Work Pattern (PIV)
+## Working Pattern (PIV)
 1. PLAN — first determine what's still unknown and needs to be asked of a human
 2. IMPLEMENT — write the document
 3. VERIFY — run the Verify Checklist below before claiming completion
@@ -252,10 +263,7 @@ ${sections.map((s) => `- [ ] ${s}`).join('\n')}
 - [ ] No ticket was created/changed in the tracker
 
 ## Retry Logic
-Verify fails → complete the missing part, retry up to 3x → if it still fails because the
-information genuinely isn't available yet (not an agent mistake), STOP and write the open
-question in \`## Open Questions\` then report to the human that this discovery needs their
-input.
+${DISCOVERY_RETRY_LOGIC}
 
 ## Reference
 The full Cluster 1 flow is in the \`/caf-discovery-start\` command (\`${agentDir}\` is alongside
