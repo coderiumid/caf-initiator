@@ -8,7 +8,6 @@ import {
   buildRetryLogicSection,
   buildWhatToLookForSection,
   buildReportFormatSection,
-  CAF_PREFIXED_KINDS,
   DISCOVERY_KINDS,
 } from '../templates/agent-md.js';
 
@@ -96,14 +95,26 @@ export const SYNCABLE_SECTIONS = {
 // detectKind() misclassified that file as 'implementation' — a pre-existing gap that would
 // otherwise corrupt curate section regen for the newly-renamed caf-auditor.md,
 // caf-pm.md, and caf-ux-designer.md.
-export const KNOWN_KINDS = ['planner', 'architect', 'frontend', 'backend', 'qa', 'reviewer', 'documentation', 'auditor', 'pm', 'ux-designer'];
+// 'devops' added at CAF-DEVOPS-KIND-01: without it, detectKind('caf-devops.md') misclassified as
+// 'implementation' and a curate sync could overwrite a correctly-generated read-only devops
+// agent's Allowed Tools with implementation's Read+Write+Edit+Bash (privilege escalation).
+// No entry was added to a guard list for devops: buildToolsSection('devops')
+// (templates/agent-md.js TOOLS_BY_KIND/TOOLS_RATIONALE) is already kind-aware and correct
+// (Read+Bash) once detectKind() routes here correctly — nothing left to guard. buildInputSection/
+// buildOutputSection have no devops branch and fall through to their generic constant TODO
+// fallback (no ARTIFACT_BY_ROLE.devops entry), which is honest ("not yet defined") and never
+// carries real content to lose, unlike the Discovery case this pattern was built for.
+export const KNOWN_KINDS = ['planner', 'architect', 'frontend', 'backend', 'qa', 'reviewer', 'documentation', 'auditor', 'pm', 'ux-designer', 'devops'];
 
 export function detectKind(filename) {
   const stem = path.basename(filename, '.md');
   // Strip the caf- prefix only when the remainder is a kind we actually renamed — avoids
-  // misreading an unrelated custom agent that happens to be named caf-<something>.md.
+  // misreading an unrelated custom agent that happens to be named caf-<something>.md. Checked
+  // against KNOWN_KINDS rather than CAF_PREFIXED_KINDS (a strict subset — 'devops' isn't in
+  // CAF_PREFIXED_KINDS because agentSlug() doesn't generate a caf-devops.md name yet) so a
+  // manually-named or future-renamed caf-devops.md is still recognized (CAF-DEVOPS-KIND-01).
   const unprefixed = stem.startsWith('caf-') ? stem.slice(4) : stem;
-  const slug = CAF_PREFIXED_KINDS.includes(unprefixed) ? unprefixed : stem;
+  const slug = KNOWN_KINDS.includes(unprefixed) ? unprefixed : stem;
   return KNOWN_KINDS.includes(slug) ? slug : 'implementation';
 }
 

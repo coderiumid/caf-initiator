@@ -114,6 +114,17 @@ and forced to return `null` for those kinds until
 either branch on Discovery or add it to that guard list — don't leave it comparing a generic
 template against a Discovery file.
 
+`KNOWN_KINDS` must list every kind `detectKind()` should recognize — a kind missing from it
+silently falls back to `implementation` (`Read`+`Write`+`Edit`+`Bash`), which is a privilege
+escalation risk for any restricted kind (CAF-DEVOPS-KIND-01: `devops` was in `TOOLS_BY_KIND`
+as read-only `[Read, Bash]` but missing from `KNOWN_KINDS`, so `caf-devops.md` misdetected as
+`implementation`). Unlike the Discovery gap above, `devops` did NOT need a
+`DISCOVERY_GUARDED_SECTIONS`-style guard entry once `KNOWN_KINDS` was fixed — its
+`buildToolsSection` branch was already kind-aware and correct, and `buildInputSection`/
+`buildOutputSection` fall through to a harmless constant TODO fallback for it (no real content to
+lose). Add a guard only when a builder's fallback for a kind is itself wrong/misleading, not
+merely generic.
+
 `parseSections` (`src/utils/agent-sections.js`, shared by `replaceSectionBody` and by
 `section-diff.js`'s `extractSection`/`hashSection`) is fence-aware: a `## ...` line inside a
 ` ``` ` fenced code block is not treated as a section boundary (CAF-SECTIONPARSE-01 — caf-auditor.md's

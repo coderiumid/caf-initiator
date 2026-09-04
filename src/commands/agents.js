@@ -30,6 +30,13 @@ import { buildReviewMd } from '../templates/review-command.js';
 // Documentation is non-blocking in the CAF design — see note in ticket-preview-commands.js.
 // A manual path for Frontend/Backend exists, but via /caf-run-pipeline (opt-in + collision guard),
 // not as a per-role preview command here.
+// Candidate kinds hidden from the interactive multiselect (CAF-DEVOPS-KIND-01): 'devops' has no
+// finalized role/artifact contract yet (see TOOLS_RATIONALE.devops in templates/agent-md.js), so
+// it isn't offered to users until that's decided. The candidate definition itself stays in
+// buildCandidates() below — only the offer is suppressed — so kind-detection/section builders
+// still answer for it correctly if a caf-devops.md somehow exists via another path.
+export const HIDDEN_CANDIDATE_KINDS = ['devops'];
+
 const PREVIEW_COMMANDS = [
   { kind: 'planner', label: 'Planner', file: 'caf-plan-ticket.md', build: buildPlanTicketMd },
   { kind: 'architect', label: 'Architect', file: 'caf-design-ticket.md', build: buildDesignTicketMd },
@@ -117,7 +124,7 @@ function roleAppLabel(app) {
   return `${app.path}${app.framework ? ` (${app.framework})` : ''}`;
 }
 
-function buildCandidates(roleApp, extraApps) {
+export function buildCandidates(roleApp, extraApps) {
   const implementationAppPaths = FIXED_ROLES.flatMap((role) => roleApp[role] || []).map((app) => app.path);
 
   const candidates = [
@@ -259,7 +266,9 @@ export async function agents({ dir, app: appOpt, agentDir: agentDirOpt, commandD
     name: 'picked',
     message: 'Pick the agents to generate:',
     instructions: false,
-    choices: candidates.map((c) => ({ title: c.name, value: c })),
+    choices: candidates
+      .filter((c) => !HIDDEN_CANDIDATE_KINDS.includes(c.kind))
+      .map((c) => ({ title: c.name, value: c })),
   });
 
   if (!picked || picked.length === 0) {
