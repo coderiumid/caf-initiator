@@ -181,7 +181,7 @@ fixed set of sections recoverable from the agent's `kind` alone:
 | `Working Pattern (PIV)` | constant |
 | `Retry Logic` | **role-aware** — Discovery (`pm`, `ux-designer`) vs. everything else |
 | `What to Look For` | **Auditor-only** — not part of any other kind's template |
-| `Report Format` | **Auditor-only** |
+| `Report Format` | **role-aware** — `auditor` (audit-report skeleton) and `reviewer` (Verdict skeleton); not part of any other kind's template |
 
 `Role`/`Scope`/`Verify Checklist` are excluded — they hold real per-project data that isn't
 recoverable from `kind` alone.
@@ -192,6 +192,15 @@ recoverable from `kind` alone.
 `Status: SUCCESS`/`NEEDS_HUMAN` contract every other kind gets. Before that, one generic
 template was compared against every kind, and `curate sync` rewrote two production repos'
 `caf-pm.md`/`caf-ux-designer.md` with the wrong role's instructions.
+
+`Report Format` gained a `reviewer` branch in CAF-REVIEWER-FORMAT-01: `caf-reviewer.md` had no
+explicit Verdict contract, so the agent guessed reasonable-but-non-matching wording (e.g.
+"Overall Verdict: APPROVED") that caf-orchestrator's strict parser (`report-reader.ts`) silently
+failed to recognize (CDR-43). The `reviewer` branch's Verdict skeleton is copied verbatim from
+caf-orchestrator's `buildInitialReviewPrompt()` — the two live in separate repos/npm packages
+with no shared import, so they're a known, documented (not eliminated) 2-source-of-truth risk;
+a test locks the generated content against copies of `report-reader.ts`'s parsing regexes to
+catch drift early.
 
 Discovery kinds also hold back `Allowed Tools`, `Input`, `Output`, and `Working Pattern
 (PIV)`: those builders still answer for `pm`/`ux-designer` with generic Cluster 2 defaults,
