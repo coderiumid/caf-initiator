@@ -320,16 +320,17 @@ ${summarySection()}
   status in the tracker — the only writes are \`review-notes.md\` (subagent) and the new
   PR Review on GitHub (main thread, step 4).
 - The idempotency check (step 0.7) ONLY detects a previous \`/caf-review\` run (whether from
-  this command itself, from the same \`{username}\`). An INITIAL review from the
-  \`caf-orchestrator\` webhook is **NOT detected** — currently the webhook posts the initial
-  review as a single summary issue comment (\`RunPrReviewUseCase\` → \`postIssueComment\`), NOT as a
-  PR Review object via \`pulls/{number}/reviews\` like this command does. Two different artifact
-  contracts, so \`GET pulls/{number}/reviews\` will never find that webhook review,
-  regardless of whose login is being searched for. See the separate backlog item at
-  \`.ai/tasks/CAF-PRREVIEW-01/open-items.md\` (caf-initiator) — migrating the webhook's initial
-  review to \`pulls/{number}/reviews\` (if approved) would simultaneously make this idempotency
-  check automatically work across both paths, but that's a decision that touches
-  \`caf-orchestrator\`, outside this command's scope.
+  this command itself, from the same \`{username}\`). **CAF-ORCH-PRREVIEW-03 (caf-orchestrator,
+  2026-09-04)**: the webhook's mode \`initial\` now runs the same real INITIAL (Verdict-producing)
+  contract as this command and posts via \`pulls/{number}/reviews\` too (\`RunPrReviewUseCase\` →
+  \`IVcsClient.createPullRequestReview\`) — the artifact-contract mismatch that used to make
+  \`GET pulls/{number}/reviews\` blind to the webhook's review is gone. What's **STILL NOT
+  detected**: actor-login mismatch — this step filters by \`user.login == {username}\` (the human
+  running this command), but the webhook posts under the pipeline's own bot/token login, so a
+  prior webhook-triggered review still won't match here even though it now exists as the same
+  kind of PR Review object. Genuine remaining gap, tracked separately (not in
+  CAF-ORCH-PRREVIEW-03's scope, which explicitly excluded it) — see
+  \`.ai/tasks/CAF-PRREVIEW-01/open-items.md\` (caf-initiator).
 - Inline \`comments[]\` (step 4) depends on \`review-notes.md\` naming an explicit
   \`path\`+\`line\` for its findings — if the reviewer only gives a general concern without a
   clear location, the review still gets posted but without an inline comment (it all goes into
