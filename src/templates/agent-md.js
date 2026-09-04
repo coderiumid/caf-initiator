@@ -293,7 +293,44 @@ export function buildWhatToLookForSection(kind) {
   return WHAT_TO_LOOK_FOR;
 }
 
+// reviewer's contract (CAF-REVIEWER-FORMAT-01): review-notes.md's Verdict line must match
+// report-reader.ts's parsers word-for-word — both the strict webhook-mode-initial parser
+// (readInitialReviewReport, exact-match after stripping markdown emphasis) and the loose
+// pre-PR gate parser (readReviewerReport, /\bAPPROVE\b/i et al, the one CDR-43 actually hit).
+// This skeleton is copied verbatim from caf-orchestrator's buildInitialReviewPrompt()
+// (run-pr-review.use-case.ts, CAF-ORCH-PRREVIEW-03) — do not reword it independently. The two
+// files are separate npm packages with no shared import, so they can drift; guarded by a test
+// that asserts this content against a copy of report-reader.ts's regexes (CAF-REVIEWER-FORMAT-01
+// Task 3) rather than attempting cross-repo single-sourcing.
+function buildReviewerReportFormat() {
+  return `Save the report to \`.caf/tasks/<TICKET-ID>/review-notes.md\`.
+
+\`\`\`
+## Review Notes — {TICKET-ID}
+Ticket: {TICKET-ID}
+Agent: caf-reviewer
+Verdict: APPROVE | CHANGES REQUESTED | DEFER
+
+### Security Audit
+{security findings, or "None" if none}
+
+### Qualitative Review
+{code quality notes}
+
+### Verdict Rationale
+{reasoning for the verdict above}
+
+### For Developer
+{notes for the developer, if relevant}
+\`\`\`
+
+Verdict MUST be exactly one of the three values above (APPROVE / CHANGES REQUESTED / DEFER) —
+don't use other values (e.g. NEEDS_HUMAN is for the automated pipeline's retry cycle, not this
+Verdict line).`;
+}
+
 export function buildReportFormatSection(kind) {
+  if (kind === 'reviewer') return buildReviewerReportFormat();
   if (kind !== 'auditor') return null;
   return `Save the report to \`.caf/audits/<DATE>/audit-report.md\` (this name is reserved for a full-repo
 scan by this agent — the scoped \`/caf-audit-scan\` command uses the suffix \`-{scope-slug}\`).
@@ -314,15 +351,27 @@ repo (budget control for the weekly AI run). \`/caf-audit-scan\` has no cap beca
 whatever area the user requested.`;
 }
 
+// Auditor gets both What to Look For + Report Format; reviewer gets Report Format only (What to
+// Look For stays auditor-only — CAF-REVIEWER-FORMAT-01 is scoped to the Verdict/report contract,
+// not reviewer's review criteria). Both rendered last for the same fence-unaware-parser reason
+// noted above buildWhatToLookForSection.
 function buildAuditContractSections(kind) {
-  if (kind !== 'auditor') return '';
-  return `
+  if (kind === 'auditor') {
+    return `
 ## What to Look For
 ${buildWhatToLookForSection(kind)}
 
 ## Report Format
 ${buildReportFormatSection(kind)}
 `;
+  }
+  if (kind === 'reviewer') {
+    return `
+## Report Format
+${buildReportFormatSection(kind)}
+`;
+  }
+  return '';
 }
 
 // Both fixed, kind-independent text — same reasoning as buildToolsSection: fully recoverable
