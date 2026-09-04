@@ -5,7 +5,7 @@ import kleur from 'kleur';
 
 import { agentsPublish } from './commands/export.js';
 import { curate } from './commands/curate.js';
-import { curateBaseline } from './commands/curate-baseline.js';
+import { curateBaseline, curateForceRebaseline } from './commands/curate-baseline.js';
 import { referenceDocs } from './commands/reference-docs.js';
 import { runScaffold, runScaffoldTarget, TARGETS } from './commands/scaffold.js';
 
@@ -111,8 +111,27 @@ program
   .option('--sync-only', 'skip the audit report, go straight to the sync flow — non-interactive prompts still apply per section', false)
   .option('--dry-run', 'with --sync-only or baseline: show what would happen without writing anything or prompting', false)
   .option('--yes', 'with baseline: skip the confirmation prompt', false)
+  .option(
+    '--force',
+    'with baseline: re-baseline one CONFLICT section to its current content instead of backfilling UNTRACKED sections — requires --file and --section, never writes file content',
+    false
+  )
+  .option('--file <path>', 'with baseline --force: path (relative to --dir) of the agent file containing the section')
+  .option('--section <header>', 'with baseline --force: the `## Heading` text of the section to re-baseline')
   .action(async (subaction, cmdOpts) => {
     const dir = path.resolve(cmdOpts.dir);
+
+    if (subaction === 'baseline' && cmdOpts.force) {
+      await curateForceRebaseline({
+        dir,
+        agentDir: cmdOpts.agentDir,
+        file: cmdOpts.file,
+        header: cmdOpts.section,
+        dryRun: Boolean(cmdOpts.dryRun),
+        yes: Boolean(cmdOpts.yes),
+      });
+      return;
+    }
 
     if (subaction === 'baseline') {
       await curateBaseline({
