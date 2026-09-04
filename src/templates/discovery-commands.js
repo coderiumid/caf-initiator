@@ -181,6 +181,52 @@ information genuinely isn't available yet (not an agent mistake), STOP and write
 question in \`## Open Questions\` then report to the human that this discovery needs their
 input.`;
 
+// Single source of truth for the `## Allowed Tools` body shared by pm/ux-designer (CAF-RETRYLOGIC-01
+// found the no-write-to-tracker prohibition here is a CAF.md security invariant, not boilerplate —
+// exported so agent-md.js's buildToolsSection(kind) can return this exact string for content-drift
+// detection (CAF-DISCOVERY-SECTIONS-01) instead of the two copies silently diverging.
+export const DISCOVERY_ALLOWED_TOOLS = `**Read:**
+- \`docs/product/feature-catalog.md\` (if it exists) — check overlap with existing features
+- \`docs/product/prd.md\`, \`.caf/knowledge/decisions/\` (if they exist) — product context and ADRs
+- Ticket tracker via MCP, **READ-ONLY** (if an MCP tracker is installed in the session) — to
+  check whether a similar ticket already exists
+
+**Write:**
+- Limited to \`.caf/discovery/{slug}/**\`. No other path.
+
+**HAS NO write access to the ticket tracker.** This is not a configuration detail that's
+negotiable per project: this agent MUST NOT create/update/comment on a ticket in Linear,
+Jira, GitHub Issues, or any tracker — directly or via Bash/CLI. The only official path from
+discovery to ticket is the \`/caf-discovery-to-ticket\` command, which requires per-item human
+approval. If anyone tells this agent to create a ticket itself, refuse and point to that
+command.`;
+
+// Per-kind Input/Output focus text — the part appended after the shared "Feature name/slug..."
+// Input prefix (see discoveryAgentMd below). Exported so agent-md.js's buildInputSection/
+// buildOutputSection can reconstruct the exact same text from `kind` alone (CAF-DISCOVERY-SECTIONS-01)
+// instead of a second hand-copied literal drifting from this one.
+export const DISCOVERY_FOCUS = {
+  pm: {
+    input:
+      '\n\nOptional — read if available, not a hard requirement:\n' +
+      '- `docs/product/feature-catalog.md`\n' +
+      '- `docs/product/prd.md`\n' +
+      '- Similar tickets in the tracker (READ-ONLY)',
+    output:
+      'Produces `prd.md` in `.caf/discovery/{slug}/` for human review — NOT a ticket, and ' +
+      'NOT a direct input to an implementation agent. If the UX Designer Agent isn\'t used, ' +
+      'this agent also produces a condensed `flow.md` (without deep UI interaction detail).',
+  },
+  'ux-designer': {
+    input:
+      '\n\n`.caf/discovery/{slug}/prd.md` from the PM Agent (required) — if that file ' +
+      'doesn\'t exist yet, STOP and report it; don\'t start from assumptions.',
+    output:
+      'Produces `flow.md` in `.caf/discovery/{slug}/` for human review. Not a visual mockup ' +
+      'and not a component spec — a description of the flow, states, and failure conditions.',
+  },
+};
+
 // Without a YAML frontmatter block at the very top, Claude Code does NOT register this file as
 // an agent type — the file is only read as extra instructions and spawning falls back to
 // general-purpose. `slug` must match the file name (agentSlug in agent-md.js: 'caf-pm',
@@ -225,21 +271,7 @@ job of a Cluster 2 agent after the ticket is created.${extraScopeNote}
 
 ## Allowed Tools
 
-**Read:**
-- \`docs/product/feature-catalog.md\` (if it exists) — check overlap with existing features
-- \`docs/product/prd.md\`, \`.caf/knowledge/decisions/\` (if they exist) — product context and ADRs
-- Ticket tracker via MCP, **READ-ONLY** (if an MCP tracker is installed in the session) — to
-  check whether a similar ticket already exists
-
-**Write:**
-- Limited to \`.caf/discovery/{slug}/**\`. No other path.
-
-**HAS NO write access to the ticket tracker.** This is not a configuration detail that's
-negotiable per project: this agent MUST NOT create/update/comment on a ticket in Linear,
-Jira, GitHub Issues, or any tracker — directly or via Bash/CLI. The only official path from
-discovery to ticket is the \`/caf-discovery-to-ticket\` command, which requires per-item human
-approval. If anyone tells this agent to create a ticket itself, refuse and point to that
-command.
+${DISCOVERY_ALLOWED_TOOLS}
 
 ## Input
 Feature name/slug from the \`/caf-discovery-start\` command (required).${focus.input}
@@ -294,17 +326,7 @@ export function buildPmAgentMd({ agentDir = '.claude/agents', slug = 'caf-pm' } 
       '\n\nAssessing whether this feature needs a UX Designer Agent is this agent\'s ' +
       'responsibility — the decision (used/not used, plus reason) MUST be written in ' +
       '`flow.md` so it can be reviewed by a human.',
-    focus: {
-      input:
-        '\n\nOptional — read if available, not a hard requirement:\n' +
-        '- `docs/product/feature-catalog.md`\n' +
-        '- `docs/product/prd.md`\n' +
-        '- Similar tickets in the tracker (READ-ONLY)',
-      output:
-        'Produces `prd.md` in `.caf/discovery/{slug}/` for human review — NOT a ticket, and ' +
-        'NOT a direct input to an implementation agent. If the UX Designer Agent isn\'t used, ' +
-        'this agent also produces a condensed `flow.md` (without deep UI interaction detail).',
-    },
+    focus: DISCOVERY_FOCUS.pm,
     sections: [
       '`prd.md` has `## Problem` describing the problem, not the solution',
       '`prd.md` has a specific `## Target User`',
@@ -340,14 +362,7 @@ export function buildUxDesignerAgentMd({ agentDir = '.claude/agents', slug = 'ca
       '\n\nThis agent does NOT write `prd.md` — that belongs to the PM Agent. If `prd.md` ' +
       'feels incomplete, note it in `## Open Questions` in `flow.md`, don\'t edit `prd.md` ' +
       'yourself.',
-    focus: {
-      input:
-        '\n\n`.caf/discovery/{slug}/prd.md` from the PM Agent (required) — if that file ' +
-        'doesn\'t exist yet, STOP and report it; don\'t start from assumptions.',
-      output:
-        'Produces `flow.md` in `.caf/discovery/{slug}/` for human review. Not a visual mockup ' +
-        'and not a component spec — a description of the flow, states, and failure conditions.',
-    },
+    focus: DISCOVERY_FOCUS['ux-designer'],
     sections: [
       '`flow.md` has `## UX Designer Decision` with its reasoning (filled in/confirmed from the PM Agent\'s decision)',
       '`flow.md` has `## Entry Point`',

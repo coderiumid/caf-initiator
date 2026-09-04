@@ -228,20 +228,17 @@ test('regression guard: sync would have rewritten the Discovery file under the o
   assert.equal(getBaselineHash(readManifest(dir), rel, 'Retry Logic'), hashSection(buildRetryLogicSection('pm')));
 });
 
-test('Discovery-guarded sections are held back for Discovery kinds only', () => {
-  // The sections whose builders still answer for pm/ux-designer with generic Cluster 2
-  // defaults (see DISCOVERY_GUARDED_SECTIONS in utils/agent-sections.js). Returning null keeps
-  // curate from reporting or writing them; CAF-DISCOVERY-SECTIONS-01 gives them real content.
-  const guarded = ['Allowed Tools', 'Input', 'Output'];
-  for (const header of guarded) {
+test('CAF-DISCOVERY-SECTIONS-01: Allowed Tools/Input/Output are no longer guarded for Discovery kinds', () => {
+  // Superseded by CAF-DISCOVERY-SECTIONS-01: buildToolsSection/buildInputSection/buildOutputSection
+  // now have real pm/ux-designer branches (see discovery-sections.test.js for full coverage), so
+  // none of the three sections are held back to null anymore for any kind.
+  const sections = ['Allowed Tools', 'Input', 'Output'];
+  for (const header of sections) {
     for (const kind of DISCOVERY_KINDS) {
-      assert.equal(SYNCABLE_SECTIONS[header](kind), null, `${header} must be null for kind=${kind}`);
+      assert.notEqual(SYNCABLE_SECTIONS[header](kind), null, `${header} must be live for kind=${kind}`);
     }
     assert.notEqual(SYNCABLE_SECTIONS[header]('frontend'), null, `${header} must stay live for Delivery`);
   }
-  // Retry Logic and Working Pattern (PIV) are explicitly NOT guarded — Retry Logic has a real
-  // Discovery branch, and Working Pattern (PIV)'s guard was only ever about the header mismatch
-  // (now fixed), not content correctness.
   for (const header of ['Retry Logic', 'Working Pattern (PIV)']) {
     for (const kind of DISCOVERY_KINDS) {
       assert.notEqual(SYNCABLE_SECTIONS[header](kind), null, `${header} must stay live for kind=${kind}`);
