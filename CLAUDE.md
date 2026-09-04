@@ -107,12 +107,19 @@ A section builder is only safe in `SYNCABLE_SECTIONS` if it answers correctly fo
 falls through to a Cluster 2 default for those kinds makes a correctly-generated Discovery
 agent read as `DRIFT`, and `curate sync` then overwrites it — this is not hypothetical, it
 happened to `caf-pm.md`/`caf-ux-designer.md` in two production repos and is the reason
-`buildRetryLogicSection` takes a `kind` (CAF-RETRYLOGIC-01). The four builders that still have
-no Discovery branch are listed in `DISCOVERY_GUARDED_SECTIONS` (`src/utils/agent-sections.js`)
-and forced to return `null` for those kinds until
-`.ai/tasks/CAF-DISCOVERY-SECTIONS-01/requirements.md` lands. When adding a syncable section,
-either branch on Discovery or add it to that guard list — don't leave it comparing a generic
-template against a Discovery file.
+`buildRetryLogicSection` takes a `kind` (CAF-RETRYLOGIC-01). `buildToolsSection`/
+`buildInputSection`/`buildOutputSection` now have real `pm`/`ux-designer` branches too
+(CAF-DISCOVERY-SECTIONS-01) — sourced from `DISCOVERY_ALLOWED_TOOLS`/`DISCOVERY_FOCUS` in
+`src/templates/discovery-commands.js`, the same constants `discoveryAgentMd()` itself renders
+from, so the compared-against template and the actual file content can never drift apart. There
+is no more `DISCOVERY_GUARDED_SECTIONS` list — every entry in `SYNCABLE_SECTIONS` is compared
+normally for every `KNOWN_KINDS` value. When adding a new syncable section, give it a real
+Discovery branch (reusing a `discovery-commands.js` constant if the section already renders
+there) rather than reintroducing a guard — a guard is a last resort for a section that hasn't
+been designed for Discovery yet, not the default. `## Working Pattern (PIV)`'s Discovery wording
+(mentions documents, not code) still legitimately differs from the generic template and reads as
+`DRIFT` — that's a deliberate content question left open, not a bug (see
+`.ai/tasks/CAF-RETRYLOGIC-01/open-items.md`).
 
 `KNOWN_KINDS` must list every kind `detectKind()` should recognize — a kind missing from it
 silently falls back to `implementation` (`Read`+`Write`+`Edit`+`Bash`), which is a privilege
