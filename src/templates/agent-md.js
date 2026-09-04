@@ -1,7 +1,7 @@
 import { verifyCommand, unresolvedPmTodo } from '../utils/runner-command.js';
 import { ARTIFACT_BY_ROLE } from './artifact-by-role.js';
 import { WHAT_TO_LOOK_FOR, reportSkeleton } from './audit-report-format.js';
-import { DISCOVERY_RETRY_LOGIC } from './discovery-commands.js';
+import { DISCOVERY_RETRY_LOGIC, DISCOVERY_ALLOWED_TOOLS, DISCOVERY_FOCUS } from './discovery-commands.js';
 
 function slugifyAppPath(appPath) {
   return appPath
@@ -95,6 +95,9 @@ function buildVerifyChecklist(verifyApps) {
 // where the original app assignment isn't recoverable) get the generic phrasing below instead
 // of a literal template placeholder.
 export function buildInputSection(kind, appNames = []) {
+  if (DISCOVERY_FOCUS[kind]) {
+    return `Feature name/slug from the \`/caf-discovery-start\` command (required).${DISCOVERY_FOCUS[kind].input}`;
+  }
   if (kind === 'planner') {
     return [
       'Ticket description from the tracker (required).',
@@ -258,6 +261,7 @@ function toolsForKind(kind) {
 // detection (CAF-CURATE-DIFF-01) — same reasoning as Input/Output, this section has no
 // per-project data baked in, so its template content IS fully recoverable post-generation.
 export function buildToolsSection(kind) {
+  if (DISCOVERY_KINDS.includes(kind)) return DISCOVERY_ALLOWED_TOOLS;
   const list = toolsForKind(kind)
     .map((t) => `\`${t}\``)
     .join(', ');
@@ -372,6 +376,7 @@ function buildBatasanSection(kind) {
 // devops: CAF.md Layer 3 (.caf/tasks/{TICKET-ID}/) doesn't yet have an official artifact contract
 // for DevOps (post-merge, next phase) — stays TODO until CAF.md defines it.
 export function buildOutputSection(kind) {
+  if (DISCOVERY_FOCUS[kind]) return DISCOVERY_FOCUS[kind].output;
   if (kind === 'auditor') {
     return (
       `Produces ${ARTIFACT_BY_ROLE.auditor} in \`.caf/audits/<DATE>/\` for human review — ` +
