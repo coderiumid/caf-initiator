@@ -171,10 +171,33 @@ Audit report (read-only, Layer 1-4 compliance) then offer to sync missing/drifte
 #### Content-level section tracking
 
 `curate audit`/`curate sync` compare section *content*, not just heading presence, for a
-fixed set of kind-only/constant sections (`Allowed Tools`, `Input`, `Output`,
-`Working Pattern (PIV)`, `Retry Logic`, and the Auditor-only `What to Look For`/`Report
-Format`). `Role`/`Scope`/`Verify Checklist` are excluded — they hold real per-project data
-that isn't recoverable from `kind` alone.
+fixed set of sections recoverable from the agent's `kind` alone:
+
+| Section | Varies by kind? |
+|---|---|
+| `Allowed Tools` | kind-only |
+| `Input` | kind-only |
+| `Output` | kind-only |
+| `Working Pattern (PIV)` | constant |
+| `Retry Logic` | **role-aware** — Discovery (`pm`, `ux-designer`) vs. everything else |
+| `What to Look For` | **Auditor-only** — not part of any other kind's template |
+| `Report Format` | **Auditor-only** |
+
+`Role`/`Scope`/`Verify Checklist` are excluded — they hold real per-project data that isn't
+recoverable from `kind` alone.
+
+`Retry Logic` became role-aware in CAF-RETRYLOGIC-01. Discovery agents produce
+`prd.md`/`flow.md` for a human to read and never enter the pipeline that greps
+`verify-report.md`, so they get an Open-Questions escalation instead of the
+`Status: SUCCESS`/`NEEDS_HUMAN` contract every other kind gets. Before that, one generic
+template was compared against every kind, and `curate sync` rewrote two production repos'
+`caf-pm.md`/`caf-ux-designer.md` with the wrong role's instructions.
+
+Discovery kinds also hold back `Allowed Tools`, `Input`, `Output`, and `Working Pattern
+(PIV)`: those builders still answer for `pm`/`ux-designer` with generic Cluster 2 defaults,
+so for those kinds they are treated as not part of the template at all (reported
+`UNTRACKED`, never written) rather than compared. Giving them real Discovery content is
+tracked in `.ai/tasks/CAF-DISCOVERY-SECTIONS-01/requirements.md`.
 
 Each such section is tracked in a per-project manifest at `.caf/.generate-manifest.json`
 (hash of the section content at the last generate/sync). A 3-way comparison — baseline vs.

@@ -9,6 +9,7 @@ import {
   buildWhatToLookForSection,
   buildReportFormatSection,
   CAF_PREFIXED_KINDS,
+  DISCOVERY_KINDS,
 } from '../templates/agent-md.js';
 
 export const TEMPLATE_SECTION_ORDER = [
@@ -38,12 +39,53 @@ export const TEMPLATE_SECTION_ORDER = [
 // to mean "this section isn't part of that kind's template at all" — callers must skip it, not
 // treat it as a content mismatch. Shared by agents-sync.js (apply) and audit.js (read-only
 // report) so the two never drift.
+// Sections whose builders have no real Discovery (pm/ux-designer) branch yet, so for those kinds
+// they are held back — the builder is treated as returning null ("not part of this kind's
+// template"), exactly like the auditor-only sections are for a non-auditor kind.
+//
+// Why this guard exists (CAF-RETRYLOGIC-01): caf-pm.md/caf-ux-designer.md are rendered by
+// discovery-commands.js, not buildAgentMd, and these builders answer for `kind` 'pm'/
+// 'ux-designer' with generic Cluster 2 defaults that are wrong for a Discovery agent:
+//   - buildToolsSection    → the default `[Read]` + human-decision TODO, dropping the Discovery
+//                            tools contract INCLUDING its no-write-to-tracker prohibition
+//   - buildInputSection    → the 'TODO: which artifact is received…' fallback
+//   - buildOutputSection   → the 'TODO: which artifact is produced…' fallback (no ARTIFACT_BY_ROLE
+//                            entry for pm/ux-designer)
+// A correctly-generated Discovery agent would therefore read as DRIFT on these and be overwritten
+// by `curate sync`. Holding them back makes them UNTRACKED for Discovery kinds: curate reports
+// nothing and writes nothing, which is correct-but-incomplete rather than destructive.
+// `Retry Logic` is NOT in this list — buildRetryLogicSection(kind) has a real Discovery branch, so
+// it is compared normally for every kind.
+//
+// `Working Pattern (PIV)` was guarded here too until the header-mismatch fix (the Discovery
+// heading was `## Work Pattern (PIV)`, one word short, which made curate INSERT a second,
+// duplicate section instead of comparing the existing one). Now that discoveryAgentMd() emits the
+// canonical `## Working Pattern (PIV)` heading, the section is trackable again — it goes back to
+// UNTRACKED-until-baselined like everything else, not permanently held back. Its body wording is
+// still Discovery-specific (mentions documents, not code) and differs from
+// buildWorkingPatternSection()'s generic text; once baselined, a `curate sync` would normalize it
+// to the generic wording. That's a content question, not a corruption risk (no security/behavior
+// contract is lost the way Allowed Tools would lose the no-write-to-tracker rule), so it's left
+// for CAF-DISCOVERY-SECTIONS-01 rather than re-guarded here.
+//
+// This is a stopgap, not the end state. Giving the three remaining builders genuine Discovery
+// content is tracked in `.ai/tasks/CAF-DISCOVERY-SECTIONS-01/requirements.md` — deleting an entry
+// from this list is how that ticket lands, one section at a time.
+const DISCOVERY_GUARDED_SECTIONS = ['Allowed Tools', 'Input', 'Output'];
+
+function guardDiscovery(header, build) {
+  return (kind) => {
+    if (DISCOVERY_KINDS.includes(kind) && DISCOVERY_GUARDED_SECTIONS.includes(header)) return null;
+    return build(kind);
+  };
+}
+
 export const SYNCABLE_SECTIONS = {
-  'Allowed Tools': (kind) => buildToolsSection(kind),
-  Input: (kind) => buildInputSection(kind),
-  Output: (kind) => buildOutputSection(kind),
+  'Allowed Tools': guardDiscovery('Allowed Tools', (kind) => buildToolsSection(kind)),
+  Input: guardDiscovery('Input', (kind) => buildInputSection(kind)),
+  Output: guardDiscovery('Output', (kind) => buildOutputSection(kind)),
   'Working Pattern (PIV)': () => buildWorkingPatternSection(),
-  'Retry Logic': () => buildRetryLogicSection(),
+  'Retry Logic': (kind) => buildRetryLogicSection(kind),
   'What to Look For': (kind) => buildWhatToLookForSection(kind),
   'Report Format': (kind) => buildReportFormatSection(kind),
 };

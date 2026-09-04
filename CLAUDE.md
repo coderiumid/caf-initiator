@@ -101,6 +101,19 @@ backfills the manifest from current content as-is — it deliberately never edit
 and never infers a baseline from git history (see `.ai/tasks/CAF-CURATE-DIFF-01/requirements.md`
 for why that was rejected).
 
+A section builder is only safe in `SYNCABLE_SECTIONS` if it answers correctly for **every**
+`kind` in `KNOWN_KINDS` — including `pm`/`ux-designer`, whose files are rendered by
+`discoveryAgentMd` (`src/templates/discovery-commands.js`), not `buildAgentMd`. A builder that
+falls through to a Cluster 2 default for those kinds makes a correctly-generated Discovery
+agent read as `DRIFT`, and `curate sync` then overwrites it — this is not hypothetical, it
+happened to `caf-pm.md`/`caf-ux-designer.md` in two production repos and is the reason
+`buildRetryLogicSection` takes a `kind` (CAF-RETRYLOGIC-01). The four builders that still have
+no Discovery branch are listed in `DISCOVERY_GUARDED_SECTIONS` (`src/utils/agent-sections.js`)
+and forced to return `null` for those kinds until
+`.ai/tasks/CAF-DISCOVERY-SECTIONS-01/requirements.md` lands. When adding a syncable section,
+either branch on Discovery or add it to that guard list — don't leave it comparing a generic
+template against a Discovery file.
+
 `parseSections` (`src/utils/agent-sections.js`, shared by `replaceSectionBody` and by
 `section-diff.js`'s `extractSection`/`hashSection`) is fence-aware: a `## ...` line inside a
 ` ``` ` fenced code block is not treated as a section boundary (CAF-SECTIONPARSE-01 — caf-auditor.md's
