@@ -234,6 +234,37 @@ latest template. Review sections manually first if you haven't already; after ba
 | `--dry-run` | Show what would be baselined without writing or prompting | `false` |
 | `--yes` | Skip the confirmation prompt | `false` |
 
+### `caf-init curate baseline --force`
+
+Explicit, scoped re-baseline for a single section that reads `CONFLICT` — the manual
+escape hatch when a human has decided the `CONFLICT` is spurious (e.g. the old baseline
+hash was recorded from a bug that's since been fixed, not from a real content edit — see
+`CAF-SECTIONPARSE-01` in `CLAUDE.md`) and wants the section's **current** content accepted
+as the new baseline. Same guarantee as plain `curate baseline`: never edits file content,
+only the manifest, and only after explicit confirmation. Requires `--file` and `--section`
+together — refuses to run without both, and refuses any section whose status isn't
+`CONFLICT` (with a message pointing at the right command for that status instead).
+
+```bash
+caf-init curate baseline --force --file .claude/agents/caf-auditor.md --section "Report Format"
+```
+
+| Option | Description | Default |
+|---|---|---|
+| `--force` | Switch `curate baseline` into single-section re-baseline mode | `false` |
+| `--file <path>` | Path (relative to `--dir`) of the agent file, required with `--force` | — |
+| `--section <header>` | The `## Heading` text of the section to re-baseline, required with `--force` | — |
+| `--dry-run` | Preview without writing | `false` |
+| `--yes` | Skip the confirmation prompt | `false` |
+
+After re-baselining, the section reports `IN_SYNC` (current content now also matches the
+latest template) or `DRIFT` (current content still differs from the template — same as any
+other section whose template changed since it was last recorded) on the next `curate audit`
+— never automatically `IN_SYNC`, and never `CUSTOMIZATION` (re-baselining sets the baseline
+to the current content, so current can never diverge from baseline immediately after).
+There is deliberately no bulk "re-baseline every `CONFLICT`" mode — one file+section per
+invocation, so you see exactly what you're accepting.
+
 ---
 
 ## Project Structure

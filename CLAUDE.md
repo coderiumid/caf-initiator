@@ -101,6 +101,25 @@ backfills the manifest from current content as-is — it deliberately never edit
 and never infers a baseline from git history (see `.ai/tasks/CAF-CURATE-DIFF-01/requirements.md`
 for why that was rejected).
 
+`caf-init curate baseline --force --file <path> --section <header>` (CAF-FORCE-REBASELINE-01)
+is the escape hatch for a section stuck at `CONFLICT` because its *recorded baseline* is
+wrong, not because of an untracked real edit — e.g. `caf-auditor.md`'s `## Report Format` in
+`coderium-web-v2`/`umkm-pos`: its old baseline hash was recorded from `CAF-SECTIONPARSE-01`'s
+buggy fence-unaware parser (a truncated read), not from actual content, and `git log`
+confirmed no edit happened between that bad baseline and now. `--force` re-records the
+section's *current* content as its new baseline — same "never touches file content, manifest
+only" guarantee as plain `curate baseline` — but only after showing a preview and an explicit
+confirmation, and only for a status that is exactly `CONFLICT` (it refuses `DRIFT`/
+`CUSTOMIZATION`/`IN_SYNC`/`UNTRACKED`, pointing at the command that already handles each).
+There is no bulk "re-baseline every CONFLICT" mode on purpose: one `--file`+`--section` call
+at a time, so re-baselining a genuinely bad section is a decision a human makes seeing that
+section's actual content, not something that could sweep in a real, still-unresolved
+conflict alongside a parser-bug one. Use this only when you've independently verified (e.g.
+via `git log`/`git show`, as was done for the two production repos above) that nothing
+between the old baseline and now legitimately changed the section — this command has no way
+to check that itself, by design (see `.ai/tasks/CAF-FORCE-REBASELINE-01/requirements.md`,
+"Eksplisit Out of Scope").
+
 A section builder is only safe in `SYNCABLE_SECTIONS` if it answers correctly for **every**
 `kind` in `KNOWN_KINDS` — including `pm`/`ux-designer`, whose files are rendered by
 `discoveryAgentMd` (`src/templates/discovery-commands.js`), not `buildAgentMd`. A builder that
