@@ -329,8 +329,50 @@ don't use other values (e.g. NEEDS_HUMAN is for the automated pipeline's retry c
 Verdict line).`;
 }
 
+// qa's contract (CAF-QAREPORT-01): qa-report.md's `Status:` line is what caf-orchestrator's
+// readQaReport() (report-reader.ts) parses to decide PASS vs FAIL. The parse is line-anchored on
+// `Status:` and case-sensitive on the literal PASS/FAIL, and anything it can't parse falls back to
+// FAIL (fail-safe) — so the skeleton below must keep that line, uppercase and on its own line.
+// Before this existed, buildReportFormatSection('qa') returned null and Retry Logic told QA to
+// write `verify-report.md` with `Status: SUCCESS` — the wrong file and a value this parser never
+// treats as PASS. Same cross-repo caveat as buildReviewerReportFormat(): caf-orchestrator is a
+// separate npm package, so this contract is guarded by a test here, not by a shared import.
+export function buildQaReportFormat() {
+  return `Save the report to \`.caf/tasks/<TICKET-ID>/qa-report.md\`.
+
+\`\`\`
+## QA Report — {TICKET-ID}
+Ticket: {TICKET-ID}
+Agent: caf-qa
+Status: PASS | FAIL
+
+### Verification Matrix
+| # | Acceptance Criteria (requirements.md) | How Verified | Result |
+|---|---------------------------------------|--------------|--------|
+| 1 | {criterion, verbatim from requirements.md} | {command run / manual step} | PASS or FAIL |
+
+### Findings
+{for every FAIL row: what was expected, what actually happened, \`path/to/file.ext:line\`, and the
+steps to reproduce — or "None" if everything passed}
+
+### Notes
+{anything the Reviewer or the developer should know; out-of-scope observations go here, not in
+the matrix}
+\`\`\`
+
+\`Status\` MUST be exactly \`PASS\` or \`FAIL\` — uppercase, on its own \`Status:\` line.
+caf-orchestrator reads ONLY that line (line-anchored, case-sensitive) and treats anything else,
+including \`SUCCESS\`/\`OK\`/\`Passed\`/an empty value, as \`FAIL\`. A \`PASS\` appearing elsewhere in the
+report (e.g. a Result cell in the matrix above) is NOT read as the report status.
+
+\`Status: PASS\` only if EVERY acceptance criterion in the matrix passed. One FAIL row → \`Status: FAIL\`.
+Every row needs a real verification (a command that was actually run, or a manual step that was
+actually performed) — an unverified criterion is a FAIL, not a PASS.`;
+}
+
 export function buildReportFormatSection(kind) {
   if (kind === 'reviewer') return buildReviewerReportFormat();
+  if (kind === 'qa') return buildQaReportFormat();
   if (kind !== 'auditor') return null;
   return `Save the report to \`.caf/audits/<DATE>/audit-report.md\` (this name is reserved for a full-repo
 scan by this agent — the scoped \`/caf-audit-scan\` command uses the suffix \`-{scope-slug}\`).
@@ -365,7 +407,7 @@ ${buildWhatToLookForSection(kind)}
 ${buildReportFormatSection(kind)}
 `;
   }
-  if (kind === 'reviewer') {
+  if (kind === 'reviewer' || kind === 'qa') {
     return `
 ## Report Format
 ${buildReportFormatSection(kind)}
@@ -391,6 +433,32 @@ export function buildWorkingPatternSection() {
 // utils/agent-sections.js for the sections that currently can't.
 export const DISCOVERY_KINDS = ['pm', 'ux-designer'];
 
+// CAF-QAREPORT-01: qa and reviewer don't produce `verify-report.md` at all — qa writes
+// `qa-report.md` (`Status: PASS|FAIL`, read by readQaReport()) and reviewer writes
+// `review-notes.md` (`Verdict:`, read by readReviewerReport()). The Delivery text below told both
+// to write `verify-report.md` with `Status: SUCCESS`, a file/value neither parser looks at.
+const QA_RETRY_LOGIC = [
+  'Verify passes → write `qa-report.md` with **`Status: PASS`** (this exact uppercase literal, on',
+  'its own `Status:` line — caf-orchestrator parses that line only and treats anything else,',
+  'including "SUCCESS"/"OK"/"Passed", as `FAIL`).',
+  'Verify fails → write `qa-report.md` with **`Status: FAIL`**, listing every failing acceptance',
+  'criterion with evidence (`path/to/file.ext:line`) and repro steps. Do NOT fix the code yourself',
+  'and do NOT retry-until-green: QA verifies, the implementation agent fixes — a `FAIL` is the',
+  'signal the pipeline routes back for rework.',
+  'Never leave `qa-report.md` unwritten: a missing report is not a pass.',
+  'See the Report Format section below for the full skeleton.',
+].join('\n');
+
+const REVIEWER_RETRY_LOGIC = [
+  'Review complete → write `review-notes.md` with the `Verdict:` line set to one of the values',
+  'listed in the Report Format section below (that section is the single source of the exact',
+  'values — do not restate or invent them here).',
+  'Blocked (missing diff/context, or the change needs a human architectural decision) → still write',
+  '`review-notes.md`, with the DEFER verdict and the reason under `### Verdict Rationale`.',
+  'Never leave `review-notes.md` unwritten: caf-orchestrator treats a missing or unparseable',
+  '`Verdict:` line as CHANGES REQUESTED, which stops the PR from going out with no explanation.',
+].join('\n');
+
 // Role-aware since CAF-RETRYLOGIC-01. Discovery agents produce `prd.md`/`flow.md` for a human to
 // read; they never enter the pipeline that greps `verify-report.md`, so the Delivery wording
 // below (write `Status: SUCCESS`) is actively wrong for them — `curate sync` wrote it into two
@@ -398,6 +466,8 @@ export const DISCOVERY_KINDS = ['pm', 'ux-designer'];
 // is unchanged, byte for byte, from before that fix.
 export function buildRetryLogicSection(kind) {
   if (DISCOVERY_KINDS.includes(kind)) return DISCOVERY_RETRY_LOGIC;
+  if (kind === 'qa') return QA_RETRY_LOGIC;
+  if (kind === 'reviewer') return REVIEWER_RETRY_LOGIC;
   return [
     'Verify passes → write `verify-report.md` with **`Status: SUCCESS`** (this exact literal word —',
     'caf-orchestrator greps for `\\bSUCCESS\\b` and treats anything else, including "PASS"/"DONE"/"OK",',

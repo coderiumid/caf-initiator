@@ -99,8 +99,10 @@ test('regression: buildReportFormatSection(auditor) is byte-for-byte unchanged',
   assert.equal(buildReportFormatSection('auditor'), GOLDEN_AUDITOR_REPORT_FORMAT);
 });
 
-test('regression: buildReportFormatSection returns null for every kind except auditor/reviewer', () => {
-  for (const kind of ['planner', 'architect', 'frontend', 'backend', 'implementation', 'qa', 'documentation', 'devops', 'pm', 'ux-designer']) {
+// 'qa' dropped from this list at CAF-QAREPORT-01 — it now has its own skeleton
+// (buildQaReportFormat), covered in test/qa-report-format.test.js.
+test('regression: buildReportFormatSection returns null for every kind except auditor/reviewer/qa', () => {
+  for (const kind of ['planner', 'architect', 'frontend', 'backend', 'implementation', 'documentation', 'devops', 'pm', 'ux-designer']) {
     assert.equal(buildReportFormatSection(kind), null, `expected null for kind=${kind}`);
   }
 });
