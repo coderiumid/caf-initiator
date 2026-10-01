@@ -27,10 +27,18 @@ function verifyNote(isMonorepo) {
   );
 }
 
-export function buildClaudeMd({ isMonorepo, monorepoTool, packageManager, apps, database, tracker }) {
+// `mode` (RepoMode, CAF-INIT-SINGLE-REPO) only changes the SINGLE_REPO rendering: an explicit
+// `Repo mode` line, and the one app listed by package name instead of a bare `.` path. Without
+// `mode`, or with MONOREPO, the output is byte-identical to before `mode` existed.
+export function buildClaudeMd({ mode, isMonorepo, monorepoTool, packageManager, apps, database, tracker }) {
+  const isSingleRepo = mode === 'SINGLE_REPO';
   const pm = packageManager || 'TODO: fill in package manager';
   const appList = apps
-    .map((a) => `- \`${a.path}\` — ${a.framework || 'TODO: framework not detected'}`)
+    .map((a) =>
+      isSingleRepo && a.path === '.'
+        ? `- \`${a.name}\` (repo root) — ${a.framework || 'TODO: framework not detected'}`
+        : `- \`${a.path}\` — ${a.framework || 'TODO: framework not detected'}`
+    )
     .join('\n');
 
   const databaseLine =
@@ -45,7 +53,7 @@ export function buildClaudeMd({ isMonorepo, monorepoTool, packageManager, apps, 
 ${DRAFT_BANNER}
 ## Project
 
-- Type: ${isMonorepo ? `monorepo${monorepoTool ? ` (${monorepoTool})` : ''}` : 'single app'}
+- Type: ${isMonorepo ? `monorepo${monorepoTool ? ` (${monorepoTool})` : ''}` : 'single app'}${isSingleRepo ? '\n- Repo mode: SINGLE_REPO' : ''}
 - Package manager: ${pm}
 - Tracker: ${tracker || 'TODO: fill in tracker'}
 - Database: ${databaseLine}

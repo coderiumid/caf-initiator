@@ -76,10 +76,10 @@ async function pickApp(stack) {
   return stack.apps.find((a) => a.path === appPath);
 }
 
-export async function goldenExamples({ dir, app: appOpt, dryRun = false }) {
+export async function goldenExamples({ dir, app: appOpt, dryRun = false, mode }) {
   section('golden-examples — scan & select reference files');
 
-  const stack = await detectStack({ dir, explicitGlobs: undefined });
+  const stack = await detectStack({ dir, explicitGlobs: undefined, mode });
 
   let app;
   if (appOpt) {

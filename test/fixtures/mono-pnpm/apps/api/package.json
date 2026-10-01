@@ -1,0 +1,5 @@
+{
+  "name": "@mono/api",
+  "scripts": { "build": "nest build", "lint": "eslint .", "test": "jest", "typecheck": "tsc --noEmit" },
+  "dependencies": { "@nestjs/core": "^10.0.0" }
+}

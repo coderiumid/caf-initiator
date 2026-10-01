@@ -1,0 +1,9 @@
+{
+  "name": "mono-pnpm",
+  "private": true,
+  "packageManager": "pnpm@9.1.0",
+  "scripts": {
+    "build": "turbo run build",
+    "lint": "turbo run lint"
+  }
+}

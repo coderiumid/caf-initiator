@@ -74,7 +74,12 @@ export const SYNCABLE_SECTIONS = {
 // buildOutputSection have no devops branch and fall through to their generic constant TODO
 // fallback (no ARTIFACT_BY_ROLE.devops entry), which is honest ("not yet defined") and never
 // carries real content to lose, unlike the Discovery case this pattern was built for.
-export const KNOWN_KINDS = ['planner', 'architect', 'frontend', 'backend', 'qa', 'reviewer', 'documentation', 'auditor', 'pm', 'ux-designer', 'devops'];
+// 'implementer' added at CAF-INIT-SINGLE-REPO (SINGLE_REPO's implementation agent,
+// caf-implementer.md). Unlike devops it is not a restricted kind — its tools equal
+// implementation's — but it has real branches in buildToolsSection/buildInputSection/
+// buildOutputSection, so it is listed here to be compared against its own template rather than
+// whatever the `implementation` fallback happens to render.
+export const KNOWN_KINDS = ['planner', 'architect', 'frontend', 'backend', 'implementer', 'qa', 'reviewer', 'documentation', 'auditor', 'pm', 'ux-designer', 'devops'];
 
 export function detectKind(filename) {
   const stem = path.basename(filename, '.md');

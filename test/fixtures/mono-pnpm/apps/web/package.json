@@ -1,0 +1,5 @@
+{
+  "name": "@mono/web",
+  "scripts": { "build": "nuxt build", "lint": "eslint .", "test": "vitest run" },
+  "dependencies": { "nuxt": "^3.12.0" }
+}

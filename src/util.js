@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import kleur from 'kleur';
+import { assertNoUnresolvedPlaceholders } from './utils/placeholder-check.js';
 
 export function exists(p) {
   return fs.existsSync(p);
@@ -37,14 +38,25 @@ export function readJsonSafe(p) {
  * `caf-init scaffold agents --force`, without requiring the user to delete the file by hand
  * first). Default behavior (no `overwrite`) is unchanged — this is additive, not a relaxed
  * default; preserve that when touching this function.
+ *
+ * Content about to be written (or reported by --dry-run) is checked for unresolved `{{...}}`
+ * generate-time placeholders first and the call throws if any remain (CAF-INIT-SINGLE-REPO) —
+ * runs on the dry-run path too, so dry-run and real runs fail identically. Pass
+ * `validatePlaceholders: false` only when `content` is not rendered from a caf-initiator
+ * template (e.g. `export` copying a user-edited file verbatim).
  * Returns 'written' | 'skipped' | 'dry-run'.
  */
-export function writeIfAbsent(filePath, content, { dryRun = false, overwrite = false } = {}) {
+export function writeIfAbsent(
+  filePath,
+  content,
+  { dryRun = false, overwrite = false, validatePlaceholders = true } = {}
+) {
   const alreadyExists = exists(filePath);
   if (alreadyExists && !overwrite) {
     console.log(kleur.dim(`  skip  ${filePath} (already exists)`));
     return 'skipped';
   }
+  if (validatePlaceholders) assertNoUnresolvedPlaceholders(content, filePath);
   if (dryRun) {
     console.log(kleur.yellow(`  would ${alreadyExists ? 'overwrite' : 'write'}  ${filePath}`));
     return 'dry-run';

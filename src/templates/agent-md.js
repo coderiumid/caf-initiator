@@ -16,10 +16,21 @@ function slugifyAppPath(appPath) {
 // joined the list at CAF-REORG-07 — caf-orchestrator finished its cutover to prefixed names at
 // Checkpoint 4B, so new projects no longer need the unprefixed filenames. `devops` is still
 // excluded — not yet a finalized kind.
-export const CAF_PREFIXED_KINDS = ['planner', 'architect', 'qa', 'reviewer', 'documentation', 'auditor', 'pm', 'ux-designer', 'frontend', 'backend'];
+// `implementer` (CAF-INIT-SINGLE-REPO) is the SINGLE_REPO implementation agent — one agent for
+// the whole repo instead of the monorepo's frontend/backend split.
+export const CAF_PREFIXED_KINDS = ['planner', 'architect', 'qa', 'reviewer', 'documentation', 'auditor', 'pm', 'ux-designer', 'frontend', 'backend', 'implementer'];
+
+// Kinds that write application code. `implementation` is the per-app agent outside
+// caf-orchestrator's routing (monorepo "extra apps"); `implementer` is SINGLE_REPO's one agent.
+export const IMPLEMENTATION_KINDS = ['frontend', 'backend', 'implementation', 'implementer'];
 
 export function agentSlug(kind, app) {
-  if (kind === 'implementation') return slugifyAppPath(app.path);
+  if (kind === 'implementation') {
+    // A root-scoped app (path '.') slugifies to an empty string, which used to produce a file
+    // literally named `.md` with a blank frontmatter `name` (CAF-INIT-SINGLE-REPO). Fall back to
+    // the package name, then to a fixed word — never an empty slug.
+    return slugifyAppPath(app.path) || slugifyAppPath(app.name || '') || 'app';
+  }
   return CAF_PREFIXED_KINDS.includes(kind) ? `caf-${kind}` : kind;
 }
 
@@ -164,7 +175,7 @@ export function buildInputSection(kind, appNames = []) {
       '- `docs/schema/erd.md`',
     ].join('\n');
   }
-  if (kind === 'frontend' || kind === 'backend' || kind === 'implementation') {
+  if (IMPLEMENTATION_KINDS.includes(kind)) {
     return [
       '`requirements.md` and `tasks.md` from the Planner Agent in `.caf/tasks/{TICKET-ID}/` (required).',
       '',
@@ -223,6 +234,7 @@ const TOOLS_BY_KIND = {
   frontend: ['Read', 'Write', 'Edit', 'Bash'],
   backend: ['Read', 'Write', 'Edit', 'Bash'],
   implementation: ['Read', 'Write', 'Edit', 'Bash'],
+  implementer: ['Read', 'Write', 'Edit', 'Bash'],
   qa: ['Read', 'Write', 'Bash'],
   reviewer: ['Read', 'Write', 'Bash'],
   documentation: ['Read', 'Write', 'Edit'],
@@ -236,6 +248,7 @@ const TOOLS_RATIONALE = {
   frontend: 'Read/Write/Edit for code within this agent\'s scope, Bash to run the Verify Checklist.',
   backend: 'Read/Write/Edit for code within this agent\'s scope, Bash to run the Verify Checklist.',
   implementation: 'Read/Write/Edit for code within this agent\'s scope, Bash to run the Verify Checklist.',
+  implementer: 'Read/Write/Edit for code within this agent\'s scope, Bash to run the Verify Checklist.',
   qa: 'Read for artifacts + code, Bash to run tests/build, Write for `qa-report.md`. Does NOT change code.',
   reviewer:
     'Read for code + artifacts, Bash to read diffs (`git diff`/`git log`), Write for ' +
@@ -529,6 +542,25 @@ tools: [${toolsForKind(kind).join(', ')}]
 model: ${model}
 ---
 `;
+}
+
+/**
+ * `## Scope` text for SINGLE_REPO's implementer (CAF-INIT-SINGLE-REPO). No directories → one
+ * scope covering the whole repo (the default). One or more directories (`--scope`, e.g. the
+ * domain layers of a DDD repo) → the agent is limited to exactly those, nothing hardcoded.
+ * `dirs` are repo-relative, already normalized (no leading `./`, no trailing `/`).
+ */
+export function buildDirScopeSection(dirs = []) {
+  if (!dirs || dirs.length === 0) {
+    return 'Whole repository — this is a single-package repo with no per-app split, so every path in it is in scope.';
+  }
+  const list = dirs.map((d) => `- \`${d}/**\``).join('\n');
+  return [
+    list,
+    '',
+    'Only the directories above are in scope. If a task needs a change outside them, STOP and ask',
+    'the user instead of editing the file — do not widen the scope yourself.',
+  ].join('\n');
 }
 
 // CAF-MULTIAPP-01: one app renders byte-identical to the pre-multi-app single-line scope (this

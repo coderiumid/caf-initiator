@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import prompts from 'prompts';
 import kleur from 'kleur';
@@ -7,7 +8,8 @@ import { writeIfAbsentGuarded, reportCollisions } from '../utils/collision-check
 import { detectStack } from '../steps/02-detect-stack.js';
 import { detectTracker } from '../steps/03-detect-tracker.js';
 import { matchVerifyScripts, readPackageName } from '../utils/package-scripts.js';
-import { buildAgentMd, agentSlug } from '../templates/agent-md.js';
+import { buildAgentMd, agentSlug, buildDirScopeSection, IMPLEMENTATION_KINDS } from '../templates/agent-md.js';
+import { REPO_MODE } from '../utils/repo-context.js';
 import { buildAuditScanMd, buildAuditToTicketMd } from '../templates/audit-commands.js';
 import {
   buildDiscoveryStartMd,
@@ -233,7 +235,84 @@ export function buildCandidates(roleApp, extraApps) {
   return candidates;
 }
 
-export async function agents({ dir, app: appOpt, agentDir: agentDirOpt, commandDir: commandDirOpt, dryRun = false, overwrite = false }) {
+/**
+ * `--scope` values -> repo-relative directories for the SINGLE_REPO implementer's scope
+ * (CAF-INIT-SINGLE-REPO). Accepts space- and comma-separated input, strips `./` and trailing
+ * `/`, de-duplicates. Nothing is inferred: every entry must be an existing directory inside the
+ * repo, otherwise it lands in `errors` and the caller refuses to generate.
+ */
+export function normalizeScopeDirs(dir, rawScope) {
+  const dirs = [];
+  const errors = [];
+  const entries = (Array.isArray(rawScope) ? rawScope : rawScope ? [rawScope] : [])
+    .flatMap((value) => String(value).split(','))
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  for (const entry of entries) {
+    const rel = path.normalize(entry).replace(/[\\/]+$/, '');
+    if (path.isAbsolute(entry) || rel === '..' || rel.startsWith(`..${path.sep}`)) {
+      errors.push(`--scope ${entry}: must be a directory inside the repo (relative path, no "..")`);
+      continue;
+    }
+    if (rel === '.' || rel === '') {
+      errors.push(`--scope ${entry}: the repo root is already the default scope — omit --scope instead`);
+      continue;
+    }
+    const abs = path.join(dir, rel);
+    if (!fs.existsSync(abs) || !fs.statSync(abs).isDirectory()) {
+      errors.push(`--scope ${entry}: directory not found in ${dir}`);
+      continue;
+    }
+    const posix = rel.split(path.sep).join('/');
+    if (!dirs.includes(posix)) dirs.push(posix);
+  }
+  return { dirs, errors };
+}
+
+// `--role` values for SINGLE_REPO's one implementation agent. `implementer` is the default;
+// `frontend`/`backend` write the same agent under the filename caf-orchestrator already routes
+// (caf-frontend.md / caf-backend.md), for single-package projects that run through it.
+export const SINGLE_REPO_ROLES = ['implementer', ...FIXED_ROLES];
+
+/**
+ * SINGLE_REPO candidates (CAF-INIT-SINGLE-REPO): the same whole-repo roles as MONOREPO, but one
+ * implementation agent covering the repo (or the `--scope` directories) in place of the
+ * frontend/backend split — a single package has no apps to assign to two roles.
+ *
+ * `role` picks that agent's kind, and therefore its filename: `implementer` (default,
+ * caf-implementer.md), or `frontend`/`backend` (caf-frontend.md / caf-backend.md). The role is
+ * chosen by the user, never inferred from the framework.
+ */
+export function buildSingleRepoCandidates(app, scopeDirs = [], role = 'implementer') {
+  if (!SINGLE_REPO_ROLES.includes(role)) {
+    throw new Error(`unknown --role "${role}" (choices: ${SINGLE_REPO_ROLES.join(', ')})`);
+  }
+  const label = `${app.name}${app.framework ? ` (${app.framework})` : ''}`;
+  const implementer = {
+    kind: role,
+    name: `${role[0].toUpperCase()}${role.slice(1)} (${label})`,
+    role: `Implements code changes in ${label} per the Planner's plan (role: ${role}).`,
+    scope: buildDirScopeSection(scopeDirs),
+    app,
+    scopeDirs,
+  };
+  const others = buildCandidates({}, []);
+  const insertAt = others.findIndex((c) => c.kind === 'qa');
+  return [...others.slice(0, insertAt), implementer, ...others.slice(insertAt)];
+}
+
+export async function agents({
+  dir,
+  app: appOpt,
+  agentDir: agentDirOpt,
+  commandDir: commandDirOpt,
+  dryRun = false,
+  overwrite = false,
+  mode,
+  scope: scopeOpt,
+  role: roleOpt,
+}) {
   section('agents — draft agent definitions into .claude/agents/ (or equivalent)');
 
   console.log(kleur.yellow(CAF_WARNING));
@@ -251,15 +330,81 @@ export async function agents({ dir, app: appOpt, agentDir: agentDirOpt, commandD
     console.log('');
   }
 
-  const stack = await detectStack({ dir, explicitGlobs: undefined });
+  const stack = await detectStack({ dir, explicitGlobs: undefined, mode });
+  const isSingleRepo = stack.mode === REPO_MODE.SINGLE_REPO;
+
+  const { dirs: scopeDirs, errors: scopeErrors } = normalizeScopeDirs(dir, scopeOpt);
+  if (scopeErrors.length === 0 && scopeDirs.length > 0 && !isSingleRepo) {
+    scopeErrors.push(
+      '--scope only applies in SINGLE_REPO mode — in a monorepo an agent\'s scope is the app(s) assigned to it. ' +
+        'Drop --scope, or pass --mode single if this repo was detected wrong.'
+    );
+  }
+  if (roleOpt && !isSingleRepo) {
+    scopeErrors.push(
+      '--role only applies in SINGLE_REPO mode — in a monorepo you assign apps to frontend/backend in the prompts. ' +
+        'Drop --role, or pass --mode single if this repo was detected wrong.'
+    );
+  }
+  if (roleOpt && !SINGLE_REPO_ROLES.includes(roleOpt)) {
+    scopeErrors.push(`unknown --role "${roleOpt}" (choices: ${SINGLE_REPO_ROLES.join(', ')})`);
+  }
+  if (scopeErrors.length > 0) {
+    for (const message of scopeErrors) console.log(kleur.red(`✗ ${message}`));
+    console.log(kleur.dim('no agents generated'));
+    process.exitCode = 1;
+    return { written: [], skipped: [] };
+  }
+
   const apps = candidateApps(stack, appOpt);
 
-  const roleApp = await pickRoleApps(apps);
-  const assignedPaths = new Set(Object.values(roleApp).flat().map((a) => a.path));
-  const remaining = apps.filter((a) => !assignedPaths.has(a.path));
-  const extraApps = await pickExtraApps(remaining);
+  let candidates;
+  if (isSingleRepo) {
+    if (apps.length === 0) {
+      console.log(kleur.dim('no agents generated'));
+      process.exitCode = 1;
+      return { written: [], skipped: [] };
+    }
+    // One package, one implementation agent: nothing to assign to frontend/backend and no
+    // "extra apps", so both pickers are skipped.
+    const role = roleOpt || 'implementer';
+    candidates = buildSingleRepoCandidates(apps[0], scopeDirs, role);
+    console.log('');
+    if (role === 'implementer') {
+      console.log(
+        kleur.yellow(
+          '⚠ SINGLE_REPO: the implementation agent is generated as caf-implementer.md. caf-orchestrator\n' +
+            '  currently routes only caf-frontend/caf-backend, so it will NOT invoke caf-implementer\n' +
+            '  automatically until its routing is updated — use it directly in Claude Code or via\n' +
+            '  /caf-run-pipeline in the meantime. If this project runs through caf-orchestrator,\n' +
+            '  re-run with --role frontend (or --role backend) to generate it as caf-frontend.md /\n' +
+            '  caf-backend.md instead.'
+        )
+      );
+    } else {
+      console.log(
+        kleur.dim(
+          `  SINGLE_REPO: the implementation agent is generated as caf-${role}.md (--role ${role}), the\n` +
+            '  filename caf-orchestrator routes.'
+        )
+      );
+    }
+    console.log(
+      kleur.dim(
+        scopeDirs.length > 0
+          ? `  ${role} scope: ${scopeDirs.map((d) => `${d}/**`).join(', ')}`
+          : `  ${role} scope: whole repo (pass --scope <dir...> to limit it to specific directories)`
+      )
+    );
+    console.log('');
+  } else {
+    const roleApp = await pickRoleApps(apps);
+    const assignedPaths = new Set(Object.values(roleApp).flat().map((a) => a.path));
+    const remaining = apps.filter((a) => !assignedPaths.has(a.path));
+    const extraApps = await pickExtraApps(remaining);
 
-  const candidates = buildCandidates(roleApp, extraApps);
+    candidates = buildCandidates(roleApp, extraApps);
+  }
 
   const { picked } = await prompts({
     type: 'multiselect',
@@ -405,16 +550,18 @@ export async function agents({ dir, app: appOpt, agentDir: agentDirOpt, commandD
   // via an explicit confirmation (default: no), the same pattern as the enforcement warning
   // in export.
   const plannerPicked = selected.some((c) => c.kind === 'planner');
-  const implementationCandidates = selected.filter(
-    (c) => c.kind === 'frontend' || c.kind === 'backend' || c.kind === 'implementation'
-  );
+  const implementationCandidates = selected.filter((c) => IMPLEMENTATION_KINDS.includes(c.kind));
   const implementationRoles = implementationCandidates.map((c) => agentSlug(c.kind, c.app));
   // role -> app path(s), for explicit commit scoping in /caf-run-pipeline (see plan.md
   // CAF-RUNPIPELINE-AUTOPR-01 section 3). Always an array now (CAF-MULTIAPP-01): frontend/backend
   // candidates carry `apps` (possibly >1), implementation/extraApps candidates carry a single
   // `app` — c.app.path is already '.' for a single-app non-monorepo repo (see 02-detect-stack.js).
   const appPaths = Object.fromEntries(
-    implementationCandidates.map((c) => [agentSlug(c.kind, c.app), (c.apps || [c.app]).map((a) => a.path)])
+    implementationCandidates.map((c) => [
+      agentSlug(c.kind, c.app),
+      // SINGLE_REPO implementer with --scope: commit whitelist follows the scope directories.
+      c.scopeDirs && c.scopeDirs.length > 0 ? c.scopeDirs : (c.apps || [c.app]).map((a) => a.path),
+    ])
   );
 
   if (plannerPicked && implementationRoles.length > 0) {

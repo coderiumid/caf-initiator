@@ -209,7 +209,13 @@ Artifact: \`.caf/tasks/{TICKET-ID}/${artifact}\`.`;
  */
 function commitScopeList(implementationRoles, appPaths, hasDocumentation) {
   const appLines = implementationRoles.flatMap((role) =>
-    (appPaths[role] || []).map((appPath) => `- \`${role}\`: \`${appPath}/\``)
+    (appPaths[role] || []).map((appPath) =>
+      // '.' is SINGLE_REPO's whole-repo scope (CAF-INIT-SINGLE-REPO) — spelled out instead of
+      // rendering a meaningless `./` path.
+      appPath === '.'
+        ? `- \`${role}\`: the whole repository (single-package repo, no per-app split)`
+        : `- \`${role}\`: \`${appPath}/\``
+    )
   );
   const docLines = hasDocumentation
     ? [`- \`caf-documentation\`: \`README.md\``, `- \`caf-documentation\`: \`CHANGELOG.md\``, `- \`caf-documentation\`: \`docs/\``]

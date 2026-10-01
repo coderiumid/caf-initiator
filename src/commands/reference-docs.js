@@ -13,7 +13,7 @@ import {
   buildTestingStrategyMd,
 } from '../templates/reference-docs-md.js';
 
-// Same FRAMEWORK_SIGNATURES labels as 02-detect-stack.js — api-contract.md is only offered
+// Same FRAMEWORK_SIGNATURES labels as utils/repo-context.js — api-contract.md is only offered
 // when a repo has a detected app on each side, never for a pure-frontend consumer of an
 // external API.
 const FRONTEND_FRAMEWORKS = ['Next.js', 'Nuxt', 'Angular', 'Svelte', 'React', 'Vue'];
@@ -103,10 +103,10 @@ async function pickFeatureNames() {
  * `interactive: false` only generates items listed in `include` / `features`, no prompts —
  * used by `caf-init docs --include ...` / `--feature ...` for non-interactive/CI use.
  */
-export async function referenceDocs({ dir, dryRun = false, interactive = true, include = [], features = [] }) {
+export async function referenceDocs({ dir, dryRun = false, interactive = true, include = [], features = [], mode }) {
   section('reference-docs — optional Layer 1: PRD, Feature Spec, system-overview, api-contract, ERD, testing-strategy');
 
-  const stack = await detectStack({ dir, explicitGlobs: undefined });
+  const stack = await detectStack({ dir, explicitGlobs: undefined, mode });
   const items = buildItems({ dir, stack });
 
   const written = [];

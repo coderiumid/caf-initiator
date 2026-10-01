@@ -35,6 +35,43 @@ Baca file-file berikut untuk mengisi placeholder di seluruh dokumen ini:
 
 Isi tabel placeholder di **Lampiran A** berdasarkan hasil deteksi ini sebelum lanjut.
 
+### Langkah 2b — Tentukan Mode Repo
+Sebelum mengisi placeholder app apapun, tentukan `{{REPO_MODE}}`. **Tidak menemukan workspaces
+BUKAN error dan bukan gap** — itu mode `SINGLE_REPO`, mode yang didukung penuh.
+
+| Kondisi di root repo | `{{REPO_MODE}}` |
+|---|---|
+| Ada `workspaces` di `package.json`, atau `pnpm-workspace.yaml` / `turbo.json` / `nx.json` / `lerna.json`, atau ada `package.json` di bawah `apps/*` / `packages/*` | `MONOREPO` |
+| Selain itu | `SINGLE_REPO` |
+
+- **`MONOREPO`** → daftar app = tiap workspace package; `{{APP_1}}`, `{{APP_2}}`, `{{apps_dir}}`
+  diisi dari hasil deteksi seperti biasa.
+- **`SINGLE_REPO`** → tepat satu app: `name` dari `package.json` root (kalau tidak ada, pakai nama
+  folder repo), path `.`. Placeholder per-app **tidak dipakai sama sekali** — jangan dibiarkan
+  kosong dan jangan diisi tebakan:
+  - Satu `CLAUDE.md` di root, tanpa `{{APP_N}}/CLAUDE.md`.
+  - Satu agent implementasi `caf-implementer.md` (bukan `caf-frontend.md`/`caf-backend.md`).
+    Roster minimal: `caf-planner`, `caf-implementer`, `caf-qa`, `caf-reviewer`.
+  - `.caf/knowledge/golden-examples/RULES.md` langsung di folder itu, tanpa subfolder app.
+  - Quality gate pakai bentuk non-monorepo (`{{PKG_MANAGER}} run <script>`, tanpa `--filter`).
+  - Scope `caf-implementer` default-nya seluruh repo. Kalau repo punya batas direktori yang jelas
+    (mis. layer domain pada repo DDD), scope boleh ditulis per direktori — daftar direktorinya
+    ditentukan user, bukan ditebak.
+- `{{PKG_MANAGER}}`: field `packageManager` di `package.json` root dulu; kalau tidak ada, dari
+  lockfile (`pnpm-lock.yaml`, `yarn.lock`, `bun.lockb`, `package-lock.json`). Tidak ada keduanya →
+  tanyakan ke user, jangan diasumsikan.
+- Kalau hasil deteksi salah, user bisa menimpa mode secara eksplisit. Di CLI: `caf-init scaffold
+  --mode single|mono` (scope per direktori: `--scope <dir...>`). Alur CLI dan alur "AI membaca
+  dokumen ini" harus sampai ke `{{REPO_MODE}}` yang sama.
+- Caveat: `caf-orchestrator` saat ini hanya me-route `caf-frontend`/`caf-backend`. Sampai
+  routing-nya di-update, `caf-implementer` dipakai langsung di Claude Code atau lewat
+  `/caf-run-pipeline`.
+- Kalau project `SINGLE_REPO` ini memang dijalankan lewat `caf-orchestrator`, agent implementasi
+  yang satu itu ditulis dengan nama yang di-route orchestrator: `caf-frontend.md` atau
+  `caf-backend.md` (tetap satu agent, scope tetap seluruh repo / per direktori). Role-nya
+  **ditanyakan ke user**, tidak ditebak dari framework. Di CLI: `caf-init scaffold agents --role
+  frontend|backend` (default `implementer`).
+
 **Cek juga dokumen opsional Layer 1 berikut** (dokumen ini berasal dari ranah Product/Design,
 bukan dibuat oleh CAF — CAF hanya membaca kalau ada):
 ```
@@ -271,7 +308,9 @@ kondisi apapun.
 ### Layer 1 — Project Knowledge Base
 > Fondasi agar AI benar-benar memahami project kamu
 
-**File yang dibutuhkan** (sesuaikan jumlah `{{APP_N}}/CLAUDE.md` dengan jumlah app terdeteksi):
+**File yang dibutuhkan** (sesuaikan jumlah `{{APP_N}}/CLAUDE.md` dengan jumlah app terdeteksi;
+pada `{{REPO_MODE}}` = `SINGLE_REPO` tidak ada `{{APP_N}}/CLAUDE.md` dan tidak ada subfolder
+`golden-examples/{{APP_N}}/` — lihat Langkah 2b):
 
 ```
 CLAUDE.md                       ← instruksi utama untuk Claude Code (<150 baris)
@@ -378,7 +417,8 @@ Simpan di `.claude/agents/` (untuk Claude Code) atau folder equivalen untuk tool
 [kalau verify gagal: perbaiki dan coba lagi max N kali]
 ```
 
-**8 Agent Spesialis (sesuaikan nama {{APP_1}}/{{APP_2}} dengan hasil deteksi):**
+**8 Agent Spesialis (sesuaikan nama {{APP_1}}/{{APP_2}} dengan hasil deteksi; pada `SINGLE_REPO`
+dua baris {{APP_1}}/{{APP_2}} digantikan satu agent `caf-implementer` — lihat Langkah 2b):**
 
 | Agent | Fase | Output Artifact |
 |---|---|---|
@@ -753,9 +793,10 @@ Diisi AI di Langkah 2–3 sebelum generate file apapun.
 
 | Placeholder | Diisi dari | Contoh |
 |---|---|---|
-| `{{APP_1}}`, `{{APP_2}}` | Nama folder app hasil deteksi | `web`, `api` |
-| `{{PKG_MANAGER}}` | `packageManager` di `package.json` root | `pnpm`, `npm`, `yarn` |
-| `{{apps_dir}}` / `{{packages_dir}}` | Struktur monorepo terdeteksi | `apps/`, `packages/` |
+| `{{REPO_MODE}}` | Langkah 2b — marker workspace di root repo, atau override user (`--mode`) | `MONOREPO`, `SINGLE_REPO` |
+| `{{APP_1}}`, `{{APP_2}}` | Nama folder app hasil deteksi (hanya `MONOREPO`; tidak dipakai di `SINGLE_REPO`) | `web`, `api` |
+| `{{PKG_MANAGER}}` | `packageManager` di `package.json` root, fallback lockfile | `pnpm`, `npm`, `yarn`, `bun` |
+| `{{apps_dir}}` / `{{packages_dir}}` | Struktur monorepo terdeteksi (hanya `MONOREPO`; tidak dipakai di `SINGLE_REPO`) | `apps/`, `packages/` |
 | `{{TRACKER}}` | Hasil deteksi/konfirmasi Langkah 3 | `Linear`, `Jira`, `GitHub Issues` |
 | `{{AI_RUNNER}}` | Folder config AI terdeteksi, atau tanya user | `Claude Code` |
 | `{{TICKET-ID}}` | Format key tracker yang dipilih | `ENG-123`, `#42` |
