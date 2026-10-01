@@ -9,6 +9,7 @@ import { agents } from './agents.js';
 import { taskCompletion } from './task-completion.js';
 import { workflow } from './workflow.js';
 import { featureCatalogSync } from './feature-catalog-sync.js';
+import { completeDrafts } from './complete-drafts.js';
 
 // feature-catalog-sync is intentionally excluded from the bare chain — unlike every other step
 // here, its output is not usable the moment it's generated: the first run of the generated
@@ -26,10 +27,14 @@ export const TARGETS = {
   'task-completion': { label: 'Task Completion Generator', run: (ctx) => taskCompletion({ dir: ctx.dir, dryRun: ctx.dryRun, mode: ctx.mode }) },
   workflow: { label: 'Workflow Docs Generator', run: (ctx) => workflow({ dir: ctx.dir, agentDir: ctx.agentDir, dryRun: ctx.dryRun }) },
   'feature-catalog-sync': { label: 'Feature Catalog Sync Command Generator', run: (ctx) => featureCatalogSync({ dir: ctx.dir, agentDir: ctx.agentDir, dryRun: ctx.dryRun, mode: ctx.mode }) },
+  // CAF-COMPLETE-DRAFTS-01: generates /caf-complete-drafts (an AI-runner command that fills in the
+  // TODOs left by the steps above). Last in the chain on purpose — it inventories the drafts the
+  // earlier steps produced. caf-init itself never calls a model.
+  'complete-drafts': { label: 'AI Draft Completion Command Generator', run: (ctx) => completeDrafts({ dir: ctx.dir, agentDir: ctx.agentDir, dryRun: ctx.dryRun, mode: ctx.mode }) },
 };
 
 // Order for the bare chain — feature-catalog-sync stays out per decision B above.
-const CHAIN_ORDER = ['golden-examples', 'adr', 'agents', 'task-completion', 'workflow'];
+export const CHAIN_ORDER = ['golden-examples', 'adr', 'agents', 'task-completion', 'workflow', 'complete-drafts'];
 
 function printSummary(summary) {
   console.log('');
@@ -46,11 +51,12 @@ function printSummary(summary) {
 }
 
 /**
- * `scaffold` bare: Setup → Golden Examples → ADR → Agents → Task Completion → Workflow,
+ * `scaffold` bare: Setup → Golden Examples → ADR → Agents → Task Completion → Workflow →
+ * AI Draft Completion (generates /caf-complete-drafts),
  * per-step confirm (default yes). Identical to the old `full` chain minus Reference Docs.
  */
 export async function runScaffold({ dir, dryRun, explicitGlobs, agentDir, overwrite, mode, scope, role }) {
-  section('scaffold — run Setup → Golden Examples → ADR → Agents → Task Completion → Workflow in sequence');
+  section('scaffold — run Setup → Golden Examples → ADR → Agents → Task Completion → Workflow → AI Draft Completion in sequence');
 
   const summary = [];
 
@@ -123,6 +129,8 @@ export async function runScaffoldTarget(target, { dir, dryRun, agentDir, app, co
       return workflow({ dir, agentDir, dryRun });
     case 'feature-catalog-sync':
       return featureCatalogSync({ dir, commandDir, agentDir, dryRun, mode });
+    case 'complete-drafts':
+      return completeDrafts({ dir, commandDir, agentDir, dryRun, mode });
     default:
       throw new Error(`unreachable: unhandled scaffold target "${target}"`);
   }

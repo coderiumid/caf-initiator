@@ -52,8 +52,8 @@ this repo.
   4. **`04-generate-drafts.js`** — renders templates from `src/templates/` and writes them via
      `writeIfAbsent`/`ensureDir`.
 - **`src/commands/scaffold.js`** (`runScaffold`/`runScaffoldTarget`) — chains Setup → Golden
-  Examples → ADR → Agents → Task Completion → Workflow, each step confirmed interactively (bare
-  `scaffold`), or runs one target standalone (`scaffold <target>`).
+  Examples → ADR → Agents → Task Completion → Workflow → AI Draft Completion, each step confirmed
+  interactively (bare `scaffold`), or runs one target standalone (`scaffold <target>`).
 - Other top-level commands (`audit.js`/`curate.js`, `export.js`, `reference-docs.js`) are layered
   on top of the same `detectStack`/`writeIfAbsent` primitives but are not part of the init chain.
 
@@ -94,6 +94,27 @@ detection and must be threaded to every `detectStack` call a command makes.
   `## Frontend Tasks`/`## Backend Tasks` in SINGLE_REPO — it can't be made mode-aware without
   either changing MONOREPO output or making `curate sync` rewrite it (see
   `.ai/tasks/CAF-INIT-SINGLE-REPO/verify-report.md`).
+
+## AI-assisted draft completion (`scaffold complete-drafts` / `curate --check-drafts`)
+
+`caf-init` never calls a model and has no AI dependency — keep it that way (determinism is what
+the tests and `curate`'s 3-way diff rest on). Instead `src/commands/complete-drafts.js` generates
+`/caf-complete-drafts` (`src/templates/complete-drafts-command.js`), which the user runs in their
+own AI runner, and `src/commands/check-drafts.js` verifies the result afterwards, read-only.
+
+- The command's list of off-limits agent sections is rendered from `Object.keys(SYNCABLE_SECTIONS)`
+  — never hand-copy it.
+- A tracked section is compared against the **manifest baseline**, not the template (qa/reviewer
+  `Input` embeds app names at generate time, so the kind-only template can't be the reference).
+  Agents are `UNTRACKED` right after generation, so `complete-drafts` offers `curateBaseline`
+  before the AI runs; without it the check reports `WARN`, never a false pass or a false `FAIL`.
+- `check-drafts` must stay read-only (a test snapshots the tree before/after) and must only
+  `FAIL` on things code can prove. Human-owned content (business context, PRD, ADR reasons,
+  golden-example choice) is protected only by the command's ask-first instructions and the
+  user's review — don't add a "check" that pretends otherwise, and don't soften the command's
+  "leave the TODO and ask" into "infer a default".
+- `listDraftFiles` (in `complete-drafts.js`) is the one inventory both the command and the
+  checker use.
 
 ## Templates
 

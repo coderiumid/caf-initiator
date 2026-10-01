@@ -6,6 +6,7 @@ import kleur from 'kleur';
 import { agentsPublish } from './commands/export.js';
 import { curate } from './commands/curate.js';
 import { curateBaseline } from './commands/curate-baseline.js';
+import { checkDrafts } from './commands/check-drafts.js';
 import { referenceDocs } from './commands/reference-docs.js';
 import { runScaffold, runScaffoldTarget, TARGETS } from './commands/scaffold.js';
 import { MODE_FLAG_CHOICES } from './utils/repo-context.js';
@@ -40,7 +41,7 @@ program
 program
   .command('scaffold')
   .description(
-    `bare: run Setup → Golden Examples → ADR → Agents → Task Completion → Workflow in sequence, ` +
+    `bare: run Setup → Golden Examples → ADR → Agents → Task Completion → Workflow → AI Draft Completion in sequence, ` +
       `with a skip-confirmation before each step after Setup. With a target ` +
       `(${Object.keys(TARGETS).join('|')}): run only that part, behavior identical to the old ` +
       `standalone command.`
@@ -143,6 +144,12 @@ program
   .option('--sync-only', 'skip the audit report, go straight to the sync flow — non-interactive prompts still apply per section', false)
   .option('--dry-run', 'with --sync-only or baseline: show what would happen without writing anything or prompting', false)
   .option('--yes', 'with baseline: skip the confirmation prompt', false)
+  .option(
+    '--check-drafts',
+    'read-only check of the completed drafts (after /caf-complete-drafts or manual editing): tracked agent ' +
+      'sections unchanged, verification scripts exist, no leftover placeholders — exit code 1 on any FAIL',
+    false
+  )
   .addOption(modeOption())
   .action(async (subaction, cmdOpts) => {
     const dir = path.resolve(cmdOpts.dir);
@@ -159,6 +166,16 @@ program
     if (subaction) {
       console.error(`curate: unknown subaction "${subaction}" (only "baseline" is recognized)`);
       process.exitCode = 1;
+      return;
+    }
+
+    if (cmdOpts.checkDrafts) {
+      if (cmdOpts.auditOnly || cmdOpts.syncOnly) {
+        console.error('curate: --check-drafts cannot be combined with --audit-only or --sync-only');
+        process.exitCode = 1;
+        return;
+      }
+      await checkDrafts({ dir, agentDir: cmdOpts.agentDir, repoMode: cmdOpts.mode });
       return;
     }
 

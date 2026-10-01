@@ -75,7 +75,7 @@ Run from within your target repository, or pass `--dir` to point at one. `caf-in
 caf-init scaffold [--dir <path>] [--dry-run] [--agent-dir <path>]
 ```
 
-Executes **Setup → Golden Examples → ADR → Agents → Task Completion → Workflow** sequentially, with a skip-confirmation before each step after Setup. `docs` (Reference Docs) and `feature-catalog-sync` are never part of this chain — both are opt-in, run them explicitly (see below).
+Executes **Setup → Golden Examples → ADR → Agents → Task Completion → Workflow → AI Draft Completion** sequentially, with a skip-confirmation before each step after Setup. `docs` (Reference Docs) and `feature-catalog-sync` are never part of this chain — both are opt-in, run them explicitly (see below).
 
 ### Run One Part
 
@@ -95,7 +95,7 @@ Prints help. There is no default action at the root — every flag belongs to a 
 
 ### `caf-init scaffold`
 
-Bare: run **Setup → Golden Examples → ADR → Agents → Task Completion → Workflow** in sequence, with a skip-confirmation before each step after Setup — see "Run Everything" above. With a target argument, run only that part.
+Bare: run **Setup → Golden Examples → ADR → Agents → Task Completion → Workflow → AI Draft Completion** in sequence, with a skip-confirmation before each step after Setup — see "Run Everything" above. With a target argument, run only that part.
 
 | Option | Description | Default |
 |---|---|---|
@@ -165,6 +165,21 @@ Draft `.caf/workflows/task-completion.md` (Definition of Done) from verify scrip
 
 Draft `.caf/workflows/piv-workflow.md` and `agent-handoff.md` from the agent roster already generated in `.claude/agents/`. Fails with a clear error if the agent roster is empty — run `caf-init scaffold agents` first.
 
+#### `caf-init scaffold complete-drafts`
+
+Generate `.claude/commands/caf-complete-drafts.md` — a command you run in your AI runner (e.g. Claude Code) to fill in the `TODO`s the steps above left in `CLAUDE.md`, `AGENTS.md`, the agent definitions and `docs/`. It is the last step of bare `scaffold`. `caf-init` itself never calls a model.
+
+The generated command makes the AI work in four phases: read the repo, report a plan plus its questions and **stop for your answers**, fill in the drafts, then verify. It is told to:
+
+- fill facts only from the code, citing the file (verification commands, code conventions, concrete rules, system overview);
+- never invent human-owned content — business context, PRD, feature goals, ADR reasoning, golden-example choices — and write those only from your answers, leaving the `TODO` otherwise;
+- leave the tracked agent sections (`Allowed Tools`, `Input`, `Output`, `Working Pattern (PIV)`, `Retry Logic`, `What to Look For`, `Report Format`) and the frontmatter untouched; only `Role`, `Scope` and `Verify Checklist` are meant to be edited;
+- never commit or push (its `allowed-tools` grants no `git add`/`commit`/`push`).
+
+When agent definitions exist, this step also offers to record their manifest baseline (same as `curate baseline`, hashes only — no file content is edited). Say yes: freshly generated agents are untracked, and without a baseline taken *before* the AI runs, a changed tracked section can't be detected afterwards.
+
+Then check the result with `caf-init curate --check-drafts` (below) and review the diff before committing. The check covers what code can verify; whether the business content is *true* is still yours to review.
+
 #### `caf-init scaffold feature-catalog-sync`
 
 Generate the `/caf-feature-catalog-sync` slash command, with the code-scan strategy baked in from the detected architecture (controller-based / DDD-layer). Only reachable via this explicit target — never part of bare `scaffold`, since its output needs manual review (a `TODO`-filled catalog) before it's usable.
@@ -191,6 +206,7 @@ Audit report (read-only, Layer 1-4 compliance) then offer to sync missing/drifte
 | `--output <file>` | Also save the audit report as markdown to this path | none |
 | `--audit-only` | Report only, non-interactive — exit code 1 on required gaps (for CI gates) | `false` |
 | `--sync-only` | Skip the audit report, go straight to the sync flow | `false` |
+| `--check-drafts` | Read-only check of completed drafts — see `curate --check-drafts` below | `false` |
 | `--dry-run` | With `--sync-only`: show what would be added/updated without writing or prompting | `false` |
 | `--mode <single\|mono>` | Override the auto-detected repo mode used by the Layer 1 audit | auto-detect |
 
@@ -253,6 +269,23 @@ baseline. A section you've hand-edited since then can never satisfy that, so it 
 silently overwritten. `CUSTOMIZATION`/`CONFLICT`/`UNTRACKED` sections are always printed at
 the end of the run (git-status style), never silently skipped.
 
+### `caf-init curate --check-drafts`
+
+Read-only check of the drafts after `/caf-complete-drafts` (or manual editing). Never writes. Exit code 1 on any `FAIL`.
+
+| Check | Level |
+|---|---|
+| A tracked agent section changed or was removed since its manifest baseline | `FAIL` |
+| A `<pm> run <script>` command in `CLAUDE.md`, an agent's Verify Checklist or `task-completion.md` names a script that doesn't exist in the relevant `package.json` (workspace-scoped forms are resolved by package name) | `FAIL` |
+| A generate-time `{{...}}` placeholder is left (runtime tokens like `{{TICKET-ID}}` are fine) | `FAIL` |
+| A golden-example path in a `RULES.md` table doesn't exist | `FAIL` |
+| A tracked agent section has no baseline (can't be verified — run `curate baseline` before the AI edits) | `WARN` |
+| A file path cited in `CLAUDE.md`/`AGENTS.md`/`docs/` doesn't exist | `WARN` |
+| The `DRAFT` banner is gone | `WARN` |
+| `TODO`s still open, per file | `INFO` |
+
+Not combinable with `--audit-only`/`--sync-only`. Agent frontmatter (`tools:`) is not covered by the baseline — check it in the diff.
+
 ### `caf-init curate baseline`
 
 Backfill for projects that used `caf-init curate` before this manifest-tracking feature
@@ -292,6 +325,8 @@ caf-initiator/
 │   │   ├── audit.js             # Layer 1-4 compliance audit report (+ per-section status)
 │   │   ├── curate.js            # audit.js + agents-sync.js, one entry point
 │   │   ├── curate-baseline.js   # `curate baseline` — manifest backfill for untracked sections
+│   │   ├── complete-drafts.js   # /caf-complete-drafts command generator (AI-assisted TODO completion)
+│   │   ├── check-drafts.js      # `curate --check-drafts` — read-only check of completed drafts
 │   │   └── scaffold.js          # `scaffold` bare chain + `scaffold <target>` dispatch
 │   ├── steps/
 │   │   ├── 01-audit-existing-tools.js  # Check for existing AI tool configs
@@ -311,6 +346,7 @@ caf-initiator/
 │   │   ├── golden-example-rules-md.js # RULES.md template for golden-examples/{{app}}/
 │   │   ├── knowledge-index-md.js      # Knowledge base index template
 │   │   ├── feature-catalog.js         # Feature catalog template (TODO-filled, needs review)
+│   │   ├── complete-drafts-command.js # /caf-complete-drafts command template
 │   │   ├── artifact-by-role.js        # Artifact-by-role reference template
 │   │   ├── audit-commands.js          # curate audit report command snippets
 │   │   ├── audit-report-format.js     # curate audit report formatting
