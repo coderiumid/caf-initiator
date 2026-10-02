@@ -11,12 +11,14 @@ const SYNC_COMMAND = 'caf-init curate --sync-only';
 // Reset happens right after the audit() call that set it, before any further processing
 // (the sync offer/flow) — not after the sync flow finishes, so it never leaks into the
 // bare-mode exit code regardless of whether the user proceeds with sync.
-export async function curate({ dir, agentDir, output, mode = 'default', dryRun = false }) {
+// `repoMode` is the `--mode single|mono` repo-mode override (CAF-INIT-SINGLE-REPO), named apart
+// from `mode` here, which already means audit-only/sync-only.
+export async function curate({ dir, agentDir, output, mode = 'default', dryRun = false, repoMode }) {
   if (mode === 'sync-only') {
     return agentsSync({ dir, agentDir, dryRun });
   }
 
-  const auditResult = await audit({ dir, agentDir, output });
+  const auditResult = await audit({ dir, agentDir, output, repoMode });
 
   if (mode === 'audit-only') {
     return auditResult;

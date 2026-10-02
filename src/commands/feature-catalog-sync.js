@@ -26,10 +26,11 @@ export async function featureCatalogSync({
   commandDir = '.claude/commands',
   agentDir = '.claude/agents',
   dryRun = false,
+  mode,
 }) {
   section('feature-catalog-sync — generate the docs/feature-catalog.md sync command');
 
-  const stack = await detectStack({ dir, explicitGlobs: undefined });
+  const stack = await detectStack({ dir, explicitGlobs: undefined, mode });
 
   section('Architecture pattern detection');
   let architecture = await detectArchitecture({ dir, stack });

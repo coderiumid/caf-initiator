@@ -5,6 +5,7 @@ export const ARTIFACT_BY_ROLE = {
   architect: '`design.md`',
   frontend: 'kode + `verify-report.md`',
   backend: 'kode + `verify-report.md`',
+  implementer: 'kode + `verify-report.md`',
   qa: '`qa-report.md`',
   reviewer: '`review-notes.md`',
   documentation: 'update `docs/` (paralel, non-blocking)',

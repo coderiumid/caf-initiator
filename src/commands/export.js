@@ -195,7 +195,13 @@ async function publishOneKind(kind, { dir, sourceDirOpt, dryRun, overwrite }) {
       const raw = readFileSafe(path.join(sourceDir, file));
       if (raw == null) continue;
       const content = config.transform(target, raw);
-      const result = writeIfAbsent(path.join(targetDir, file), content, { dryRun, overwrite });
+      const result = writeIfAbsent(path.join(targetDir, file), content, {
+        dryRun,
+        overwrite,
+        // Copies an existing (possibly user-edited) file, not a freshly rendered template — its
+        // content is the user's, so the generate-time placeholder guard doesn't apply here.
+        validatePlaceholders: false,
+      });
       if (result === 'written') written += 1;
       else if (result === 'skipped') skipped += 1;
     }

@@ -37,10 +37,10 @@ async function pickScope(stack, appOpt) {
   return picked || null;
 }
 
-export async function taskCompletion({ dir, app: appOpt, dryRun = false }) {
+export async function taskCompletion({ dir, app: appOpt, dryRun = false, mode }) {
   section('task-completion — draft .caf/workflows/task-completion.md from detected package.json scripts');
 
-  const stack = await detectStack({ dir, explicitGlobs: undefined });
+  const stack = await detectStack({ dir, explicitGlobs: undefined, mode });
   const scope = await pickScope(stack, appOpt);
 
   if (!scope) {

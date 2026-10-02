@@ -285,10 +285,10 @@ function printConsole(layerName, entries) {
   console.log('');
 }
 
-export async function audit({ dir, agentDir: agentDirOpt, output }) {
+export async function audit({ dir, agentDir: agentDirOpt, output, repoMode }) {
   section('audit — read-only compliance report against caf-initiator templates (never writes)');
 
-  const stack = await detectStack({ dir, explicitGlobs: undefined });
+  const stack = await detectStack({ dir, explicitGlobs: undefined, mode: repoMode });
   const agentDefsResult = auditAgentDefinitions(dir, agentDirOpt);
 
   const layers = [

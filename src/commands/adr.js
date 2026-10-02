@@ -41,10 +41,10 @@ async function pickScope(stack, appOpt) {
   return scope ?? null;
 }
 
-export async function adr({ dir, app: appOpt, dryRun = false }) {
+export async function adr({ dir, app: appOpt, dryRun = false, mode }) {
   section('adr — draft Architecture Decision Records from detected stack');
 
-  const stack = await detectStack({ dir, explicitGlobs: undefined });
+  const stack = await detectStack({ dir, explicitGlobs: undefined, mode });
   const scope = await pickScope(stack, appOpt);
   if (!scope) {
     console.log(kleur.dim('no scope selected — stopping'));

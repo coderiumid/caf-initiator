@@ -1,58 +1,7 @@
 import path from 'node:path';
-import fg from 'fast-glob';
 import kleur from 'kleur';
-import { exists, readFileSafe, readJsonSafe, section } from '../util.js';
-
-const MONOREPO_TOOL_FILES = [
-  { file: 'turbo.json', tool: 'Turborepo' },
-  { file: 'nx.json', tool: 'Nx' },
-  { file: 'lerna.json', tool: 'Lerna' },
-  { file: 'pnpm-workspace.yaml', tool: 'pnpm workspaces' },
-];
-
-// Signature list — dependency name -> framework label. Order matters: more
-// specific frameworks (Next, Nuxt, Nest) are checked before their base
-// libraries (React, Vue, Express) so they win.
-const FRAMEWORK_SIGNATURES = [
-  { dep: 'next', label: 'Next.js' },
-  { dep: 'nuxt', label: 'Nuxt' },
-  { dep: '@nestjs/core', label: 'NestJS' },
-  { dep: '@angular/core', label: 'Angular' },
-  { dep: 'svelte', label: 'Svelte' },
-  { dep: 'fastify', label: 'Fastify' },
-  { dep: 'koa', label: 'Koa' },
-  { dep: 'express', label: 'Express' },
-  { dep: 'react', label: 'React' },
-  { dep: 'vue', label: 'Vue' },
-];
-
-function detectPackageManager(rootDir, rootPkg) {
-  if (rootPkg?.packageManager) {
-    const name = rootPkg.packageManager.split('@')[0];
-    return name;
-  }
-  if (exists(path.join(rootDir, 'pnpm-lock.yaml'))) return 'pnpm';
-  if (exists(path.join(rootDir, 'yarn.lock'))) return 'yarn';
-  if (exists(path.join(rootDir, 'bun.lockb'))) return 'bun';
-  if (exists(path.join(rootDir, 'package-lock.json'))) return 'npm';
-  return null;
-}
-
-function detectFramework(pkg) {
-  if (!pkg) return null;
-  const deps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
-  for (const { dep, label } of FRAMEWORK_SIGNATURES) {
-    if (deps[dep]) return label;
-  }
-  return null;
-}
-
-function detectMonorepoTool(rootDir) {
-  for (const { file, tool } of MONOREPO_TOOL_FILES) {
-    if (exists(path.join(rootDir, file))) return tool;
-  }
-  return null;
-}
+import { readFileSafe, section } from '../util.js';
+import { detectRepoContext, REPO_MODE } from '../utils/repo-context.js';
 
 function extractDatasourceProvider(schemaContent) {
   const datasourceBlock = schemaContent.match(/datasource\s+\w+\s*{([^}]*)}/);
@@ -97,100 +46,28 @@ function detectDatabase(rootDir, apps) {
   return findings;
 }
 
-function getWorkspacePatternsFromPkg(rootPkg) {
-  if (!rootPkg?.workspaces) return null;
-  if (Array.isArray(rootPkg.workspaces)) return rootPkg.workspaces;
-  if (Array.isArray(rootPkg.workspaces.packages)) return rootPkg.workspaces.packages;
-  return null;
-}
-
-function getWorkspacePatternsFromPnpmYaml(rootDir) {
-  const raw = readFileSafe(path.join(rootDir, 'pnpm-workspace.yaml'));
-  if (!raw) return null;
-
-  const lines = raw.split(/\r?\n/);
-  const packagesIdx = lines.findIndex((line) => /^\s*packages\s*:/.test(line));
-  if (packagesIdx === -1) return null;
-
-  const patterns = [];
-  for (let i = packagesIdx + 1; i < lines.length; i += 1) {
-    const line = lines[i];
-    const match = line.match(/^\s*-\s*['"]?([^'"#]+?)['"]?\s*(?:#.*)?$/);
-    if (!match) break;
-    patterns.push(match[1].trim());
-  }
-
-  return patterns.length > 0 ? patterns : null;
-}
-
-async function findApps(rootDir, rootPkg, explicitGlobs) {
-  let patterns = explicitGlobs && explicitGlobs.length > 0 ? explicitGlobs : null;
-  let confidence = patterns ? 'explicit' : null;
-
-  if (!patterns) {
-    patterns = getWorkspacePatternsFromPnpmYaml(rootDir) || getWorkspacePatternsFromPkg(rootPkg);
-    confidence = patterns ? 'declared' : null;
-  }
-
-  if (!patterns) {
-    patterns = ['apps/*', 'packages/*'];
-    confidence = 'guessed';
-  }
-
-  const pkgJsonPatterns = patterns.map((p) =>
-    p.endsWith('package.json') ? p : `${p.replace(/\/$/, '')}/package.json`
-  );
-
-  const pkgFiles = await fg(pkgJsonPatterns, { cwd: rootDir, absolute: false });
-
-  const apps = pkgFiles
-    .map((rel) => {
-      const pkg = readJsonSafe(path.join(rootDir, rel));
-      if (!pkg) return null;
-      const appDir = path.dirname(rel);
-      return {
-        name: pkg.name || path.basename(appDir),
-        path: appDir,
-        framework: detectFramework(pkg),
-        packageManager: detectPackageManager(path.join(rootDir, appDir), pkg),
-      };
-    })
-    .filter(Boolean);
-
-  return { apps, confidence, patternsUsed: patterns };
-}
-
 /**
- * Step 2: detect monorepo structure, package manager, apps/frameworks, database.
+ * Step 2: detect repo mode (MONOREPO / SINGLE_REPO), package manager, apps/frameworks, database.
+ *
+ * The mode/package-manager/apps decision itself lives in utils/repo-context.js
+ * (`detectRepoContext`) — this step adds console output and database detection on top, and keeps
+ * returning the pre-CAF-INIT-SINGLE-REPO shape (`isMonorepo`, `packageManager`, ...) alongside
+ * the new `mode`, so existing callers don't have to change.
+ *
+ * `mode` is the `--mode single|mono` override; leave it undefined to auto-detect.
  */
-export async function detectStack({ dir, explicitGlobs }) {
+export async function detectStack({ dir, explicitGlobs, mode: modeOverride }) {
   section('Step 2 — Detect structure & stack');
 
-  const rootPkg = readJsonSafe(path.join(dir, 'package.json'));
-  const monorepoTool = detectMonorepoTool(dir);
-  const hasWorkspaces = Boolean(rootPkg?.workspaces) || Boolean(monorepoTool);
-  const packageManager = detectPackageManager(dir, rootPkg);
-
-  const found = await findApps(dir, rootPkg, explicitGlobs);
-  let apps = found.apps;
-  const globAppCount = apps.length;
-  const { confidence } = found;
-  const isMonorepo = hasWorkspaces || apps.length > 0;
-
-  if (!isMonorepo) {
-    apps = [
-      {
-        name: rootPkg?.name || path.basename(path.resolve(dir)),
-        path: '.',
-        framework: detectFramework(rootPkg),
-        packageManager,
-      },
-    ];
-  }
+  const context = await detectRepoContext({ dir, mode: modeOverride, explicitGlobs });
+  const { mode, modeSource, monorepoTool, apps, confidence, globAppCount } = context;
+  const packageManager = context.pkgManager;
+  const isMonorepo = mode === REPO_MODE.MONOREPO;
 
   const database = detectDatabase(dir, apps);
 
   console.log(`  monorepo: ${isMonorepo ? kleur.green('yes') : 'no'}${monorepoTool ? ` (${monorepoTool})` : ''}`);
+  console.log(`  mode: ${kleur.green(mode)}${modeSource === 'override' ? kleur.yellow(' (--mode override)') : ''}`);
   console.log(`  package manager: ${packageManager ? kleur.green(packageManager) : kleur.yellow('not detected')}`);
   if (database.length === 0) {
     console.log(`  database: ${kleur.dim('not detected')}`);
@@ -207,7 +84,15 @@ export async function detectStack({ dir, explicitGlobs }) {
     );
   }
 
-  if (confidence === 'guessed' && globAppCount === 0) {
+  // A single-package repo is a normal, supported mode — nothing to warn about. The warning is
+  // kept only for a MONOREPO whose default apps/*, packages/* guess matched nothing.
+  if (isMonorepo && modeSource === 'override' && apps.length === 0) {
+    console.log(
+      kleur.yellow(
+        '  warning: --mode mono was passed but no workspace package was found (no "workspaces" field, and apps/*, packages/* matched nothing) — the app list is empty. Declare workspaces in package.json, or drop --mode mono.'
+      )
+    );
+  } else if (isMonorepo && confidence === 'guessed' && globAppCount === 0) {
     console.log(
       kleur.yellow(
         '  warning: no "workspaces" field found and default apps/*, packages/* patterns matched nothing — treating repo as single-package. Add a "workspaces" field to package.json if this is wrong.'
@@ -222,6 +107,7 @@ export async function detectStack({ dir, explicitGlobs }) {
   }
 
   return {
+    mode,
     isMonorepo,
     monorepoTool,
     packageManager,

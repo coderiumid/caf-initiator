@@ -1,13 +1,27 @@
 #!/usr/bin/env node
 import path from 'node:path';
-import { Command } from 'commander';
+import { Command, Option } from 'commander';
 import kleur from 'kleur';
 
 import { agentsPublish } from './commands/export.js';
 import { curate } from './commands/curate.js';
 import { curateBaseline } from './commands/curate-baseline.js';
+import { checkDrafts } from './commands/check-drafts.js';
 import { referenceDocs } from './commands/reference-docs.js';
 import { runScaffold, runScaffoldTarget, TARGETS } from './commands/scaffold.js';
+import { MODE_FLAG_CHOICES } from './utils/repo-context.js';
+import { SINGLE_REPO_ROLES } from './commands/agents.js';
+
+// `--mode single|mono` (CAF-INIT-SINGLE-REPO): overrides the auto-detected repo mode. Declared on
+// every command that runs stack detection. commander rejects any other value with a clear error
+// before the action runs. A fresh Option per command — commander options aren't shareable.
+function modeOption() {
+  return new Option(
+    '--mode <mode>',
+    'override the auto-detected repo mode: "single" = SINGLE_REPO (one package, the repo root is the only app), ' +
+      '"mono" = MONOREPO (workspaces). Omit to auto-detect'
+  ).choices(MODE_FLAG_CHOICES);
+}
 
 const program = new Command();
 // Without this, the root program's own --dir/--dry-run options greedily consume matching
@@ -27,7 +41,7 @@ program
 program
   .command('scaffold')
   .description(
-    `bare: run Setup → Golden Examples → ADR → Agents → Task Completion → Workflow in sequence, ` +
+    `bare: run Setup → Golden Examples → ADR → Agents → Task Completion → Workflow → AI Draft Completion in sequence, ` +
       `with a skip-confirmation before each step after Setup. With a target ` +
       `(${Object.keys(TARGETS).join('|')}): run only that part, behavior identical to the old ` +
       `standalone command.`
@@ -48,12 +62,28 @@ program
       'opt-in escape hatch for writeIfAbsent\'s normal "never overwrite" guarantee, use with care',
     false
   )
+  .addOption(modeOption())
+  .option(
+    '--scope <dirs...>',
+    'SINGLE_REPO only, agents target: limit the implementer agent\'s scope to these repo-relative directories ' +
+      '(space- or comma-separated, e.g. --scope domain,application). Default: one scope, the whole repo. ' +
+      'Put the target before this flag (`scaffold agents --scope ...`) or use the comma form'
+  )
+  .addOption(
+    new Option(
+      '--role <role>',
+      'SINGLE_REPO only, agents target: which role the one implementation agent is generated as. ' +
+        '"implementer" = caf-implementer.md (not routed by caf-orchestrator yet); "frontend"/"backend" = ' +
+        'caf-frontend.md/caf-backend.md, the filenames caf-orchestrator routes. Omit for "implementer"'
+    ).choices(SINGLE_REPO_ROLES)
+  )
   .action(async (target, cmdOpts) => {
     const dir = path.resolve(cmdOpts.dir);
     const dryRun = Boolean(cmdOpts.dryRun);
     const overwrite = Boolean(cmdOpts.force);
+    const { mode, scope, role } = cmdOpts;
     if (!target) {
-      await runScaffold({ dir, dryRun, explicitGlobs: undefined, agentDir: cmdOpts.agentDir, overwrite });
+      await runScaffold({ dir, dryRun, explicitGlobs: undefined, agentDir: cmdOpts.agentDir, overwrite, mode, scope, role });
       return;
     }
     await runScaffoldTarget(target, {
@@ -63,6 +93,9 @@ program
       app: cmdOpts.app,
       commandDir: cmdOpts.commandDir,
       overwrite,
+      mode,
+      scope,
+      role,
     });
   });
 
@@ -111,6 +144,13 @@ program
   .option('--sync-only', 'skip the audit report, go straight to the sync flow — non-interactive prompts still apply per section', false)
   .option('--dry-run', 'with --sync-only or baseline: show what would happen without writing anything or prompting', false)
   .option('--yes', 'with baseline: skip the confirmation prompt', false)
+  .option(
+    '--check-drafts',
+    'read-only check of the completed drafts (after /caf-complete-drafts or manual editing): tracked agent ' +
+      'sections unchanged, verification scripts exist, no leftover placeholders — exit code 1 on any FAIL',
+    false
+  )
+  .addOption(modeOption())
   .action(async (subaction, cmdOpts) => {
     const dir = path.resolve(cmdOpts.dir);
 
@@ -129,6 +169,16 @@ program
       return;
     }
 
+    if (cmdOpts.checkDrafts) {
+      if (cmdOpts.auditOnly || cmdOpts.syncOnly) {
+        console.error('curate: --check-drafts cannot be combined with --audit-only or --sync-only');
+        process.exitCode = 1;
+        return;
+      }
+      await checkDrafts({ dir, agentDir: cmdOpts.agentDir, repoMode: cmdOpts.mode });
+      return;
+    }
+
     if (cmdOpts.auditOnly && cmdOpts.syncOnly) {
       console.error('curate: --audit-only and --sync-only are mutually exclusive');
       process.exitCode = 1;
@@ -141,6 +191,7 @@ program
       output: cmdOpts.output,
       mode,
       dryRun: Boolean(cmdOpts.dryRun),
+      repoMode: cmdOpts.mode,
     });
   });
 
@@ -156,6 +207,7 @@ program
     'non-interactive: only generate these items (product, architecture, schema, testing-strategy, api-contract)'
   )
   .option('--feature <name...>', 'non-interactive: Feature Spec names to generate placeholders for')
+  .addOption(modeOption())
   .action(async (cmdOpts) => {
     const dir = path.resolve(cmdOpts.dir);
     const interactive = !cmdOpts.include && !cmdOpts.feature;
@@ -165,6 +217,7 @@ program
       interactive,
       include: cmdOpts.include || [],
       features: cmdOpts.feature || [],
+      mode: cmdOpts.mode,
     });
   });
 

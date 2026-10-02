@@ -13,6 +13,10 @@ export const KNOWN_ROLES = [
   { slug: 'caf-architect', label: 'Architect' },
   { slug: 'caf-frontend', label: 'Frontend' },
   { slug: 'caf-backend', label: 'Backend' },
+  // SINGLE_REPO's one implementation agent (CAF-INIT-SINGLE-REPO). `singleRepoOnly`: it only
+  // exists in SINGLE_REPO projects, so it is listed only when its file is present — a monorepo
+  // roster must not gain an "Implementer — NOT present" line it never had.
+  { slug: 'caf-implementer', label: 'Implementer', singleRepoOnly: true },
   { slug: 'caf-qa', label: 'QA' },
   { slug: 'caf-reviewer', label: 'Reviewer' },
   { slug: 'caf-documentation', label: 'Documentation' },
@@ -20,6 +24,8 @@ export const KNOWN_ROLES = [
   { slug: 'caf-ux-designer', label: 'UX Designer' },
   { slug: 'caf-auditor', label: 'Auditor' },
 ];
+
+const SPLIT_ROLE_SLUGS = ['caf-frontend', 'caf-backend'];
 
 /**
  * Scan agentDirPath for *.md files and classify against KNOWN_ROLES by filename
@@ -40,7 +46,15 @@ export function readAgentRoster(agentDirPath) {
   if (files.length === 0) return null;
 
   const slugs = new Set(files.map((f) => path.basename(f, '.md')));
-  const known = KNOWN_ROLES.map((role) => ({ ...role, present: slugs.has(role.slug) }));
+  // caf-implementer replaces the frontend/backend split (CAF-INIT-SINGLE-REPO): when it is
+  // present, an absent caf-frontend/caf-backend is by design, not a gap worth a TODO line; when it
+  // is absent, the roster is exactly the pre-SINGLE_REPO one.
+  const hasImplementer = slugs.has('caf-implementer');
+  const known = KNOWN_ROLES.filter((role) => {
+    if (role.singleRepoOnly) return hasImplementer;
+    if (hasImplementer && SPLIT_ROLE_SLUGS.includes(role.slug)) return slugs.has(role.slug);
+    return true;
+  }).map(({ slug, label }) => ({ slug, label, present: slugs.has(slug) }));
   const knownSlugs = new Set(KNOWN_ROLES.map((r) => r.slug));
   const custom = files.filter((f) => !knownSlugs.has(path.basename(f, '.md')));
 

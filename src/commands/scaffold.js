@@ -9,6 +9,7 @@ import { agents } from './agents.js';
 import { taskCompletion } from './task-completion.js';
 import { workflow } from './workflow.js';
 import { featureCatalogSync } from './feature-catalog-sync.js';
+import { completeDrafts } from './complete-drafts.js';
 
 // feature-catalog-sync is intentionally excluded from the bare chain — unlike every other step
 // here, its output is not usable the moment it's generated: the first run of the generated
@@ -20,16 +21,20 @@ import { featureCatalogSync } from './feature-catalog-sync.js';
 // opt-in-only command ("optional, never required"); `scaffold` no longer entangles with it
 // the way `full` used to.
 export const TARGETS = {
-  'golden-examples': { label: 'Golden Examples Selector', run: (ctx) => goldenExamples({ dir: ctx.dir, dryRun: ctx.dryRun }) },
-  adr: { label: 'ADR Draft Generator', run: (ctx) => adr({ dir: ctx.dir, dryRun: ctx.dryRun }) },
-  agents: { label: 'Agent Definitions Scaffolder', run: (ctx) => agents({ dir: ctx.dir, agentDir: ctx.agentDir, dryRun: ctx.dryRun, overwrite: ctx.overwrite }) },
-  'task-completion': { label: 'Task Completion Generator', run: (ctx) => taskCompletion({ dir: ctx.dir, dryRun: ctx.dryRun }) },
+  'golden-examples': { label: 'Golden Examples Selector', run: (ctx) => goldenExamples({ dir: ctx.dir, dryRun: ctx.dryRun, mode: ctx.mode }) },
+  adr: { label: 'ADR Draft Generator', run: (ctx) => adr({ dir: ctx.dir, dryRun: ctx.dryRun, mode: ctx.mode }) },
+  agents: { label: 'Agent Definitions Scaffolder', run: (ctx) => agents({ dir: ctx.dir, agentDir: ctx.agentDir, dryRun: ctx.dryRun, overwrite: ctx.overwrite, mode: ctx.mode, scope: ctx.scope, role: ctx.role }) },
+  'task-completion': { label: 'Task Completion Generator', run: (ctx) => taskCompletion({ dir: ctx.dir, dryRun: ctx.dryRun, mode: ctx.mode }) },
   workflow: { label: 'Workflow Docs Generator', run: (ctx) => workflow({ dir: ctx.dir, agentDir: ctx.agentDir, dryRun: ctx.dryRun }) },
-  'feature-catalog-sync': { label: 'Feature Catalog Sync Command Generator', run: (ctx) => featureCatalogSync({ dir: ctx.dir, agentDir: ctx.agentDir, dryRun: ctx.dryRun }) },
+  'feature-catalog-sync': { label: 'Feature Catalog Sync Command Generator', run: (ctx) => featureCatalogSync({ dir: ctx.dir, agentDir: ctx.agentDir, dryRun: ctx.dryRun, mode: ctx.mode }) },
+  // CAF-COMPLETE-DRAFTS-01: generates /caf-complete-drafts (an AI-runner command that fills in the
+  // TODOs left by the steps above). Last in the chain on purpose — it inventories the drafts the
+  // earlier steps produced. caf-init itself never calls a model.
+  'complete-drafts': { label: 'AI Draft Completion Command Generator', run: (ctx) => completeDrafts({ dir: ctx.dir, agentDir: ctx.agentDir, dryRun: ctx.dryRun, mode: ctx.mode }) },
 };
 
 // Order for the bare chain — feature-catalog-sync stays out per decision B above.
-const CHAIN_ORDER = ['golden-examples', 'adr', 'agents', 'task-completion', 'workflow'];
+export const CHAIN_ORDER = ['golden-examples', 'adr', 'agents', 'task-completion', 'workflow', 'complete-drafts'];
 
 function printSummary(summary) {
   console.log('');
@@ -46,15 +51,16 @@ function printSummary(summary) {
 }
 
 /**
- * `scaffold` bare: Setup → Golden Examples → ADR → Agents → Task Completion → Workflow,
+ * `scaffold` bare: Setup → Golden Examples → ADR → Agents → Task Completion → Workflow →
+ * AI Draft Completion (generates /caf-complete-drafts),
  * per-step confirm (default yes). Identical to the old `full` chain minus Reference Docs.
  */
-export async function runScaffold({ dir, dryRun, explicitGlobs, agentDir, overwrite }) {
-  section('scaffold — run Setup → Golden Examples → ADR → Agents → Task Completion → Workflow in sequence');
+export async function runScaffold({ dir, dryRun, explicitGlobs, agentDir, overwrite, mode, scope, role }) {
+  section('scaffold — run Setup → Golden Examples → ADR → Agents → Task Completion → Workflow → AI Draft Completion in sequence');
 
   const summary = [];
 
-  const setupResult = await runSetup({ dir, dryRun, explicitGlobs });
+  const setupResult = await runSetup({ dir, dryRun, explicitGlobs, mode });
   if (!setupResult.ok) {
     console.log('');
     console.log(kleur.red(`chain stopped — Setup did not complete (${setupResult.reason})`));
@@ -62,7 +68,7 @@ export async function runScaffold({ dir, dryRun, explicitGlobs, agentDir, overwr
   }
   summary.push({ step: 'Setup', ran: true, written: setupResult.written.length, skipped: setupResult.skipped.length });
 
-  const ctx = { dir, dryRun, agentDir, overwrite };
+  const ctx = { dir, dryRun, agentDir, overwrite, mode, scope, role };
 
   for (const key of CHAIN_ORDER) {
     const { label, run } = TARGETS[key];
@@ -103,7 +109,7 @@ export async function runScaffold({ dir, dryRun, explicitGlobs, agentDir, overwr
  * `scaffold <target>`: run a single target standalone, behavior identical to the old
  * individual command.
  */
-export async function runScaffoldTarget(target, { dir, dryRun, agentDir, app, commandDir, overwrite }) {
+export async function runScaffoldTarget(target, { dir, dryRun, agentDir, app, commandDir, overwrite, mode, scope, role }) {
   if (!TARGETS[target]) {
     console.error(kleur.red(`scaffold: unknown target "${target}" (choices: ${Object.keys(TARGETS).join(', ')})`));
     process.exitCode = 1;
@@ -112,17 +118,19 @@ export async function runScaffoldTarget(target, { dir, dryRun, agentDir, app, co
 
   switch (target) {
     case 'golden-examples':
-      return goldenExamples({ dir, app, dryRun });
+      return goldenExamples({ dir, app, dryRun, mode });
     case 'adr':
-      return adr({ dir, app, dryRun });
+      return adr({ dir, app, dryRun, mode });
     case 'agents':
-      return agents({ dir, app, agentDir, commandDir, dryRun, overwrite });
+      return agents({ dir, app, agentDir, commandDir, dryRun, overwrite, mode, scope, role });
     case 'task-completion':
-      return taskCompletion({ dir, app, dryRun });
+      return taskCompletion({ dir, app, dryRun, mode });
     case 'workflow':
       return workflow({ dir, agentDir, dryRun });
     case 'feature-catalog-sync':
-      return featureCatalogSync({ dir, commandDir, agentDir, dryRun });
+      return featureCatalogSync({ dir, commandDir, agentDir, dryRun, mode });
+    case 'complete-drafts':
+      return completeDrafts({ dir, commandDir, agentDir, dryRun, mode });
     default:
       throw new Error(`unreachable: unhandled scaffold target "${target}"`);
   }
