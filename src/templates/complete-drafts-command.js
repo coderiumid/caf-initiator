@@ -1,5 +1,5 @@
 import { SYNCABLE_SECTIONS } from '../utils/agent-sections.js';
-import { SKILLS_DIR } from './skill-md.js';
+import { SKILLS_DIR, SKILL_DRAFT_AGENT_NOTICE } from './skill-md.js';
 
 // /caf-complete-drafts (CAF-COMPLETE-DRAFTS-01) — lets the user hand the TODO-filling of freshly
 // scaffolded drafts to an AI session without giving up CAF's rules. caf-initiator itself never
@@ -195,6 +195,9 @@ they leave unanswered stays a \`TODO\` (or becomes an explicit open question in 
   script exists, say so to the user and leave the line — never invent a command.
 - Do not remove the \`DRAFT\` banner, do not create a new skill, and do not add a skill pointer to
   any agent definition. The user removes the banner after reviewing.
+- When you report, tell the user that removing the banner means removing **both** parts of it: the
+  \`> DRAFT ...\` sentence and the \`> ${SKILL_DRAFT_AGENT_NOTICE}...\` line. A skill left with only
+  the second line is ignored by agents forever.
 
 #### Never invent — ask, then write only from the user's answers
 

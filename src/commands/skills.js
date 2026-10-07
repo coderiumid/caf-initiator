@@ -7,7 +7,15 @@ import { section, exists, readFileSafe, writeIfAbsent } from '../util.js';
 import { writeIfAbsentGuarded, reportCollisions, detectSkillDirCollision } from '../utils/collision-check.js';
 import { detectStack } from '../steps/02-detect-stack.js';
 import { matchVerifyScripts, readPackageName } from '../utils/package-scripts.js';
-import { SKILLS_DIR, SKILL_NAMES, buildSkillFiles, hasSkillDraftBanner, skillsForKind, skillPath } from '../templates/skill-md.js';
+import {
+  SKILLS_DIR,
+  SKILL_NAMES,
+  SKILL_DRAFT_AGENT_NOTICE,
+  buildSkillFiles,
+  hasSkillDraftBanner,
+  skillsForKind,
+  skillPath,
+} from '../templates/skill-md.js';
 import { buildSkillsBody } from '../templates/agent-md.js';
 import { KNOWN_KINDS, detectKind, parseSections, sectionBody, insertSection } from '../utils/agent-sections.js';
 import { assertNoUnresolvedPlaceholders } from '../utils/placeholder-check.js';
@@ -228,7 +236,8 @@ export async function skillsTarget({ dir, agentDir = '.claude/agents', dryRun = 
       kleur.yellow(
         `⚠ ${drafts.join(', ')}: DRAFT — a verification script was not detected, so the skill has open \`TODO\`\n` +
           '  lines. Agents are told to skip a DRAFT skill, and no agent is pointed at it. Resolve the\n' +
-          '  TODO lines and remove the banner; an agent that has no `## Skills` section yet gets the\n' +
+          '  TODO lines and remove the whole banner (the `> DRAFT ...` sentence AND the\n' +
+          `  \`> ${SKILL_DRAFT_AGENT_NOTICE}...\` line); an agent that has no \`## Skills\` section yet gets the\n` +
           '  pointer on the next `caf-init scaffold skills`, one that already has it is never edited —\n' +
           '  add the pointer there yourself.'
       )

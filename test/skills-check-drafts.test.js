@@ -173,6 +173,8 @@ test('/caf-complete-drafts: skills are globbed at run time, only DRAFT ones are 
     assert.match(md, /Work only on a skill that still starts with a `DRAFT` banner/);
     assert.match(md, /never invent a command/);
     assert.match(md, /do not add a skill pointer to\s+any agent definition/);
+    // removing the banner means removing both of its parts
+    assert.match(md, /removing \*\*both\*\* parts of it: the\s+`> DRAFT \.\.\.` sentence and the `> Agents: this skill is NOT ready\.\.\.` line/);
     assert.match(md, /Leave a `## Skills` section exactly as it is/);
     assert.deepEqual(findUnresolvedPlaceholders(md), []);
     // the off-limits list is still rendered from SYNCABLE_SECTIONS, and Skills is not in it
