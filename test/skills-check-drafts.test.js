@@ -9,6 +9,9 @@ import prompts from 'prompts';
 
 import { checkDrafts } from '../src/commands/check-drafts.js';
 import { listDraftFiles } from '../src/commands/complete-drafts.js';
+import { buildCompleteDraftsMd } from '../src/templates/complete-drafts-command.js';
+import { SYNCABLE_SECTIONS } from '../src/utils/agent-sections.js';
+import { findUnresolvedPlaceholders } from '../src/utils/placeholder-check.js';
 import { skillsTarget } from '../src/commands/skills.js';
 import { buildAgentMd } from '../src/templates/agent-md.js';
 import { SKILL_NAMES, skillPath, hasSkillDraftBanner } from '../src/templates/skill-md.js';
@@ -157,4 +160,26 @@ test('skills without any agent definition are still checked', async () => {
   const result = await check(dir);
   assert.equal(result.fails, 0);
   assert.equal(about(result.findings, skillPath('caf-verify'), 'INFO').length, 1);
+});
+
+// ---------------------------------------------------------------------------------------------
+// /caf-complete-drafts
+// ---------------------------------------------------------------------------------------------
+
+test('/caf-complete-drafts: skills are globbed at run time, only DRAFT ones are touched, pointers are off limits', () => {
+  for (const mode of ['SINGLE_REPO', 'MONOREPO']) {
+    const md = buildCompleteDraftsMd({ mode, packageManager: 'pnpm', apps: [{ name: 'a', path: mode === 'MONOREPO' ? 'apps/a' : '.' }], drafts: ['CLAUDE.md'] });
+    assert.match(md, /Glob `\.claude\/skills\/\*\/SKILL\.md` \*\*now\*\*/);
+    assert.match(md, /Work only on a skill that still starts with a `DRAFT` banner/);
+    assert.match(md, /never invent a command/);
+    assert.match(md, /do not add a skill pointer to\s+any agent definition/);
+    assert.match(md, /Leave a `## Skills` section exactly as it is/);
+    assert.deepEqual(findUnresolvedPlaceholders(md), []);
+    // the off-limits list is still rendered from SYNCABLE_SECTIONS, and Skills is not in it
+    const tracked = Object.keys(SYNCABLE_SECTIONS).map((h) => `\`## ${h}\``).join(', ');
+    assert.ok(md.includes(`**Do NOT change** ${tracked}`), mode);
+    assert.ok(!tracked.includes('Skills'));
+    // a skill that existed at generation time is not baked in as the source of truth
+    assert.ok(!md.includes('caf-verify/SKILL.md'));
+  }
 });
