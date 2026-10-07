@@ -312,6 +312,7 @@ Read-only check of the drafts after `/caf-complete-drafts` (or manual editing). 
 | An agent's `## Skills` section points at a skill file that doesn't exist | `FAIL` |
 | An agent's `## Skills` section points at a skill that still has its `DRAFT` banner (the agent will skip it) | `WARN` |
 | A skill has open `TODO` lines but no `DRAFT` banner (agents would apply it as finished) | `WARN` |
+| A skill's `DRAFT` banner was only partly removed — the `Agents: this skill is NOT ready` line is still there, so agents ignore the skill forever | `WARN` |
 | The `DRAFT` banner is gone (`CLAUDE.md`, `AGENTS.md`, `RULES.md`, `docs/` — not skills, which are generated finished) | `WARN` |
 | `TODO`s still open, per file (in a skill: only lines that start with `TODO`) | `INFO` |
 

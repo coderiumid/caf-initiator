@@ -8,7 +8,13 @@ import { readManifest, getBaselineHash } from '../utils/generate-manifest.js';
 import { findUnresolvedPlaceholders } from '../utils/placeholder-check.js';
 import { detectRepoContext } from '../utils/repo-context.js';
 import { listDraftFiles } from './complete-drafts.js';
-import { SKILLS_DIR, hasSkillDraftBanner, countOpenSkillTodos } from '../templates/skill-md.js';
+import {
+  SKILLS_DIR,
+  SKILL_DRAFT_AGENT_NOTICE,
+  hasSkillDraftBanner,
+  hasSkillDraftAgentNotice,
+  countOpenSkillTodos,
+} from '../templates/skill-md.js';
 
 // `caf-init curate --check-drafts` (CAF-COMPLETE-DRAFTS-01) — the deterministic fence around an
 // AI (or a human) filling in caf-init's drafts. READ-ONLY: it never writes, not even the
@@ -276,6 +282,17 @@ export async function checkDrafts({ dir, agentDir: agentDirOpt, repoMode }) {
       // prose on purpose (see countOpenSkillTodos).
       const open = countOpenSkillTodos(content);
       const draft = hasSkillDraftBanner(content);
+      // The banner has two parts. With the DRAFT sentence gone the skill counts as finished (it
+      // gets pointers), but the leftover agent-facing line still tells every agent to ignore it.
+      if (!draft && hasSkillDraftAgentNotice(content)) {
+        findings.push({
+          level: LEVEL.WARN,
+          file: rel,
+          message:
+            'DRAFT banner only partly removed: agents will ignore this skill forever — delete the line ' +
+            `"${SKILL_DRAFT_AGENT_NOTICE}..." too`,
+        });
+      }
       if (open > 0 && !draft) {
         findings.push({
           level: LEVEL.WARN,

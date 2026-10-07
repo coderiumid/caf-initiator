@@ -147,6 +147,31 @@ test('a skill with open TODO lines but no DRAFT banner is a WARN (agents would a
   assert.deepEqual(about((await check(dir)).findings, rel), []);
 });
 
+test('a skill left with only the "Agents: this skill is NOT ready" line is a WARN, and the check writes nothing', async () => {
+  const dir = await repoWithSkills();
+  const rel = skillPath('caf-verify');
+  // the human resolved the TODO lines but removed only the DRAFT sentence of the banner
+  edit(dir, rel, (s) => s.replace(/^> DRAFT .*\n> line below.*\n/m, '').replace(/^- \[ \] TODO.*$/gm, '- no script for this check in this repo'));
+  const content = fs.readFileSync(path.join(dir, rel), 'utf8');
+  assert.ok(!hasSkillDraftBanner(content));
+  assert.match(content, /^> Agents: this skill is NOT ready\./m);
+
+  const before = snapshotTree(dir);
+  const result = await check(dir);
+  assert.deepEqual(snapshotTree(dir), before);
+  assert.equal(result.fails, 0);
+  assert.equal(result.exitCode, undefined);
+  const found = about(result.findings, rel);
+  assert.deepEqual(found.map((f) => f.level), ['WARN']);
+  assert.match(found[0].message, /DRAFT banner only partly removed: agents will ignore this skill forever — delete the line "Agents: this skill is NOT ready\.\.\." too/);
+
+  // an intact banner does not trigger it, and neither does a fully removed one
+  const intact = await repoWithSkills();
+  assert.ok(!about((await check(intact)).findings, rel).some((f) => /partly removed/.test(f.message)));
+  edit(dir, rel, (s) => s.replace(/^> Agents: .*\n/m, ''));
+  assert.deepEqual(about((await check(dir)).findings, rel), []);
+});
+
 test('a leftover generate-time placeholder in a skill is a FAIL', async () => {
   const dir = await repoWithSkills();
   edit(dir, skillPath('caf-piv'), (s) => `${s}\nSee {{APP_1}}.\n`);
