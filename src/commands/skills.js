@@ -27,6 +27,20 @@ export function collectVerifyApps(dir, stack) {
   }));
 }
 
+/**
+ * Repo-relative SKILL.md paths an agent of `kind` should point at right now: the kind's skills
+ * (SKILLS_BY_KIND) that exist on disk and carry no DRAFT banner. Empty when the repo has no
+ * skills — `scaffold agents` then renders exactly what it rendered before skills existed.
+ */
+export function usableSkillPaths(dir, kind) {
+  return skillsForKind(kind)
+    .map(skillPath)
+    .filter((rel) => {
+      const content = readFileSafe(path.join(dir, rel));
+      return content != null && !hasSkillDraftBanner(content);
+    });
+}
+
 function reportSkillDirCollisions(collisions) {
   if (collisions.length === 0) return;
   console.log('');

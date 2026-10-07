@@ -7,7 +7,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { skillsTarget } from '../src/commands/skills.js';
+import prompts from 'prompts';
+
+import { skillsTarget, usableSkillPaths } from '../src/commands/skills.js';
+import { agents, buildSingleRepoCandidates } from '../src/commands/agents.js';
+import { buildAgentMd } from '../src/templates/agent-md.js';
 import { CHAIN_ORDER, TARGETS } from '../src/commands/scaffold.js';
 import { detectSkillDirCollision } from '../src/utils/collision-check.js';
 import { SKILL_NAMES, skillPath, hasSkillDraftBanner, countOpenSkillTodos } from '../src/templates/skill-md.js';
@@ -147,4 +151,62 @@ test('FR-9: a colliding skill is not written, the others are, and the exit code 
   const forced = await withExitCode(() => run({ dir, overwrite: true }));
   assert.equal(forced, 1);
   assert.ok(!fs.existsSync(path.join(dir, skillPath('caf-no-guess'))));
+});
+
+// ---------------------------------------------------------------------------------------------
+// `scaffold agents` on a repo that already has skills
+// ---------------------------------------------------------------------------------------------
+
+const SINGLE_APP = { name: 'website-cms-v2', path: '.', framework: 'Nuxt', packageManager: 'pnpm' };
+const KINDS = ['planner', 'implementer', 'qa', 'reviewer'];
+const pointersIn = (md) => [...md.matchAll(/^- `([^`]+\/SKILL\.md)`$/gm)].map((m) => m[1]);
+
+// prompts.inject() answers, in order: agent multiselect, /caf-run-pipeline, /caf-fix-review, /caf-review.
+async function scaffoldAgents(dir) {
+  const candidates = buildSingleRepoCandidates(SINGLE_APP, [], 'implementer');
+  prompts.inject([KINDS.map((k) => candidates.find((c) => c.kind === k)), false, false, false]);
+  await silenced(() => agents({ dir, dryRun: false }));
+  return Object.fromEntries(KINDS.map((k) => [k, read(dir, `.claude/agents/caf-${k}.md`)]));
+}
+
+test('scaffold agents without skills in the repo renders no ## Skills section', async () => {
+  const dir = copyFixture(FIXTURE['single-nuxt']);
+  for (const kind of KINDS) assert.deepEqual(usableSkillPaths(dir, kind), []);
+  const generated = await scaffoldAgents(dir);
+  for (const kind of KINDS) assert.ok(!/^## Skills$/m.test(generated[kind]), kind);
+});
+
+test('scaffold agents after scaffold skills: new agents point at the usable skills of their kind, never at a DRAFT', async () => {
+  const dir = copyFixture(FIXTURE['single-nuxt']);
+  const plain = await scaffoldAgents(copyFixture(FIXTURE['single-nuxt']));
+  await run({ dir }); // single-nuxt has no test script → caf-verify is a DRAFT
+
+  const generated = await scaffoldAgents(dir);
+  const expected = {
+    planner: ['caf-scope-discipline', 'caf-no-guess'],
+    implementer: ['caf-scope-discipline', 'caf-no-guess', 'caf-escalate'],
+    qa: ['caf-no-guess'],
+    reviewer: ['caf-scope-discipline', 'caf-no-guess'],
+  };
+  for (const kind of KINDS) {
+    assert.deepEqual(pointersIn(generated[kind]), expected[kind].map(skillPath), kind);
+    // the rest of the file is what it would have been without skills
+    const block = generated[kind].slice(generated[kind].indexOf('\n## Skills\n'), generated[kind].indexOf(kind === 'planner' ? '\n## Constraints\n' : '\n## Working Pattern (PIV)\n'));
+    assert.equal(generated[kind].replace(block, ''), plain[kind], kind);
+    assert.ok(!/^skills:/m.test(generated[kind]) && !/^tools:.*\bSkill\b/m.test(generated[kind]), kind);
+  }
+});
+
+test('usableSkillPaths: a finished caf-verify is included, kinds without skills get none', () => {
+  const dir = makeRepo({}, 'caf-skills-usable-');
+  for (const name of SKILL_NAMES) {
+    fs.mkdirSync(path.join(dir, '.claude/skills', name), { recursive: true });
+    fs.writeFileSync(path.join(dir, skillPath(name)), '# done\n');
+  }
+  assert.deepEqual(usableSkillPaths(dir, 'qa'), ['caf-verify', 'caf-no-guess'].map(skillPath));
+  assert.deepEqual(usableSkillPaths(dir, 'auditor'), []);
+  assert.deepEqual(usableSkillPaths(dir, 'pm'), []);
+  fs.writeFileSync(path.join(dir, skillPath('caf-verify')), '# x\n\n> DRAFT generated\n');
+  assert.deepEqual(usableSkillPaths(dir, 'qa'), [skillPath('caf-no-guess')]);
+  assert.ok(buildAgentMd({ name: 'q', role: 'r', scope: 's', kind: 'qa', slug: 'caf-qa', skills: usableSkillPaths(dir, 'qa') }).includes('caf-no-guess/SKILL.md'));
 });

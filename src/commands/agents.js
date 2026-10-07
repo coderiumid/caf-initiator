@@ -10,6 +10,7 @@ import { detectTracker } from '../steps/03-detect-tracker.js';
 import { matchVerifyScripts, readPackageName } from '../utils/package-scripts.js';
 import { buildAgentMd, agentSlug, buildDirScopeSection, IMPLEMENTATION_KINDS } from '../templates/agent-md.js';
 import { REPO_MODE } from '../utils/repo-context.js';
+import { usableSkillPaths } from './skills.js';
 import { buildAuditScanMd, buildAuditToTicketMd } from '../templates/audit-commands.js';
 import {
   buildDiscoveryStartMd,
@@ -513,6 +514,8 @@ export async function agents({
               kind: candidate.kind,
               appNames: candidate.appNames,
               slug,
+              // CAF-SKILLS-01: empty unless `caf-init scaffold skills` already wrote usable skills.
+              skills: usableSkillPaths(dir, candidate.kind),
             });
 
     const filePath = path.join(agentDirPath, `${slug}.md`);
