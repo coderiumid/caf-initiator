@@ -453,6 +453,52 @@ Ini **bukan gate wajib** — kalau salah satu atau semua dokumen ini tidak ada, 
 tetap jalan seperti biasa dari deskripsi ticket saja. CAF tidak pernah menghentikan pipeline
 hanya karena dokumen referensi ini belum dibuat; itu di luar kendali dan tanggung jawab CAF.
 
+#### Skills (opsional)
+
+Skill adalah aturan kerja yang bisa dipakai ulang, disimpan di `.claude/skills/<nama>/SKILL.md`.
+Tujuannya dua: (1) sesi coding manual lewat prompt bebas tetap mendapat PIV, quality gate, dan
+aturan scope walau tidak memanggil agent; (2) agent bisa berbagi konvensi tanpa membengkakkan
+`CLAUDE.md`.
+
+Skill bawaan CAF bersifat **universal** dan semuanya berawalan `caf-`: `caf-verify` (command
+verifikasi nyata repo), `caf-scope-discipline`, `caf-no-guess`, `caf-escalate`, dan `caf-piv`
+(khusus sesi manual). CAF **tidak** membawa pustaka konvensi framework: itu cepat basi dan
+merupakan tebakan tentang repo target.
+
+**Cara skill sampai ke pembacanya:**
+
+- Sesi manual: terpicu otomatis lewat `description` di frontmatter skill.
+- Agent: lewat section opsional `## Skills` di agent definition, berisi **pointer `Read`** ke file
+  skill, mis. `.claude/skills/caf-no-guess/SKILL.md`.
+
+**Temuan uji (jangan diulang):**
+
+- Key `skills:` di frontmatter agent **tidak berlaku** bila agent dijalankan dengan
+  `claude --agent <nama>` (cara orchestrator memanggil agent): skill tidak pernah dimuat. Jangan
+  mengandalkannya.
+- Menambah tool `Skill` ke agent memang jalan, tetapi mengubah daftar tool semua agent, termasuk
+  agent read-only (Auditor, DevOps). Jangan dilakukan.
+- Agent tanpa pointer tidak melihat skill sama sekali, jadi skill tidak bocor ke agent yang tidak
+  ditunjuk.
+- **Orchestrator dilarang memakai `--bare`**: flag itu mematikan discovery agent di
+  `.claude/agents/`, sehingga `claude --agent caf-planner` gagal dengan "agent not found".
+
+**Aturan:**
+
+- Skill yang masih berbanner `DRAFT` belum siap: agent wajib mengabaikannya, dan pointer ke skill
+  itu tidak ditulis. `caf-verify` berbanner `DRAFT` selama masih ada script verifikasi yang tidak
+  terdeteksi (ditulis sebagai baris `TODO`, bukan command tebakan).
+- `caf-piv` menyuruh menunggu persetujuan user, jadi **tidak pernah** ditunjuk oleh agent: run
+  headless tidak punya siapa pun yang menjawab.
+- Skill tidak boleh mengubah kontrak yang di-parse orchestrator (nama file laporan, kata status).
+  Bila skill bertentangan dengan agent definition, agent definition yang menang.
+- Pemetaan bawaan: agent implementasi mendapat `caf-verify`, `caf-scope-discipline`,
+  `caf-no-guess`, `caf-escalate`; QA mendapat `caf-verify`, `caf-no-guess`; Planner, Architect,
+  Reviewer, Documentation mendapat `caf-scope-discipline`, `caf-no-guess`; Auditor, DevOps, PM,
+  UX Designer tidak mendapat skill.
+- Wajib diuji dengan dispatch nyata sebelum diandalkan: pastikan agent benar-benar menerapkan
+  skill pada tugas yang tidak menyinggung skill itu, dan benar-benar mengabaikan skill `DRAFT`.
+
 ---
 
 ### Layer 3 — Artifact Handoff
