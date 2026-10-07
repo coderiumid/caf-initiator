@@ -65,7 +65,7 @@ function buildVerifyChecklistSingle(scripts, packageManager, packageName) {
 // as before. Exactly one entry renders byte-identical to the pre-multi-app format (no per-app
 // header) — this is what keeps single-app projects and single-app roles regression-safe.
 // More than one entry groups the checklist under a `#### <appPath>` header per app.
-function buildVerifyChecklist(verifyApps) {
+export function buildVerifyChecklist(verifyApps) {
   if (!verifyApps || verifyApps.length === 0) {
     return buildVerifyChecklistSingle(null, null, null);
   }
@@ -505,6 +505,34 @@ function buildBatasanSection(kind) {
 `;
 }
 
+// `## Skills` (CAF-SKILLS-01) — optional pointers to `.claude/skills/<name>/SKILL.md`. The agent
+// reads them with its `Read` tool: a `skills:` frontmatter key is not honoured under
+// `claude --agent`, and granting the `Skill` tool would change `## Allowed Tools` (syncable) for
+// every kind. `skillPaths` are repo-relative paths, already in display order.
+// NOT in SYNCABLE_SECTIONS on purpose: which skills an agent points at is per-project data that
+// can't be regenerated from `kind` alone (same class as Role/Scope/Constraints).
+export function buildSkillsBody(skillPaths) {
+  return [
+    'Before you start, `Read` every skill file listed here and apply it for the whole task:',
+    '',
+    ...skillPaths.map((p) => `- \`${p}\``),
+    '',
+    'Skip a listed skill if its file is missing or still starts with a `DRAFT` banner: it is not',
+    'ready, so apply none of it. If a skill conflicts with this agent definition, this agent',
+    'definition wins.',
+  ].join('\n');
+}
+
+// Returns '' for an empty list so buildAgentMd() renders byte-identical output for an agent with
+// no skills — the frozen MONOREPO snapshot depends on that. Same shape as buildBatasanSection().
+export function buildSkillsSection(skillPaths = []) {
+  if (!skillPaths || skillPaths.length === 0) return '';
+  return `
+## Skills
+${buildSkillsBody(skillPaths)}
+`;
+}
+
 // devops: CAF.md Layer 3 (.caf/tasks/{TICKET-ID}/) doesn't yet have an official artifact contract
 // for DevOps (post-merge, next phase) — stays TODO until CAF.md defines it.
 export function buildOutputSection(kind) {
@@ -593,6 +621,8 @@ function buildScopeSection(apps) {
  * reference docs.
  * `slug` must be the filename stem the file is written as (agentSlug(kind, app)) — Claude Code
  * dispatches on the frontmatter `name`, so a mismatch with the filename is a latent bug.
+ * `skills` (CAF-SKILLS-01): repo-relative SKILL.md paths rendered as `## Skills`; empty (the
+ * default) renders nothing at all.
  */
 export function buildAgentMd({
   name,
@@ -607,6 +637,7 @@ export function buildAgentMd({
   appNames,
   slug,
   model = 'sonnet',
+  skills = [],
 }) {
   const agentName = slug || kind;
   const scopeText = scopeApps && scopeApps.length > 0 ? buildScopeSection(scopeApps) : scope;
@@ -632,7 +663,7 @@ ${buildInputSection(kind, appNames)}
 
 ## Output
 ${buildOutputSection(kind)}
-${buildBatasanSection(kind)}
+${buildSkillsSection(skills)}${buildBatasanSection(kind)}
 ## Working Pattern (PIV)
 ${buildWorkingPatternSection()}
 
