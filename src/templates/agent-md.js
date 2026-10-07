@@ -513,7 +513,9 @@ function buildBatasanSection(kind) {
 // can't be regenerated from `kind` alone (same class as Role/Scope/Constraints).
 export function buildSkillsBody(skillPaths) {
   return [
-    'Before you start, `Read` every skill file listed here and apply it for the whole task:',
+    // Worded as a hard first step on purpose (AC-9, real dispatch): a softer "before you start,
+    // Read ..." was skipped on ordinary tasks. One line, verbatim — don't reflow or soften it.
+    'MANDATORY FIRST STEP: before you write any answer or call any other tool, call `Read` once for EACH skill file listed below, then apply them for the whole task. Answering or acting before reading them is a violation of this agent definition:',
     '',
     ...skillPaths.map((p) => `- \`${p}\``),
     '',
