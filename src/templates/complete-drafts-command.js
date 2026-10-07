@@ -1,4 +1,5 @@
 import { SYNCABLE_SECTIONS } from '../utils/agent-sections.js';
+import { SKILLS_DIR, SKILL_DRAFT_AGENT_NOTICE } from './skill-md.js';
 
 // /caf-complete-drafts (CAF-COMPLETE-DRAFTS-01) — lets the user hand the TODO-filling of freshly
 // scaffolded drafts to an AI session without giving up CAF's rules. caf-initiator itself never
@@ -167,6 +168,8 @@ they leave unanswered stays a \`TODO\` (or becomes an explicit open question in 
 
 \`${agentDir}/*.md\`
 - Fill only \`## Role\`, \`## Scope\` and \`## Verify Checklist\`, and only where a \`TODO\` remains.
+- Leave a \`## Skills\` section exactly as it is — its pointers are managed by
+  \`caf-init scaffold skills\`. Do not add, remove or reorder them.
 - **Do NOT change** ${trackedSections}, or the frontmatter. These sections are tracked by
   \`caf-init curate\`: an edit there stops future template fixes from reaching this file, and
   their report/status formats are parsed word-for-word by caf-orchestrator.
@@ -181,6 +184,20 @@ they leave unanswered stays a \`TODO\` (or becomes an explicit open question in 
   calls (with the calling file), label the document as the consumer's view, and never invent
   response fields the code does not use.
 - \`docs/schema/erd.md\`: fill only if this repo owns a schema. Otherwise leave it alone and say so.
+
+\`${SKILLS_DIR}/*/SKILL.md\` (CAF skills)
+- Glob \`${SKILLS_DIR}/*/SKILL.md\` **now** — skills can be added after this command was generated,
+  so the list of drafts above is not the source for them.
+- Work only on a skill that still starts with a \`DRAFT\` banner. A skill without the banner is
+  finished: do not edit it.
+- In a DRAFT skill, replace a line that starts with \`TODO\` only with a command whose script
+  really exists in \`package.json\` (exact name, scoped to its workspace in a monorepo). If no such
+  script exists, say so to the user and leave the line — never invent a command.
+- Do not remove the \`DRAFT\` banner, do not create a new skill, and do not add a skill pointer to
+  any agent definition. The user removes the banner after reviewing.
+- When you report, tell the user that removing the banner means removing **both** parts of it: the
+  \`> DRAFT ...\` sentence and the \`> ${SKILL_DRAFT_AGENT_NOTICE}...\` line. A skill left with only
+  the second line is ignored by agents forever.
 
 #### Never invent — ask, then write only from the user's answers
 
@@ -209,12 +226,13 @@ they leave unanswered stays a \`TODO\` (or becomes an explicit open question in 
 1. Run \`caf-init curate --check-drafts\` (use however \`caf-init\` is invoked in this environment,
    e.g. \`npx caf-init\`). It fails on: a tracked agent section that changed, a verification
    command whose script does not exist, a leftover placeholder, a golden-example path that does
-   not exist. Fix every \`FAIL\` by correcting the document — for a changed tracked section,
+   not exist, a \`## Skills\` pointer at a skill file that does not exist. Fix every \`FAIL\` by correcting the document — for a changed tracked section,
    restore its original text. If you cannot run it, say so and ask the user to run it.
 2. Run the verification scripts you documented (lint, typecheck, test) and note the results. If
    one fails, report it — do not fix application code.
-3. \`git diff\` must touch documents only, and in \`${agentDir}/*.md\` only Role, Scope and Verify
-   Checklist.
+3. \`git diff\` must touch documents only. In \`${agentDir}/*.md\` your changes are limited to
+   Role, Scope and Verify Checklist — a \`## Skills\` section there was added by
+   \`caf-init scaffold skills\`, not by you, and must be unchanged.
 
 ### 5. Report
 

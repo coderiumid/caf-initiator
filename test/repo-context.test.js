@@ -7,27 +7,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { detectRepoContext, resolveModeOverride, REPO_MODE } from '../src/utils/repo-context.js';
 import { detectStack } from '../src/steps/02-detect-stack.js';
 import { MONO_FIXTURE, renderMonoSnapshot, silenced } from './helpers/mono-snapshot.js';
+import { makeRepo } from './helpers/make-repo.js';
 
 const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures');
 const SINGLE_FIXTURE = path.join(FIXTURES, 'single-nuxt');
 const MONO_SNAPSHOT = JSON.parse(fs.readFileSync(path.join(FIXTURES, 'snapshots', 'mono-pnpm.json'), 'utf8'));
-
-function makeRepo(files, prefix = 'caf-repo-context-') {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
-  for (const [rel, content] of Object.entries(files)) {
-    const abs = path.join(dir, rel);
-    fs.mkdirSync(path.dirname(abs), { recursive: true });
-    fs.writeFileSync(abs, typeof content === 'string' ? content : JSON.stringify(content));
-  }
-  return dir;
-}
 
 const sortByPath = (apps) => [...apps].sort((a, b) => a.path.localeCompare(b.path));
 

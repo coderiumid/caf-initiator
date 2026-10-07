@@ -10,6 +10,7 @@ import { taskCompletion } from './task-completion.js';
 import { workflow } from './workflow.js';
 import { featureCatalogSync } from './feature-catalog-sync.js';
 import { completeDrafts } from './complete-drafts.js';
+import { skillsTarget } from './skills.js';
 
 // feature-catalog-sync is intentionally excluded from the bare chain — unlike every other step
 // here, its output is not usable the moment it's generated: the first run of the generated
@@ -27,13 +28,17 @@ export const TARGETS = {
   'task-completion': { label: 'Task Completion Generator', run: (ctx) => taskCompletion({ dir: ctx.dir, dryRun: ctx.dryRun, mode: ctx.mode }) },
   workflow: { label: 'Workflow Docs Generator', run: (ctx) => workflow({ dir: ctx.dir, agentDir: ctx.agentDir, dryRun: ctx.dryRun }) },
   'feature-catalog-sync': { label: 'Feature Catalog Sync Command Generator', run: (ctx) => featureCatalogSync({ dir: ctx.dir, agentDir: ctx.agentDir, dryRun: ctx.dryRun, mode: ctx.mode }) },
+  // CAF-SKILLS-01: explicit-only, like feature-catalog-sync — it offers to edit agent definitions
+  // that already exist (a `## Skills` pointer section), which the bare chain never does.
+  skills: { label: 'CAF Skills Scaffolder', run: (ctx) => skillsTarget({ dir: ctx.dir, agentDir: ctx.agentDir, dryRun: ctx.dryRun, overwrite: ctx.overwrite, mode: ctx.mode }) },
   // CAF-COMPLETE-DRAFTS-01: generates /caf-complete-drafts (an AI-runner command that fills in the
   // TODOs left by the steps above). Last in the chain on purpose — it inventories the drafts the
   // earlier steps produced. caf-init itself never calls a model.
   'complete-drafts': { label: 'AI Draft Completion Command Generator', run: (ctx) => completeDrafts({ dir: ctx.dir, agentDir: ctx.agentDir, dryRun: ctx.dryRun, mode: ctx.mode }) },
 };
 
-// Order for the bare chain — feature-catalog-sync stays out per decision B above.
+// Order for the bare chain — feature-catalog-sync stays out per decision B above, and so does
+// skills (explicit-only).
 export const CHAIN_ORDER = ['golden-examples', 'adr', 'agents', 'task-completion', 'workflow', 'complete-drafts'];
 
 function printSummary(summary) {
@@ -129,6 +134,8 @@ export async function runScaffoldTarget(target, { dir, dryRun, agentDir, app, co
       return workflow({ dir, agentDir, dryRun });
     case 'feature-catalog-sync':
       return featureCatalogSync({ dir, commandDir, agentDir, dryRun, mode });
+    case 'skills':
+      return skillsTarget({ dir, agentDir, dryRun, overwrite, mode });
     case 'complete-drafts':
       return completeDrafts({ dir, commandDir, agentDir, dryRun, mode });
     default:

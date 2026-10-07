@@ -3,11 +3,18 @@ import kleur from 'kleur';
 
 import { section, readFileSafe, readJsonSafe, exists } from '../util.js';
 import { SYNCABLE_SECTIONS, detectKind, parseSections, sectionBody } from '../utils/agent-sections.js';
-import { hashSection, compareSection, SECTION_STATUS } from '../utils/section-diff.js';
+import { hashSection, compareSection, extractSection, SECTION_STATUS } from '../utils/section-diff.js';
 import { readManifest, getBaselineHash } from '../utils/generate-manifest.js';
 import { findUnresolvedPlaceholders } from '../utils/placeholder-check.js';
 import { detectRepoContext } from '../utils/repo-context.js';
 import { listDraftFiles } from './complete-drafts.js';
+import {
+  SKILLS_DIR,
+  SKILL_DRAFT_AGENT_NOTICE,
+  hasSkillDraftBanner,
+  hasSkillDraftAgentNotice,
+  countOpenSkillTodos,
+} from '../templates/skill-md.js';
 
 // `caf-init curate --check-drafts` (CAF-COMPLETE-DRAFTS-01) — the deterministic fence around an
 // AI (or a human) filling in caf-init's drafts. READ-ONLY: it never writes, not even the
@@ -39,6 +46,9 @@ const SCRIPT_CHECKED = (rel, agentDir) =>
 const BANNER_EXPECTED = (rel) =>
   rel === 'CLAUDE.md' || rel === 'AGENTS.md' || rel.endsWith('/RULES.md') || rel.startsWith('docs/');
 const PROSE_PATH_CHECKED = (rel) => rel === 'CLAUDE.md' || rel === 'AGENTS.md' || rel.startsWith('docs/');
+// Skills (CAF-SKILLS-01) are deliberately NOT in BANNER_EXPECTED: the constant ones are generated
+// finished, without a banner, so "banner is gone" would warn about them forever.
+const IS_SKILL = (rel) => rel.startsWith(`${SKILLS_DIR}/`);
 
 // A backticked token that reads as a repo file path: has a folder and an extension, no
 // wildcard/placeholder characters. Paths into CAF's own trees and docs/ are skipped — generated
@@ -97,7 +107,7 @@ function checkTrackedSections(dir, agentDir, agentFiles, findings) {
           file: rel,
           message:
             `tracked section \`## ${header}\` changed since its baseline (${status}) — restore the original ` +
-            'text; only Role, Scope and Verify Checklist are meant to be edited',
+            'text; a tracked section is never meant to be edited by hand',
         });
       }
     }
@@ -110,6 +120,36 @@ function checkTrackedSections(dir, agentDir, agentFiles, findings) {
           `no baseline for ${untracked.map((h) => `\`## ${h}\``).join(', ')} — cannot verify they are ` +
           'unchanged. Run `caf-init curate baseline` BEFORE the next AI edit to enable this check',
       });
+    }
+  }
+}
+
+// `## Skills` in an agent definition is a list of `Read` pointers (CAF-SKILLS-01). A pointer at a
+// file that is not there is a broken instruction — provable, hence FAIL. A pointer at a skill that
+// still carries its DRAFT banner is legal but inert (the agent is told to skip it), hence WARN.
+function checkSkillPointers(dir, agentFiles, findings) {
+  for (const rel of agentFiles) {
+    const raw = readFileSafe(path.join(dir, rel));
+    if (raw == null) continue;
+    const body = extractSection(raw, 'Skills');
+    if (body == null) continue;
+
+    const pointers = [...new Set(backtickSpans(body).filter((span) => span.endsWith('/SKILL.md')))];
+    for (const pointer of pointers) {
+      const skill = readFileSafe(path.join(dir, pointer));
+      if (skill == null) {
+        findings.push({
+          level: LEVEL.FAIL,
+          file: rel,
+          message: `\`## Skills\` points at \`${pointer}\`, which does not exist — remove the pointer or run \`caf-init scaffold skills\``,
+        });
+      } else if (hasSkillDraftBanner(skill)) {
+        findings.push({
+          level: LEVEL.WARN,
+          file: rel,
+          message: `\`## Skills\` points at \`${pointer}\`, which still has its DRAFT banner — the agent will skip it`,
+        });
+      }
     }
   }
 }
@@ -214,6 +254,12 @@ export async function checkDrafts({ dir, agentDir: agentDirOpt, repoMode }) {
     findings
   );
 
+  checkSkillPointers(
+    dir,
+    drafts.filter((rel) => rel.startsWith(`${agentDir}/`)),
+    findings
+  );
+
   for (const rel of drafts) {
     const content = readFileSafe(path.join(dir, rel));
     if (content == null) continue;
@@ -230,6 +276,38 @@ export async function checkDrafts({ dir, agentDir: agentDirOpt, repoMode }) {
         file: rel,
         message: 'DRAFT banner is gone — fine only if a human reviewed this file and removed it on purpose',
       });
+    }
+    if (IS_SKILL(rel)) {
+      // Only a line that starts with TODO is an open item in a skill — skills mention the word in
+      // prose on purpose (see countOpenSkillTodos).
+      const open = countOpenSkillTodos(content);
+      const draft = hasSkillDraftBanner(content);
+      // The banner has two parts. With the DRAFT sentence gone the skill counts as finished (it
+      // gets pointers), but the leftover agent-facing line still tells every agent to ignore it.
+      if (!draft && hasSkillDraftAgentNotice(content)) {
+        findings.push({
+          level: LEVEL.WARN,
+          file: rel,
+          message:
+            'DRAFT banner only partly removed: agents will ignore this skill forever — delete the line ' +
+            `"${SKILL_DRAFT_AGENT_NOTICE}..." too`,
+        });
+      }
+      if (open > 0 && !draft) {
+        findings.push({
+          level: LEVEL.WARN,
+          file: rel,
+          message: `${open} open TODO line(s) but no DRAFT banner — agents will apply this skill as if it were finished`,
+        });
+      }
+      if (open > 0) {
+        findings.push({
+          level: LEVEL.INFO,
+          file: rel,
+          message: `${open} TODO(s) still open${draft ? ' — DRAFT, agents skip this skill until it is finished' : ''}`,
+        });
+      }
+      continue;
     }
     const todos = (content.match(/\bTODO\b/g) || []).length;
     if (todos > 0) findings.push({ level: LEVEL.INFO, file: rel, message: `${todos} TODO(s) still open` });

@@ -16,6 +16,9 @@ export const TEMPLATE_SECTION_ORDER = [
   'Allowed Tools',
   'Input',
   'Output',
+  // Optional, non-syncable (CAF-SKILLS-01). Listed here only so insertSection() can place it —
+  // an unlisted header is inserted before `## Role`. Deliberately NOT in SYNCABLE_SECTIONS.
+  'Skills',
   'Working Pattern (PIV)',
   'Verify Checklist',
   'Retry Logic',

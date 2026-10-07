@@ -18,6 +18,19 @@ export function detectLegacyCollision(filePath) {
 }
 
 /**
+ * Folder-level collision for a skill (CAF-SKILLS-01). A skill lives at `<skillsDir>/<name>/SKILL.md`,
+ * so detectLegacyCollision — which compares basenames — only ever sees `SKILL.md` and can never
+ * fire. This checks the folder instead: `caf-x/` against `x/`, in either direction. Returns the
+ * path of the existing counterpart folder, else null.
+ */
+export function detectSkillDirCollision(skillsDirPath, name) {
+  const counterpart = name.startsWith('caf-') ? name.slice('caf-'.length) : `caf-${name}`;
+  if (!counterpart) return null;
+  const counterpartPath = path.join(skillsDirPath, counterpart);
+  return exists(counterpartPath) ? counterpartPath : null;
+}
+
+/**
  * writeIfAbsent, guarded by detectLegacyCollision. On collision, skips the write (no file
  * touched), records it into `collisions`, and returns 'collision' instead of delegating to
  * writeIfAbsent. Non-colliding targets behave exactly like writeIfAbsent.

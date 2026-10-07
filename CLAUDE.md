@@ -116,6 +116,39 @@ own AI runner, and `src/commands/check-drafts.js` verifies the result afterwards
 - `listDraftFiles` (in `complete-drafts.js`) is the one inventory both the command and the
   checker use.
 
+## Skills (`scaffold skills`)
+
+`src/commands/skills.js` writes the universal CAF skills into `.claude/skills/<name>/SKILL.md` and
+offers a `## Skills` pointer section to agent definitions that already exist. Explicit-only: it is
+in `TARGETS` but not in `CHAIN_ORDER`. No `--skill-dir` — `curate` has no matching flag.
+
+- `src/templates/skill-md.js` is the single source for the skill names (`SKILL_NAMES`, all
+  `caf-`-prefixed), the kind → skills table (`SKILLS_BY_KIND`), the DRAFT banner
+  (`hasSkillDraftBanner`) and the open-TODO predicate (`countOpenSkillTodos`). `skills.js`,
+  `agents.js` and `check-drafts.js` all import from it — never hand-copy the table.
+- `## Skills` is **not** in `SYNCABLE_SECTIONS` and must never be: which skills an agent points at
+  is per-project data, and a syncable section would read as missing in every repo scaffolded
+  earlier (and for pm/ux-designer). It is listed in `TEMPLATE_SECTION_ORDER` only because
+  `insertSection` puts an unlisted header before `## Role`. `buildSkillsSection([])` returns `''`
+  and `buildAgentMd`'s `skills` defaults to `[]`, so the frozen MONOREPO snapshot is unaffected.
+  It renders before `## Constraints`, which is also where `insertSection` lands it.
+- Agents read skills through `Read` pointers. Do not add a `skills:` frontmatter key (ignored under
+  `claude --agent`) or the `Skill` tool to `TOOLS_BY_KIND` (changes the syncable
+  `## Allowed Tools` for every kind, including read-only ones).
+- The DRAFT banner is the only runtime gate. A pointer is written only for a skill whose file
+  exists and has no banner; the section's rule text must not contain the word `TODO` (skills
+  mention it in prose, and it would inflate `check-drafts`' per-agent count).
+- `caf-piv` tells the reader to wait for the user's go-ahead, so it is mapped to no kind — a test
+  enforces that. A skill an agent may point at must never say "wait for confirmation" and must
+  never redefine a report file or status word (those live in the tracked sections).
+- Adding the section to an existing agent is the **one** sanctioned rewrite of an existing file:
+  preview + per-file confirm, then `writeIfAbsent(..., { overwrite: true })` only after
+  `isPureInsertion` proves new content = old content + exactly one block. An agent that already
+  has `## Skills` is never edited, and `--force` never reaches agent files. Don't add another
+  rewrite path, and don't relax that check.
+- `caf-verify` is rendered by `buildVerifyChecklist` (exported from `agent-md.js`), the same
+  function behind an agent's `## Verify Checklist` — keep it that way so the two can't disagree.
+
 ## Templates
 
 `src/templates/*.js` export `build*({ ...detected stack/tracker fields })` functions returning

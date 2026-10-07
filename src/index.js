@@ -58,7 +58,8 @@ program
   )
   .option(
     '--force',
-    'overwrite files that already exist instead of skipping them (only used by the agents target) — ' +
+    'overwrite files that already exist instead of skipping them (only used by the agents and skills targets; ' +
+      'for skills it overwrites SKILL.md files only, never an agent definition) — ' +
       'opt-in escape hatch for writeIfAbsent\'s normal "never overwrite" guarantee, use with care',
     false
   )

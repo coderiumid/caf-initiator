@@ -9,6 +9,7 @@ import { writeIfAbsentGuarded, reportCollisions } from '../utils/collision-check
 import { detectStack } from '../steps/02-detect-stack.js';
 import { buildCompleteDraftsMd } from '../templates/complete-drafts-command.js';
 import { KNOWLEDGE_INDEX_DOCS } from '../templates/knowledge-index-md.js';
+import { SKILLS_DIR } from '../templates/skill-md.js';
 import { curateBaseline } from './curate-baseline.js';
 
 /**
@@ -30,6 +31,7 @@ export async function listDraftFiles(dir, agentDir = '.claude/agents') {
       '.caf/knowledge/golden-examples/**/RULES.md',
       '.caf/knowledge/decisions/*.md',
       'docs/product/features/*.md',
+      `${SKILLS_DIR}/*/SKILL.md`,
     ],
     { cwd: dir, dot: true }
   );
