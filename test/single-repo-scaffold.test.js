@@ -144,7 +144,7 @@ test('SINGLE_REPO implementer: default scope is the whole repo, verify commands 
   assert.doesNotMatch(pipeline, /`\.\/`/);
 
   const handoff = fs.readFileSync(path.join(dir, '.caf', 'workflows', 'agent-handoff.md'), 'utf8');
-  assert.match(handoff, /^\| Implementer \| kode \+ `verify-report\.md` \|$/m);
+  assert.match(handoff, /^\| Implementer \| code \+ `verify-report\.md` \|$/m);
 
   // Roster: the implementer replaces the frontend/backend split, so their absence is not a gap.
   const piv = fs.readFileSync(path.join(dir, '.caf', 'workflows', 'piv-workflow.md'), 'utf8');

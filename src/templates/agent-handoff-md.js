@@ -1,15 +1,15 @@
 import { ARTIFACT_BY_ROLE } from './artifact-by-role.js';
 
-// pm/ux-designer (Klaster 1) and auditor (Klaster 4) have real, standard artifacts — just not
+// pm/ux-designer (Cluster 1) and auditor (Cluster 4) have real, standard artifacts — just not
 // in `.caf/tasks/{TICKET-ID}/` like the table below (and ARTIFACT_BY_ROLE, see its own header
 // comment) assumes for every other role. Checked explicitly by kind rather than "ARTIFACT_BY_ROLE
 // lookup missing" — auditor already has an ARTIFACT_BY_ROLE entry (used by agent-md.js's
 // buildOutputSection, which states its own correct `.caf/audits/<DATE>/` location), so a
 // missing-key guard alone would silently reuse it here with the wrong location implied.
 const OUT_OF_TREE_ARTIFACT = {
-  pm: '`prd.md`, `flow.md` (in `.caf/discovery/{slug}/`, not `.caf/tasks/` — see CAF.md Klaster 1)',
-  'ux-designer': '`flow.md` (in `.caf/discovery/{slug}/`, not `.caf/tasks/` — see CAF.md Klaster 1)',
-  auditor: '`audit-report.md` (in `.caf/audits/{DATE}/`, not `.caf/tasks/` — see CAF.md Klaster 4)',
+  pm: '`prd.md`, `flow.md` (in `.caf/discovery/{slug}/`, not `.caf/tasks/` — see CAF.md Cluster 1)',
+  'ux-designer': '`flow.md` (in `.caf/discovery/{slug}/`, not `.caf/tasks/` — see CAF.md Cluster 1)',
+  auditor: '`audit-report.md` (in `.caf/audits/{DATE}/`, not `.caf/tasks/` — see CAF.md Cluster 4)',
 };
 
 // role.slug is the on-disk filename stem (e.g. 'caf-planner'), but ARTIFACT_BY_ROLE is keyed by

@@ -33,7 +33,7 @@ export function buildKnowledgeIndexMd({ items }) {
 > team, read when available, never a hard requirement before the pipeline runs.
 
 **Difference from \`.caf/discovery/{slug}/prd.md\`:** documents under \`.caf/discovery/\` are
-per-feature drafts written by the PM Agent during the Discovery flow (Klaster 1), not
+per-feature drafts written by the PM Agent during the Discovery flow (Cluster 1), not
 necessarily final and not necessarily relevant across features. \`docs/product/prd.md\` below is
 the opposite: a product-level PRD, project-owned, reused across tickets. Don't confuse the two.
 
