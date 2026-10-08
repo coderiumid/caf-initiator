@@ -3,11 +3,11 @@
 export const ARTIFACT_BY_ROLE = {
   planner: '`requirements.md`, `tasks.md`',
   architect: '`design.md`',
-  frontend: 'kode + `verify-report.md`',
-  backend: 'kode + `verify-report.md`',
-  implementer: 'kode + `verify-report.md`',
+  frontend: 'code + `verify-report.md`',
+  backend: 'code + `verify-report.md`',
+  implementer: 'code + `verify-report.md`',
   qa: '`qa-report.md`',
   reviewer: '`review-notes.md`',
-  documentation: 'update `docs/` (paralel, non-blocking)',
+  documentation: 'update `docs/` (parallel, non-blocking)',
   auditor: '`audit-report.md`',
 };

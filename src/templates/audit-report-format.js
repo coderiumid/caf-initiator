@@ -1,4 +1,4 @@
-// Shared audit contract (CAF.md § Klaster 4). Single source of truth for the Auditor agent
+// Shared audit contract (CAF.md § Cluster 4). Single source of truth for the Auditor agent
 // definition (agent-md.js, kind 'auditor') and its companion commands (audit-commands.js) —
 // these two drifted before (agent said one thing, command said another), so severity scheme,
 // finding categories, and the report skeleton all live here and nowhere else.
@@ -6,13 +6,13 @@
 // CAF.md: "report uses severity Critical/Moderate/Minor". Not CRITICAL/HIGH/MEDIUM/LOW.
 export const SEVERITY_LEVELS = ['Critical', 'Moderate', 'Minor'];
 
-// Critical + Moderate → Temuan Prioritas, Minor → Non-Prioritas. Moderate sits at the old
+// Critical + Moderate → Priority Findings, Minor → Non-Priority Findings. Moderate sits at the old
 // HIGH/MEDIUM boundary, so keeping it actionable preserves the same signal the 4-level scheme
 // had (2 of 4 levels were priority) without inventing a 4th level CAF.md doesn't define.
 export const PRIORITY_SEVERITIES = 'Critical / Moderate';
 export const NON_PRIORITY_SEVERITIES = 'Minor';
 
-// CAF.md § Klaster 4 scope: functional bugs + tech debt/performance. Deep security scanning is
+// CAF.md § Cluster 4 scope: functional bugs + tech debt/performance. Deep security scanning is
 // explicitly OUT of the CAF Auditor's responsibility, so there is no SECURITY category here.
 export const FINDING_CATEGORIES = ['BUG', 'PERFORMANCE', 'TECH_DEBT', 'COVERAGE'];
 
@@ -20,7 +20,7 @@ export const CATEGORY_LIST = FINDING_CATEGORIES.map((c) => `\`${c}\``).join(' / 
 
 export const SECURITY_OUT_OF_SCOPE_NOTE =
   'Deep security scanning (secrets, injection, auth bypass) is OUT OF SCOPE for the CAF ' +
-  'Auditor (see CAF.md § Klaster 4) — that is the responsibility of a separate security review. ' +
+  'Auditor (see CAF.md § Cluster 4) — that is the responsibility of a separate security review. ' +
   'If a serious security indication is hit incidentally, write it under `## Notes` for human ' +
   'attention; do not turn it into a priority finding and do not turn it into a ticket via this path.';
 
@@ -55,7 +55,7 @@ treated the same as other out-of-scope security indications. A human decides the
 outside the normal tracker.`;
 
 /**
- * "Yang Dicari" section body — shared by auditor.md and /caf-audit-scan so the agent and the command
+ * "What to Look For" section body — shared by auditor.md and /caf-audit-scan so the agent and the command
  * hunt for exactly the same things. Deliberately stack-agnostic (no framework/ORM names): the
  * concrete patterns are the reader's job to map onto the detected stack.
  */

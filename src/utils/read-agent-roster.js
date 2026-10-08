@@ -3,10 +3,10 @@ import path from 'node:path';
 
 // frontend/backend got the `caf-` prefix at CAF-REORG-07 (caf-orchestrator cutover to prefixed
 // filenames finished at Checkpoint 4B — see CAF_PREFIXED_KINDS in templates/agent-md.js).
-// auditor/pm/ux-designer are Klaster 1/4 roles (CAF.md) whose artifact doesn't live in
+// auditor/pm/ux-designer are Cluster 1/4 roles (CAF.md) whose artifact doesn't live in
 // `.caf/tasks/{TICKET-ID}/` like the other seven — included here anyway (CAF-REORG-06 AC2) so
 // they read as real CAF roles in agent-handoff.md instead of falling into the generic "custom,
-// format belum standar" bucket. See agent-handoff-md.js's OUT_OF_TREE_ARTIFACT for how their
+// format not yet standard" bucket. See agent-handoff-md.js's OUT_OF_TREE_ARTIFACT for how their
 // artifact line stays location-honest.
 export const KNOWN_ROLES = [
   { slug: 'caf-planner', label: 'Planner' },

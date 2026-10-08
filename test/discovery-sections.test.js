@@ -50,7 +50,7 @@ function baselineEverySection(manifest, relPath, content) {
   }
 }
 
-// Verbatim from requirements.md "Konten yang Direcover" — confirmed final canonical text
+// Verbatim from requirements.md's "Covered Content" section — confirmed final canonical text
 // (2026-09-04). Copied exactly, not retyped from memory, so a drift here is a real regression.
 const CANONICAL_ALLOWED_TOOLS = `**Read:**
 - \`docs/product/feature-catalog.md\` (if it exists) — check overlap with existing features
@@ -133,7 +133,7 @@ test('regression: Allowed Tools/Input/Output for every Delivery kind + auditor i
   assert.equal(buildInputSection('auditor'), 'No required input — the agent proactively scans the whole repo.\n\nOptional: a scope hint from the user (e.g. "focus on apps/api" or "only check the auth module").');
   assert.equal(buildInputSection('devops'), 'TODO: which artifact is received from the previous agent (see .caf/tasks/{TICKET-ID}/)');
 
-  assert.equal(buildOutputSection('frontend'), 'Produces kode + `verify-report.md` in `.caf/tasks/{TICKET-ID}/` for the next agent to read.');
+  assert.equal(buildOutputSection('frontend'), 'Produces code + `verify-report.md` in `.caf/tasks/{TICKET-ID}/` for the next agent to read.');
   assert.match(buildOutputSection('auditor'), /NOT for the next agent/);
   assert.equal(buildOutputSection('devops'), 'TODO: which artifact is produced for the next agent');
 });
