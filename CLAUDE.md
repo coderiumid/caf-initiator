@@ -205,10 +205,35 @@ is no more `DISCOVERY_GUARDED_SECTIONS` list — every entry in `SYNCABLE_SECTIO
 normally for every `KNOWN_KINDS` value. When adding a new syncable section, give it a real
 Discovery branch (reusing a `discovery-commands.js` constant if the section already renders
 there) rather than reintroducing a guard — a guard is a last resort for a section that hasn't
-been designed for Discovery yet, not the default. `## Working Pattern (PIV)`'s Discovery wording
-(mentions documents, not code) still legitimately differs from the generic template and reads as
-`DRIFT` — that's a deliberate content question left open, not a bug (see
-`.ai/tasks/CAF-RETRYLOGIC-01/open-items.md`).
+been designed for Discovery yet, not the default. `## Working Pattern (PIV)` follows the same rule
+since CAF-SDD-03a2: `buildWorkingPatternSection(kind)` returns the Discovery wording (documents,
+not code) for `pm`/`ux-designer` and the generic text for everything else. The Discovery lines
+are repeated there, not imported — `discoveryAgentMd()` still holds its own copy — and
+`test/retry-logic-role-aware.test.js` plus the frozen-kinds goldens fail if the two differ. The
+content question that was left open is decided: the Discovery text stays as rendered.
+
+Not every tracked section is kind-only. `## Input` of `qa`/`reviewer` embeds the assigned app
+paths (`appNames`, MONOREPO) at generate time, and nothing but the file records them. To compare
+an **existing** section, `agents-sync.js` and `audit.js` therefore call
+`templateForExistingSection(header, kind, body)` (`src/utils/agent-sections.js`), never
+`SYNCABLE_SECTIONS[header](kind)` directly: it reads the app list back from the section body
+(`parseInputAppNames`) and renders the template with it. Calling the kind-only builder there is
+what made `curate sync` drop the app list (CAF-SDD-03a2). The kind-only call is still right for
+"is this section part of the kind's template" and for the text of a section the file lacks.
+
+- `null` from `templateForExistingSection` means the context is lost (sentence reworded, list not
+  in the shape `buildInputSection` writes). The caller then compares as "template unchanged"
+  (`templateHash = baselineHash`), which can only give `IN_SYNC` or `CUSTOMIZATION` — never
+  `DRIFT`, so nothing is written. `curate sync` lists such sections (`unverifiable` in its
+  result). Don't turn that into a guess or a fallback to the kind-only text.
+- Reading from the current body is sound for the write path because only `DRIFT` is written and
+  `DRIFT` requires current === baseline. No manifest field was added, so a manifest from before
+  this fix works as is (`test/fixtures/legacy-manifest/`, recorded by the pre-fix code — never
+  regenerate it).
+- `parseInputAppNames` is anchored on the phrase `from the implementation agent`. A ticket that
+  rewords that phrase in `buildInputSection` must keep the parser recognizing the old form, or
+  every already-generated qa/reviewer `Input` becomes not comparable.
+- `check-drafts` still compares against the manifest baseline only, so it needs none of this.
 
 `KNOWN_KINDS` must list every kind `detectKind()` should recognize — a kind missing from it
 silently falls back to `implementation` (`Read`+`Write`+`Edit`+`Bash`), which is a privilege

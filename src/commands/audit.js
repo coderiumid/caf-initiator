@@ -4,7 +4,7 @@ import kleur from 'kleur';
 
 import { section, readFileSafe, exists, dirHasContent } from '../util.js';
 import { detectStack } from '../steps/02-detect-stack.js';
-import { SYNCABLE_SECTIONS, detectKind, parseSections, sectionBody } from '../utils/agent-sections.js';
+import { SYNCABLE_SECTIONS, detectKind, parseSections, sectionBody, templateForExistingSection } from '../utils/agent-sections.js';
 import { readSyncState, contentHash, getDecision } from '../utils/sync-state.js';
 import { canonicalHeaders } from '../utils/canonical-sections.js';
 import { extractHeaders } from '../utils/section-headers.js';
@@ -199,10 +199,14 @@ export function auditAgentDefinitions(dir, agentDirOpt) {
       if (presentHeaders.has(header)) {
         const existingSection = sections.find((s) => s.header === header);
         const body = sectionBody(lines, existingSection);
+        const baselineHash = getBaselineHash(manifest, relPath, header);
+        // Same rule as agents-sync.js: a template that can't be rendered for this file (null)
+        // compares as "template unchanged", so the section is never reported as DRIFT.
+        const template = templateForExistingSection(header, kind, body);
         const status = compareSection({
-          baselineHash: getBaselineHash(manifest, relPath, header),
+          baselineHash,
           currentHash: hashSection(body),
-          templateHash: hashSection(proposed),
+          templateHash: template == null ? baselineHash : hashSection(template),
         });
         sectionCounts[status] += 1;
         if (status !== SECTION_STATUS.IN_SYNC) {

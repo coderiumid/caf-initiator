@@ -84,3 +84,25 @@ test('slots are matched independently', () => {
   const dir = makeRepo({ 'package.json': { name: 'pkg', scripts } }, 'caf-package-scripts-');
   assert.deepEqual(matchVerifyScripts(dir, '.'), { lint: 'lint:fix', typecheck: 'typecheck', test: null, build: 'build' });
 });
+
+// CAF-SDD-03a2 (AC-6) — camelCase watch scripts (`testWatch`) are watch mode too.
+test('camelCase: a *Watch script alone leaves the slot null', () => {
+  assert.equal(pick('test', ['testWatch']), null);
+  assert.equal(pick('build', ['buildWatch']), null);
+  assert.equal(pick('lint', ['lintWatch']), null);
+  assert.equal(pick('typecheck', ['typecheckWatch']), null);
+  assert.equal(pick('test', ['watchTest']), null);
+  assert.equal(pick('test', ['test:unitWatch']), null);
+});
+
+test('camelCase: a *Watch script next to the real one picks the real one', () => {
+  assert.equal(pick('test', ['testWatch', 'test']), 'test');
+  assert.equal(pick('build', ['buildWatch', 'build']), 'build');
+  assert.equal(pick('test', ['testWatch', 'testCi']), 'testCi');
+});
+
+test('camelCase: "watch" as a mere substring is not watch mode', () => {
+  assert.equal(pick('build', ['watchman:build']), 'watchman:build');
+  assert.equal(pick('test', ['testWatcher']), 'testWatcher');
+  assert.equal(pick('test', ['stopwatch:test']), 'stopwatch:test');
+});

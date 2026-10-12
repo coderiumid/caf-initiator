@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "files": {
+    ".claude/agents/caf-qa.md": {
+      "sections": {
+        "Allowed Tools": {
+          "hash": "sha256:2eda5bcbc0e7e14d67fde94b7de984cb2b0a48139a13bfff32e965a4e221eb98",
+          "templateVersion": "caf-initiator@0.1.9",
+          "lastSyncedAt": "2026-10-12T08:31:20.254Z"
+        },
+        "Input": {
+          "hash": "sha256:e0859bb55d56d378a2f7850400ff28649bda35001c5d0326d2f54e23fef6b7da",
+          "templateVersion": "caf-initiator@0.1.9",
+          "lastSyncedAt": "2026-10-12T08:31:20.255Z"
+        },
+        "Output": {
+          "hash": "sha256:c3ed7dea15a26aadc503de9255f6f19cc2d0d7548d3bcd5393ce8e77963ca89c",
+          "templateVersion": "caf-initiator@0.1.9",
+          "lastSyncedAt": "2026-10-12T08:31:20.255Z"
+        },
+        "Working Pattern (PIV)": {
+          "hash": "sha256:7abd11e5f221a15f0d454fd4730f998357c7ebddfbf2a799860cad3e39db637c",
+          "templateVersion": "caf-initiator@0.1.9",
+          "lastSyncedAt": "2026-10-12T08:31:20.255Z"
+        },
+        "Retry Logic": {
+          "hash": "sha256:5a308b4b38b198d7e88825da25dd625559de301492f7f94e67886fc73d6d7027",
+          "templateVersion": "caf-initiator@0.1.9",
+          "lastSyncedAt": "2026-10-12T08:31:20.255Z"
+        },
+        "Report Format": {
+          "hash": "sha256:a0b32ac3b371de6215c76c02d77c2a21b16e84670b5123f8969b9d4b96b780ea",
+          "templateVersion": "caf-initiator@0.1.9",
+          "lastSyncedAt": "2026-10-12T08:31:20.255Z"
+        }
+      }
+    },
+    ".claude/agents/caf-reviewer.md": {
+      "sections": {
+        "Allowed Tools": {
+          "hash": "sha256:7280681b670f3b969d9a8e05a8e969b2fe3d41abe967af84af213c4a6ecd21e9",
+          "templateVersion": "caf-initiator@0.1.9",
+          "lastSyncedAt": "2026-10-12T08:31:20.255Z"
+        },
+        "Input": {
+          "hash": "sha256:c6cb2410f9fd7ca85abe34bf9e1085e75a04c2f84fc39abd2fbfb393bb88cadd",
+          "templateVersion": "caf-initiator@0.1.9",
+          "lastSyncedAt": "2026-10-12T08:31:20.255Z"
+        },
+        "Output": {
+          "hash": "sha256:2cfc4b327dddf8ad573bf1e8f3a1aa8f1bacf0cc694f949f1915028af51594a3",
+          "templateVersion": "caf-initiator@0.1.9",
+          "lastSyncedAt": "2026-10-12T08:31:20.255Z"
+        },
+        "Working Pattern (PIV)": {
+          "hash": "sha256:7abd11e5f221a15f0d454fd4730f998357c7ebddfbf2a799860cad3e39db637c",
+          "templateVersion": "caf-initiator@0.1.9",
+          "lastSyncedAt": "2026-10-12T08:31:20.255Z"
+        },
+        "Retry Logic": {
+          "hash": "sha256:21ccf6e780e3cad3491272193c8882a124a4472fcfc80597969d8f9c168848f0",
+          "templateVersion": "caf-initiator@0.1.9",
+          "lastSyncedAt": "2026-10-12T08:31:20.255Z"
+        },
+        "Report Format": {
+          "hash": "sha256:c7c46c1cdf577e2795df940f9c9f8c7ffd80b35cf6e3f0c3dc469efe1feed4d2",
+          "templateVersion": "caf-initiator@0.1.9",
+          "lastSyncedAt": "2026-10-12T08:31:20.255Z"
+        }
+      }
+    }
+  }
+}
