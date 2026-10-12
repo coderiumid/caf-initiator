@@ -29,14 +29,17 @@ const ARTIFACT_WRITER_SKILLS = ['caf-scope-discipline', 'caf-no-guess'];
 // escalation contracts in Retry Logic/Constraints that caf-orchestrator parses.
 // `caf-spec` (the requirements.md format) is the planner's only; it is born a DRAFT, so no agent
 // gets a pointer to it until a human removes its banner.
-// `caf-traceability` (CAF-SDD-02) goes to the planner and to frontend/backend only — the kinds
+// `caf-traceability` (CAF-SDD-02) goes to the planner and to frontend/backend — the kinds
 // that write tasks.md and verify-report.md in the orchestrated pipeline. Born a DRAFT as well.
+// `validator` (CAF-SDD-03b1) reads those evidence lines, so it gets `caf-traceability` on top of
+// what `qa` has.
 export const SKILLS_BY_KIND = {
   frontend: [...IMPLEMENTATION_SKILLS, 'caf-traceability'],
   backend: [...IMPLEMENTATION_SKILLS, 'caf-traceability'],
   implementer: IMPLEMENTATION_SKILLS,
   implementation: IMPLEMENTATION_SKILLS,
   qa: ['caf-verify', 'caf-no-guess'],
+  validator: ['caf-verify', 'caf-no-guess', 'caf-traceability'],
   planner: [...ARTIFACT_WRITER_SKILLS, 'caf-spec', 'caf-traceability'],
   reviewer: ARTIFACT_WRITER_SKILLS,
   architect: ARTIFACT_WRITER_SKILLS,

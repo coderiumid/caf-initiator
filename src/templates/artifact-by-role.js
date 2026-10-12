@@ -7,6 +7,7 @@ export const ARTIFACT_BY_ROLE = {
   backend: 'code + `verify-report.md`',
   implementer: 'code + `verify-report.md`',
   qa: '`qa-report.md`',
+  validator: '`validate-report.md`',
   reviewer: '`review-notes.md`',
   documentation: 'update `docs/` (parallel, non-blocking)',
   auditor: '`audit-report.md`',

@@ -75,6 +75,7 @@ test('mapping (D7): exact table, caf-piv mapped to no kind, restricted kinds get
       planner: [...writer, 'caf-spec', 'caf-traceability'], architect: writer,
       frontend: [...impl, 'caf-traceability'], backend: [...impl, 'caf-traceability'], implementer: impl,
       qa: ['caf-verify', 'caf-no-guess'], reviewer: writer, documentation: writer,
+      validator: ['caf-verify', 'caf-no-guess', 'caf-traceability'],
       auditor: [], pm: [], 'ux-designer': [], devops: [], implementation: impl,
     }
   );

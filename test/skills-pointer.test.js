@@ -207,7 +207,7 @@ test('pointers: idempotent — a second run shows no prompt and changes no byte'
   const second = await scaffoldSkills(dir, { expectPrompts: [] });
   assert.deepEqual(snapshotTree(dir), after);
   assert.deepEqual(second.pointers.added, []);
-  assert.equal(second.pointers.untouched.length, 8);
+  assert.equal(second.pointers.untouched.length, 9);
 });
 
 test('pointers: --dry-run shows no prompt, writes nothing, and names exactly the files a real run edits', async () => {
@@ -218,7 +218,7 @@ test('pointers: --dry-run shows no prompt, writes nothing, and names exactly the
   assert.deepEqual(dry.pointers.added, []);
   const real = await scaffoldSkills(dir);
   assert.deepEqual(dry.pointers.wouldAdd, real.pointers.added);
-  assert.equal(real.pointers.added.length, 8);
+  assert.equal(real.pointers.added.length, 9);
 });
 
 test('pointers: declining leaves that file byte-identical', async () => {
@@ -291,8 +291,9 @@ test('pointers: a skill that was not written (name collision) is never pointed a
   const dir = repo({ extra: { '.claude/skills/no-guess/SKILL.md': 'team skill\n' } });
   const saved = process.exitCode;
   try {
-    // caf-qa.md is not asked at all: neither of its skills is usable here (see below).
-    const asked = agentFiles(dir).filter((f) => skillsForKind(detectKind(f)).length > 0 && f !== 'caf-qa.md');
+    // caf-qa.md is not asked at all: neither of its skills is usable here (see below). Same for
+    // caf-validator.md, which has qa's two plus caf-traceability (DRAFT).
+    const asked = agentFiles(dir).filter((f) => skillsForKind(detectKind(f)).length > 0 && f !== 'caf-qa.md' && f !== 'caf-validator.md');
     await scaffoldSkills(dir, { expectPrompts: asked });
     assert.equal(process.exitCode, 1);
   } finally {
@@ -327,7 +328,7 @@ for (const withManifest of [false, true]) {
     const before = await curateView(dir);
 
     const result = await scaffoldSkills(dir);
-    assert.equal(result.pointers.added.length, 8);
+    assert.equal(result.pointers.added.length, 9);
 
     const after = await curateView(dir);
     assert.deepEqual(after.entries, before.entries);

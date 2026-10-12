@@ -45,7 +45,7 @@ const DELIVERY_RETRY_LOGIC_PRE_FIX = [
 // review-notes.md, never verify-report.md), so they are no longer part of this regression oracle —
 // their contract is guarded in test/qa-report-format.test.js instead. Every OTHER non-Discovery
 // kind must still be byte-identical to the pre-fix Delivery text.
-const CONTRACT_KINDS = ['qa', 'reviewer'];
+const CONTRACT_KINDS = ['qa', 'reviewer', 'validator'];
 
 const DELIVERY_KINDS = [
   ...KNOWN_KINDS.filter((k) => !DISCOVERY_KINDS.includes(k) && !CONTRACT_KINDS.includes(k)),

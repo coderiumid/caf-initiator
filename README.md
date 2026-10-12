@@ -143,6 +143,7 @@ Notes:
 
 - `scaffold workflow` needs an agent roster; run `scaffold agents` first.
 - Agents on offer: Planner, Architect, Frontend and Backend (per assigned app), extra per-app implementation agents, QA, Reviewer, Documentation, Auditor, PM, UX Designer. CAF recommends starting with Planner plus one implementation agent.
+- A `validator` kind (`caf-validator.md`) exists in the code but is hidden: it is not on offer, no `scaffold` run writes it, and nothing in the pipeline calls it yet. See [The validator kind](#the-validator-kind-hidden).
 - The tracker is detected from `.linear/`, `atlassian.yml` or a README mention. Otherwise you are asked (Linear, Jira, GitHub Issues); it is never silently defaulted.
 
 Options:
@@ -323,6 +324,47 @@ Only Claude Code is validated to technically enforce an agent's tool and scope r
 | `--kind <agent\|command\|both>` | What to publish | `agent` |
 | `--dry-run` | Show what would be published without writing | `false` |
 | `--force` | Overwrite files that already exist at the destination | `false` |
+
+### The validator kind (hidden)
+
+`caf-init` knows a `validator` agent kind, written as `caf-validator.md`. It is not a scaffold candidate: `scaffold agents` neither offers nor writes it, and neither `/caf-run-pipeline` nor caf-orchestrator calls it. It becomes available with the ticket that connects it to the pipeline. Until then `qa` and `qa-report.md` are unchanged.
+
+What is in place today:
+
+- **Detection.** A file named `caf-validator.md` is recognized by `curate` as kind `validator` and compared against the validator template, like any other kind.
+- **Tools.** `Read`, `Write`, `Bash`. No `Edit`: the validator changes no code, test, spec or `verify-report.md`. The only file it writes is `validate-report.md`.
+- **What it does.** It reads `requirements.md`, `tasks.md` and `verify-report.md`, runs the commands of its `## Verify Checklist` (the same commands the implementation agents get, for every detected app), and gives each acceptance criterion one status. It may run those commands and read-only `git diff`, `git log`, `git status`, `git show`; nothing else.
+- **Skills.** The skills of `qa` plus `caf-traceability` (no pointer to the latter while it is a `DRAFT`).
+
+Per criterion:
+
+| Status | When |
+|---|---|
+| `PASS` | `automated-test` or `command` evidence that the validator ran itself and that matches the criterion |
+| `FAIL` | It was run and the result contradicts the criterion; the observed output is written down |
+| `UNVERIFIED` | Everything else: `manual` or `build-only` evidence, evidence that names no test, a test that does not import the production code, a command it may not run, or no evidence line at all (`no evidence reported`) |
+
+`validate-report.md` (in `.caf/tasks/<TICKET-ID>/`):
+
+```markdown
+## Validate Report — {TICKET-ID}
+Ticket: {TICKET-ID}
+Agent: caf-validator
+Status: PASS | FAIL | NEEDS_HUMAN
+Unverified: {count} — {AC ids, comma-separated, or "none"}
+
+### Acceptance Criteria
+| AC | Status | Evidence kind | Evidence |
+
+### Verification Gate
+| Command | Result |
+
+### Verification Gate Gaps
+
+### Notes
+```
+
+`Status: PASS` means no criterion is `FAIL` and every gate command passed. `UNVERIFIED` criteria do not turn the report into `FAIL`, but their count and ids are always on the `Unverified:` line. `NEEDS_HUMAN` means the validation could not be done (a missing `requirements.md` or `verify-report.md`). How a pipeline reads this file is not decided yet; the `Status:` line has the same shape as the one in `qa-report.md`.
 
 ## Working with caf-orchestrator
 
