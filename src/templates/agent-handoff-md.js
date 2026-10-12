@@ -30,6 +30,12 @@ function customSection(custom) {
   return lines.join('\n');
 }
 
+// `## Format verify-report.md` below is the one generated source of that format (CAF-SDD-02,
+// Q-3): agents are told which file and which `Status:` word in their own Retry Logic, the shape
+// lives here. The per-AC evidence forms are the ones the `caf-traceability` skill states — keep
+// the two identical. caf-orchestrator's readVerifyReport() tests the WHOLE file for
+// `\bSUCCESS\b`, so nothing added to the skeleton may contain that word outside the `Status:`
+// line (guarded by test/sdd02-planner-spec.test.js).
 export function buildAgentHandoffMd({ roster }) {
   const presentRoles = roster.known.filter((r) => r.present);
   const table = presentRoles.map(artifactRow).join('\n');
@@ -64,9 +70,30 @@ Status: SUCCESS | NEEDS_HUMAN
 - [ ] test
 - [ ] build
 
+## Acceptance Criteria
+- AC-1: automated-test — <file>::<test name>
+- AC-2: build-only — <command that passed>; no test exists for this behavior
+- AC-3: manual — <steps a human must run, or steps already run>
+- AC-4: none — <why>
+
+## Proposed Spec Changes
+-
+
 ## Notes
 TODO: verification result details, errors if any
 \`\`\`
+
+\`## Acceptance Criteria\`: one line per AC of \`requirements.md\`, in exactly one of the four forms
+above. Name the test; the number of passing tests is never evidence. An AC marked
+\`Verify: manual\` is reported as \`manual\`, and an area with no test runner as \`build-only\` or
+\`manual\` — not as \`automated-test\`.
+
+\`## Proposed Spec Changes\`: once \`requirements.md\` says \`Status: APPROVED\`, never edit it. If
+the spec is wrong or impossible to satisfy, write the proposed change here and a human decides.
+Write \`-\` when there is none.
+
+Keep the word the \`Status:\` line uses for success out of every other line of the report: the
+grep above reads the whole file, not only that line.
 
 ## Additional Agents (Custom)
 

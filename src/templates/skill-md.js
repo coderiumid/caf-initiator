@@ -17,7 +17,7 @@ export const SKILLS_DIR = '.claude/skills';
 
 // Display/write order. Every name is `caf-`-prefixed so a generated skill can't collide with one
 // the team wrote themselves.
-export const SKILL_NAMES = ['caf-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate', 'caf-piv', 'caf-spec'];
+export const SKILL_NAMES = ['caf-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate', 'caf-piv', 'caf-spec', 'caf-traceability'];
 
 const IMPLEMENTATION_SKILLS = ['caf-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate'];
 const ARTIFACT_WRITER_SKILLS = ['caf-scope-discipline', 'caf-no-guess'];
@@ -29,13 +29,15 @@ const ARTIFACT_WRITER_SKILLS = ['caf-scope-discipline', 'caf-no-guess'];
 // escalation contracts in Retry Logic/Constraints that caf-orchestrator parses.
 // `caf-spec` (the requirements.md format) is the planner's only; it is born a DRAFT, so no agent
 // gets a pointer to it until a human removes its banner.
+// `caf-traceability` (CAF-SDD-02) goes to the planner and to frontend/backend only — the kinds
+// that write tasks.md and verify-report.md in the orchestrated pipeline. Born a DRAFT as well.
 export const SKILLS_BY_KIND = {
-  frontend: IMPLEMENTATION_SKILLS,
-  backend: IMPLEMENTATION_SKILLS,
+  frontend: [...IMPLEMENTATION_SKILLS, 'caf-traceability'],
+  backend: [...IMPLEMENTATION_SKILLS, 'caf-traceability'],
   implementer: IMPLEMENTATION_SKILLS,
   implementation: IMPLEMENTATION_SKILLS,
   qa: ['caf-verify', 'caf-no-guess'],
-  planner: [...ARTIFACT_WRITER_SKILLS, 'caf-spec'],
+  planner: [...ARTIFACT_WRITER_SKILLS, 'caf-spec', 'caf-traceability'],
   reviewer: ARTIFACT_WRITER_SKILLS,
   architect: ARTIFACT_WRITER_SKILLS,
   documentation: ARTIFACT_WRITER_SKILLS,
@@ -332,6 +334,57 @@ Out:
 `;
 }
 
+// caf-traceability (CAF-SDD-02): AC → task → code → test. Born a DRAFT like caf-spec and with the
+// same banner (it waits for a real dispatch test once a validator exists), so no agent gets a
+// pointer to it yet. Content is taken verbatim from the ticket — don't reword it here.
+//
+// Second narrow exception to "a skill never redefines a report file": it states the per-AC
+// evidence line of `verify-report.md`, the same four forms the verify-report format in
+// agent-handoff-md.js carries. It still defines no status or verdict word and no other part of
+// any report.
+export function buildTraceabilitySkill() {
+  return `---
+name: caf-traceability
+description: Rules for linking each acceptance criterion (AC) to tasks, code and a named test, and for recording that evidence. Use when writing tasks.md, when implementing, and when writing verify-report.md.
+---
+
+${SPEC_DRAFT_BANNER}
+
+# caf-traceability — AC → task → code → test
+
+Every AC in requirements.md must be traceable to evidence. Evidence is a named test or an honest "manual" / "build-only" label, never a count of passing tests.
+If the agent definition conflicts with this skill, the agent definition wins.
+
+## In tasks.md (planner)
+- Every task ends with the AC ids it serves, for example \`(AC-1, AC-3)\`. A task that serves no AC needs a one-line reason, or it is dropped.
+- Every AC is served by at least one task. An AC with no task is a spec gap: report it, do not invent a task.
+- For an AC with \`Verify: automated test\`, the test task comes before the implementation task.
+
+## In code (implementer)
+- Put the AC id in the test title, for example \`it('AC-3: rejects an expired token', ...)\`. One test may serve several ACs; name all of them.
+- A test is evidence only if it imports and exercises the production code. A test that asserts only on mocks, constants or itself is not evidence.
+- The number of passing tests is never evidence. Name the test.
+- Do not add tests only to raise coverage.
+
+## In verify-report.md
+Write one line per AC, using exactly one of these forms:
+- \`AC-n: automated-test — <file>::<test name>\`
+- \`AC-n: build-only — <command that passed>; no test exists for this behavior\`
+- \`AC-n: manual — <steps a human must run, or steps already run>\`
+- \`AC-n: none — <why>\`
+
+Rules:
+- An AC with \`Verify: manual\` is reported as \`manual\`, never as \`automated-test\`.
+- If the touched area has no test runner, report \`build-only\` or \`manual\`. Do not create a fake gate or a fake test; record the gap.
+- State what was proven and what was not. Do not claim more than the evidence shows.
+
+## Check before finishing
+1. Every AC id appears in both tasks.md and verify-report.md.
+2. Every \`automated-test\` line names a file and a test that really exist.
+3. No AC is reported as automated when its test never imports production code.
+`;
+}
+
 /**
  * Every skill file `caf-init scaffold skills` writes, in SKILL_NAMES order:
  * `[{ name, relPath, content, draft }]`. Pure — no filesystem, no clock.
@@ -344,6 +397,7 @@ export function buildSkillFiles({ mode, verifyApps } = {}) {
     'caf-escalate': buildEscalateSkill,
     'caf-piv': buildPivSkill,
     'caf-spec': buildSpecSkill,
+    'caf-traceability': buildTraceabilitySkill,
   };
   return SKILL_NAMES.map((name) => {
     const content = builders[name]();

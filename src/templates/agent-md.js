@@ -548,6 +548,78 @@ ${buildSkillsBody(skillPaths)}
 `;
 }
 
+// How the Planner produces its two artifacts (CAF-SDD-02): spec-first — Specify, Clarify, Plan,
+// Tasks. Rendered in the planner's `## Output`, after the one-line artifact contract, rather than
+// in a section of its own: Output is tracked, so `curate sync` carries the text to a planner
+// generated earlier as an ordinary DRIFT (no new header to insert, nothing new for the other
+// kinds). It is not in `## Working Pattern (PIV)` because that section's text is pinned to the
+// generic wording for every non-Discovery kind by a CAF-SDD-03a2 test.
+// Rules this text must keep:
+// - Every artifact, path and stop token the planner already had stays: the first line of Output,
+//   `## Input`, `## Constraints` and `## Retry Logic` are untouched, and Clarify on the ticket path reuses
+//   their headless stop (`Status: NEEDS_HUMAN` + the blocked `tasks.md` note) — caf-orchestrator
+//   throws when the planner leaves no `tasks.md`. `NEEDS_CLARIFICATION` is the chat-path status.
+// - The requirements.md format is the `caf-spec` skill's; it is named, not copied. caf-spec is
+//   still a DRAFT, so the text has to stand on its own when the skill is not in `## Skills`.
+// - `###` sub-headings only: a `## ` line here would be read as a section boundary.
+// - No `TODO` word (check-drafts counts them per agent) and no generate-time placeholder.
+const PLANNER_SPEC_WORKFLOW = [
+  'How the two files are produced — spec-first. The Planner writes the spec, gets it clear, and',
+  'only then breaks it into tasks: run the four steps below in order and do not skip one. Every',
+  'artifact goes in `.caf/tasks/{TICKET-ID}/`. A request that comes from chat with no ticket ID',
+  'gets a short kebab-case slug of the request as its `{TICKET-ID}`; use that same slug for every',
+  'artifact of the task.',
+  '',
+  '### 1. Specify',
+  '- Write `requirements.md`: what is asked and why. Outcome, scope (in and out), constraints and',
+  '  labeled assumptions, decisions already made, open questions, acceptance criteria.',
+  '- Number every acceptance criterion `AC-1:`, `AC-2:`, ... and end each one with `Verify:`',
+  '  (`automated test`, or `manual:` and the steps). One observable behavior per AC.',
+  '- The full format and its rules are the `caf-spec` skill; follow it when it is listed under',
+  '  `## Skills` in this file. It is not repeated here.',
+  '- No implementation detail in the spec (files, functions, libraries): that belongs to',
+  '  `design.md` and `tasks.md`.',
+  '',
+  '### 2. Clarify',
+  '- First check the ticket, the code, the ADRs and `CLAUDE.md`; do not ask what is answered there.',
+  '- Ask at most 5 questions, the most decisive first. Mark each `BLOCKING` (the answer changes',
+  '  scope or an AC) or `NON-BLOCKING`, and write them in `requirements.md`.',
+  '- `NON-BLOCKING`: write the assumption you proceed on, labeled as an assumption, and go on.',
+  '- `BLOCKING` and unanswered: set `Status: NEEDS_CLARIFICATION` in `requirements.md` and stop.',
+  '  Do not go on to Plan or Tasks, and do not write the task breakdown in `tasks.md` while a',
+  '  `BLOCKING` question is unanswered.',
+  '- Ticket run (the headless marker, see Input and Constraints): nobody answers in chat, so stop',
+  '  the way this agent already stops there: `requirements.md` with `Status: NEEDS_HUMAN` in',
+  '  place of `NEEDS_CLARIFICATION`, plus the blocked `tasks.md` note described in Input. That',
+  '  note is not a task breakdown.',
+  '',
+  '### 3. Plan',
+  '- Only when no `BLOCKING` question is open.',
+  '- Decide the approach at the level of work, not code: which agents and apps are involved, in',
+  '  what order, and what depends on what. A change that needs a technical design goes to the',
+  '  Architect (`design.md`); do not design it here.',
+  '',
+  '### 4. Tasks',
+  '- Write `tasks.md` under the task sections described in Input.',
+  '- Every task line ends with the AC ids it serves, for example `(AC-1, AC-3)`. A task that',
+  '  serves no AC needs a one-line reason, or it is dropped.',
+  '- Every AC is served by at least one task. An AC that no task can serve is a gap in the spec:',
+  '  report it as an open question, do not invent a task.',
+  '- For an AC marked `Verify: automated test`, the task that writes the test comes before the',
+  '  task that implements the behavior.',
+  '',
+  '### An approved spec is a contract',
+  '- Once `requirements.md` says `Status: APPROVED`, do not change its goal, scope or acceptance',
+  '  criteria. This holds for every agent, the Planner included.',
+  '- If an approved spec turns out wrong or impossible to satisfy, the proposed change is written',
+  '  in `verify-report.md` and a human decides.',
+  '',
+  '### Before declaring done',
+  '- Every AC id in `requirements.md` appears in at least one task of `tasks.md`.',
+  '- No guess that is not labeled as an assumption or an open question.',
+  '- Run the Verify Checklist of this file.',
+].join('\n');
+
 // devops: CAF.md Layer 3 (.caf/tasks/{TICKET-ID}/) doesn't yet have an official artifact contract
 // for DevOps (post-merge, next phase) — stays TODO until CAF.md defines it.
 export function buildOutputSection(kind) {
@@ -564,7 +636,8 @@ export function buildOutputSection(kind) {
   if (!artifact) {
     return 'TODO: which artifact is produced for the next agent';
   }
-  return `Produces ${artifact} in \`.caf/tasks/{TICKET-ID}/\` for the next agent to read.`;
+  const contract = `Produces ${artifact} in \`.caf/tasks/{TICKET-ID}/\` for the next agent to read.`;
+  return kind === 'planner' ? `${contract}\n\n${PLANNER_SPEC_WORKFLOW}` : contract;
 }
 
 // Frontmatter is what makes the file a real, dispatchable subagent type instead of an inert
