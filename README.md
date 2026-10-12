@@ -159,7 +159,7 @@ Options:
 
 ### `caf-init scaffold skills`
 
-Writes five universal skills into `.claude/skills/<name>/SKILL.md`.
+Writes six universal skills into `.claude/skills/<name>/SKILL.md`.
 
 | Skill | What it tells the reader | Agents that point at it |
 |---|---|---|
@@ -168,6 +168,7 @@ Writes five universal skills into `.claude/skills/<name>/SKILL.md`.
 | `caf-no-guess` | Cite what you read; an unknown becomes an open item, never an invented fact | all of the above |
 | `caf-escalate` | When to stop and hand the task back to a human | implementation agents |
 | `caf-piv` | Plan, wait for the go-ahead, implement, verify | none (manual sessions only) |
+| `caf-spec` | The `requirements.md` (spec) format: scope, open questions, acceptance criteria | Planner — always written as a `DRAFT`, so no pointer yet |
 
 Auditor, PM and UX Designer agents get no skills.
 
@@ -184,6 +185,8 @@ Auditor, PM and UX Designer agents get no skills.
 - no agent gets a pointer to it.
 
 To activate it, resolve the `TODO` lines and remove the whole banner: both the `> DRAFT ...` sentence and the `> Agents: this skill is NOT ready...` line.
+
+`caf-spec` is written with a `DRAFT` banner in every repo. It has no `TODO` line; remove its banner once you have tested the skill in a real agent run.
 
 **Pointers in existing agent definitions**
 

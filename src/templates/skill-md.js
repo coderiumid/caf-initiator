@@ -17,7 +17,7 @@ export const SKILLS_DIR = '.claude/skills';
 
 // Display/write order. Every name is `caf-`-prefixed so a generated skill can't collide with one
 // the team wrote themselves.
-export const SKILL_NAMES = ['caf-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate', 'caf-piv'];
+export const SKILL_NAMES = ['caf-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate', 'caf-piv', 'caf-spec'];
 
 const IMPLEMENTATION_SKILLS = ['caf-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate'];
 const ARTIFACT_WRITER_SKILLS = ['caf-scope-discipline', 'caf-no-guess'];
@@ -27,13 +27,15 @@ const ARTIFACT_WRITER_SKILLS = ['caf-scope-discipline', 'caf-no-guess'];
 // the user's go-ahead, which a headless agent run can never get.
 // `caf-escalate` stays with the implementation kinds — qa/reviewer/planner have their own
 // escalation contracts in Retry Logic/Constraints that caf-orchestrator parses.
+// `caf-spec` (the requirements.md format) is the planner's only; it is born a DRAFT, so no agent
+// gets a pointer to it until a human removes its banner.
 export const SKILLS_BY_KIND = {
   frontend: IMPLEMENTATION_SKILLS,
   backend: IMPLEMENTATION_SKILLS,
   implementer: IMPLEMENTATION_SKILLS,
   implementation: IMPLEMENTATION_SKILLS,
   qa: ['caf-verify', 'caf-no-guess'],
-  planner: ARTIFACT_WRITER_SKILLS,
+  planner: [...ARTIFACT_WRITER_SKILLS, 'caf-spec'],
   reviewer: ARTIFACT_WRITER_SKILLS,
   architect: ARTIFACT_WRITER_SKILLS,
   documentation: ARTIFACT_WRITER_SKILLS,
@@ -237,6 +239,99 @@ Do not commit or push unless the user asks.`,
   });
 }
 
+// caf-spec (CAF-SDD-01) is born a DRAFT whatever the repo looks like: it has no `TODO` line to
+// resolve, it waits for a manual dispatch test. Its banner therefore has its own first two lines
+// and sits above the title, so it does not go through skillMd(); the agent-facing line is the
+// shared one. Content is taken verbatim from the ticket — don't reword it here.
+//
+// It is the one skill that defines an artifact format: `requirements.md`, the spec it exists to
+// describe, including the `Status:` line inside that file. That is as far as it goes — it may
+// name a report file (`verify-report.md`) but never defines a report's format or its
+// status/verdict words (verify-report, validate-report, review-notes, qa-report); those stay in
+// the agent definitions' tracked sections.
+const SPEC_DRAFT_BANNER =
+  '> DRAFT: this skill has not been tested with real agent dispatches yet.\n' +
+  '> Remove this banner only after that test is done.\n' +
+  SKILL_DRAFT_AGENT_LINE;
+
+// The `## ` lines of the requirements.md template stay inside the ```markdown fence: parseSections
+// is fence-aware, an unfenced example heading would be read as a real section boundary.
+export function buildSpecSkill() {
+  return `---
+name: caf-spec
+description: Format and rules for writing requirements.md (the spec) for a CAF ticket. Use during Specify/Clarify, before writing the plan or tasks.
+---
+
+${SPEC_DRAFT_BANNER}
+
+# caf-spec — writing requirements.md
+
+The spec is the contract between human and agent: short, testable, no guessing.
+If the agent definition conflicts with this skill, the agent definition wins.
+Write the spec content in the language the ticket is written in.
+
+## Size
+- Depth follows ticket size. Small ticket: half a page. Do not add empty sections; write \`-\` when there is genuinely nothing.
+- The spec answers WHAT and WHY. How (files, functions, libraries) belongs to \`design.md\` and \`tasks.md\`, not here.
+
+## Template \`.caf/tasks/<ID-or-slug>/requirements.md\`
+
+\`\`\`markdown
+# <short title>
+Status: DRAFT | NEEDS_CLARIFICATION | APPROVED
+Source: <ticket ID or "chat">
+
+## 1. Outcome
+<1-3 sentences: what is different for the user/business when this is done>
+
+## 2. Scope
+In:
+- ...
+Out:
+- ...
+
+## 3. Constraints and Assumptions
+- Constraint: ...
+- Assumption: ... (label every assumption; a risky assumption becomes an open question)
+
+## 4. Decisions Already Made
+- ... (link the ADR if any: .caf/knowledge/decisions/adr-NNN-*.md)
+
+## 5. Open Questions
+- Q-1 [BLOCKING|NON-BLOCKING] <question> — Answer: <empty until answered>
+
+## 6. Acceptance Criteria
+- AC-1: When <condition>, then <observable result>. Verify: <automated test | manual: short steps>
+- AC-2: ...
+\`\`\`
+
+## Acceptance Criteria rules
+- The marker must be exactly \`AC-<number>:\` at the start of the item (read by regex; do not change the format).
+- One behavior per AC. Observable and testable; no subjective words ("fast", "clean", "intuitive") unless given a measurable threshold.
+- Always write \`Verify:\`. If no automated test is possible, write \`manual:\` and the steps. Never leave it empty; the validator uses it to flag ACs without tests.
+- Include failure paths and relevant edge cases (empty input, unauthorized, network error), not only the happy path.
+- Ticket touches UI: screen flow and states go in \`flow.md\`; the ACs stay here.
+
+## Open Questions rules
+- First check the ticket, the code, the ADRs and \`CLAUDE.md\`. Do not ask what is already answered there.
+- At most 5 questions, most decisive first. One question = one decision, with options and a recommendation when you have one.
+- BLOCKING = the answer changes scope or ACs; work stops until answered. NON-BLOCKING = a safe assumption is written explicitly in section 3.
+- Chat: ask the user directly. Ticket via orchestrator: write the questions in a ticket comment and stop.
+- Once answered: fill in \`Answer:\`, move the result to section 4 (Decisions) or change the ACs. Do not delete the question.
+
+## An approved spec is a contract
+- Once \`Status: APPROVED\`, do not change goal, scope, or ACs.
+- Spec wrong or impossible to satisfy: write the proposed change in \`verify-report.md\`; a human decides.
+
+## Check before finishing
+1. All six sections present and filled (or \`-\`).
+2. Every AC has a unique, sequential number and a \`Verify:\`.
+3. No implementation details.
+4. No guess that is not labeled as an assumption or an open question.
+5. ACs contradict each other or are impossible: set \`Status: NEEDS_CLARIFICATION\` and do not continue to tasks.
+`;
+}
+
 /**
  * Every skill file `caf-init scaffold skills` writes, in SKILL_NAMES order:
  * `[{ name, relPath, content, draft }]`. Pure — no filesystem, no clock.
@@ -248,6 +343,7 @@ export function buildSkillFiles({ mode, verifyApps } = {}) {
     'caf-no-guess': buildNoGuessSkill,
     'caf-escalate': buildEscalateSkill,
     'caf-piv': buildPivSkill,
+    'caf-spec': buildSpecSkill,
   };
   return SKILL_NAMES.map((name) => {
     const content = builders[name]();
