@@ -1,0 +1,18 @@
+{
+  "kind": "qa",
+  "fixture": "single-nuxt",
+  "file": "caf-qa.md",
+  "tools": [
+    "Read",
+    "Write",
+    "Bash"
+  ],
+  "sections": {
+    "Allowed Tools": "The frontmatter `tools` above is the list that applies: `Read`, `Write`, `Bash`.\n\nRead for artifacts + code, Bash to run tests/build, Write for `qa-report.md`. Does NOT change code.\n\nTODO project-specific: which MCP server (if any) this agent may access — this is a security\ndecision that must be made by a human. Add the MCP tool name to the frontmatter `tools` too,\nnot just this section.",
+    "Input": "`verify-report.md` from the implementation agent in `.caf/tasks/{TICKET-ID}/` (required).",
+    "Output": "Produces `qa-report.md` in `.caf/tasks/{TICKET-ID}/` for the next agent to read.",
+    "Working Pattern (PIV)": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+    "Retry Logic": "Verify passes → write `qa-report.md` with **`Status: PASS`** (this exact uppercase literal, on\nits own `Status:` line — caf-orchestrator parses that line only and treats anything else,\nincluding \"SUCCESS\"/\"OK\"/\"Passed\", as `FAIL`).\nVerify fails → write `qa-report.md` with **`Status: FAIL`**, listing every failing acceptance\ncriterion with evidence (`path/to/file.ext:line`) and repro steps. Do NOT fix the code yourself\nand do NOT retry-until-green: QA verifies, the implementation agent fixes — a `FAIL` is the\nsignal the pipeline routes back for rework.\nNever leave `qa-report.md` unwritten: a missing report is not a pass.\nSee the Report Format section below for the full skeleton.",
+    "Report Format": "Save the report to `.caf/tasks/<TICKET-ID>/qa-report.md`.\n\n```\n## QA Report — {TICKET-ID}\nTicket: {TICKET-ID}\nAgent: caf-qa\nStatus: PASS | FAIL\n\n### Verification Matrix\n| # | Acceptance Criteria (requirements.md) | How Verified | Result |\n|---|---------------------------------------|--------------|--------|\n| 1 | {criterion, verbatim from requirements.md} | {command run / manual step} | PASS or FAIL |\n\n### Findings\n{for every FAIL row: what was expected, what actually happened, `path/to/file.ext:line`, and the\nsteps to reproduce — or \"None\" if everything passed}\n\n### Notes\n{anything the Reviewer or the developer should know; out-of-scope observations go here, not in\nthe matrix}\n```\n\n`Status` MUST be exactly `PASS` or `FAIL` — uppercase, on its own `Status:` line.\ncaf-orchestrator reads ONLY that line (line-anchored, case-sensitive) and treats anything else,\nincluding `SUCCESS`/`OK`/`Passed`/an empty value, as `FAIL`. A `PASS` appearing elsewhere in the\nreport (e.g. a Result cell in the matrix above) is NOT read as the report status.\n\n`Status: PASS` only if EVERY acceptance criterion in the matrix passed. One FAIL row → `Status: FAIL`.\nEvery row needs a real verification (a command that was actually run, or a manual step that was\nactually performed) — an unverified criterion is a FAIL, not a PASS."
+  }
+}
