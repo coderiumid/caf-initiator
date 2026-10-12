@@ -143,54 +143,51 @@ test('curate audit: a correctly-generated Discovery agent reads IN_SYNC, not DRI
   }
 });
 
-test('curate sync leaves a correctly-generated Discovery agent unchanged on every guarded/role-aware section', async () => {
-  // "Working Pattern (PIV)" is deliberately excluded from this byte-for-byte check: its heading
-  // now matches the canonical template (the header-mismatch fix), but its BODY is still
-  // Discovery-specific wording that buildWorkingPatternSection() doesn't produce — see the
-  // "Working Pattern (PIV) content still differs..." test below for that section's own coverage.
-  // Every other section (guarded, or role-aware like Retry Logic) must be a true no-op.
-  const dir = makeTmpProject();
-  const rel = path.join('.claude', 'agents', 'caf-pm.md');
-  const content = buildPmAgentMd({});
-  fs.writeFileSync(path.join(dir, rel), content, 'utf8');
+test('curate sync leaves a correctly-generated Discovery agent byte-identical', async () => {
+  // Until CAF-SDD-03a2 "Working Pattern (PIV)" was the exception here: the comparator rendered the
+  // generic wording for every kind, so a first sync after baselining rewrote the Discovery text.
+  // buildWorkingPatternSection(kind) now answers for pm/ux-designer, so the whole file is a no-op.
+  for (const [file, build] of [
+    ['caf-pm.md', buildPmAgentMd],
+    ['caf-ux-designer.md', buildUxDesignerAgentMd],
+  ]) {
+    const dir = makeTmpProject();
+    const rel = path.join('.claude', 'agents', file);
+    const content = build({});
+    fs.writeFileSync(path.join(dir, rel), content, 'utf8');
 
-  const manifest = { version: 1, files: {} };
-  baselineEverySection(manifest, rel, content);
-  writeManifest(dir, manifest);
+    const manifest = { version: 1, files: {} };
+    baselineEverySection(manifest, rel, content);
+    writeManifest(dir, manifest);
 
-  const result = await agentsSync({ dir, agentDir: '.claude/agents' });
+    const result = await agentsSync({ dir, agentDir: '.claude/agents' });
 
-  const after = fs.readFileSync(path.join(dir, rel), 'utf8');
-  for (const header of ['Retry Logic', 'Verify Checklist', 'Role', 'Scope', 'Reference']) {
-    assert.equal(bodyOf(after, header), bodyOf(content, header), `${header} must not change`);
+    assert.equal(fs.readFileSync(path.join(dir, rel), 'utf8'), content, `${file} must not change`);
+    assert.deepEqual(result.drifted, []);
+    assert.deepEqual(result.updated, []);
+    assert.deepEqual(result.needsAttention, []);
   }
-  assert.deepEqual(result.drifted, [`${rel}#Working Pattern (PIV)`]);
-  assert.deepEqual(
-    result.needsAttention.map((n) => `${n.status}:${n.header}`),
-    []
-  );
 });
 
-test('Working Pattern (PIV) content still differs from the generic template — tracked, not guarded, and drift-syncs to the generic wording', async () => {
-  // Documents the known, accepted consequence of un-guarding this section (see open-items.md and
-  // CAF-DISCOVERY-SECTIONS-01): the header mismatch is fixed, so the section is now compared for
-  // real, but nothing gave it Discovery-specific body content yet — a first `curate sync` after
-  // baselining normalizes it to the Cluster 2 generic wording. That is a wording change, not a
-  // corrupted contract (unlike Allowed Tools), so it stays out of this ticket's fix.
-  const dir = makeTmpProject();
-  const rel = path.join('.claude', 'agents', 'caf-pm.md');
-  const content = buildPmAgentMd({});
-  fs.writeFileSync(path.join(dir, rel), content, 'utf8');
-
-  const manifest = { version: 1, files: {} };
-  baselineEverySection(manifest, rel, content);
-  writeManifest(dir, manifest);
-
-  await agentsSync({ dir, agentDir: '.claude/agents' });
-
-  const after = fs.readFileSync(path.join(dir, rel), 'utf8');
-  assert.notEqual(bodyOf(after, 'Working Pattern (PIV)'), bodyOf(content, 'Working Pattern (PIV)'));
-  assert.equal(bodyOf(after, 'Working Pattern (PIV)'), SYNCABLE_SECTIONS['Working Pattern (PIV)']('pm'));
+test('Working Pattern (PIV): the Discovery builder output is exactly what the Discovery agent files render', () => {
+  // The Discovery wording lives in discoveryAgentMd() and is repeated in
+  // buildWorkingPatternSection(kind) for the comparator — this is what keeps the two identical.
+  for (const [build, kind] of [
+    [buildPmAgentMd, 'pm'],
+    [buildUxDesignerAgentMd, 'ux-designer'],
+  ]) {
+    assert.equal(bodyOf(build({}), 'Working Pattern (PIV)'), SYNCABLE_SECTIONS['Working Pattern (PIV)'](kind));
+  }
+  // Every other kind, and no kind, keeps the generic text.
+  const generic = [
+    "1. PLAN — write a plan first, don't touch code yet",
+    '2. IMPLEMENT — execute per the plan',
+    '3. VERIFY — run the Verify Checklist below before declaring done',
+  ].join('\n');
+  assert.equal(SYNCABLE_SECTIONS['Working Pattern (PIV)'](undefined), generic);
+  for (const kind of ['planner', 'architect', 'frontend', 'backend', 'implementer', 'qa', 'reviewer', 'documentation', 'auditor', 'devops', 'implementation']) {
+    assert.equal(SYNCABLE_SECTIONS['Working Pattern (PIV)'](kind), generic, kind);
+  }
 });
 
 test('curate audit: a freshly-renamed Discovery fixture with no prior baseline reads Working Pattern (PIV) as UNTRACKED, not IN_SYNC', () => {

@@ -429,9 +429,22 @@ ${buildReportFormatSection(kind)}
   return '';
 }
 
-// Both fixed, kind-independent text — same reasoning as buildToolsSection: fully recoverable
-// post-generation, so curate's content-drift check can regenerate and compare them.
-export function buildWorkingPatternSection() {
+// Fixed text per kind — same reasoning as buildToolsSection: fully recoverable post-generation,
+// so curate's content-drift check can regenerate and compare it.
+// `kind` only matters for the Discovery kinds (CAF-SDD-03a2): caf-pm.md/caf-ux-designer.md are
+// written by discoveryAgentMd() with their own wording (documents, not code), and a comparator
+// that rendered the generic text read them as DRIFT and overwrote them. The lines below repeat
+// what discoveryAgentMd() renders, they don't replace it — test/false-drift.test.js and the
+// frozen-kinds goldens fail if the two ever differ. Every other kind, and no kind at all, gets
+// the generic text unchanged.
+export function buildWorkingPatternSection(kind) {
+  if (DISCOVERY_FOCUS[kind]) {
+    return [
+      '1. PLAN — first determine what\'s still unknown and needs to be asked of a human',
+      '2. IMPLEMENT — write the document',
+      '3. VERIFY — run the Verify Checklist below before claiming completion',
+    ].join('\n');
+  }
   return [
     '1. PLAN — write a plan first, don\'t touch code yet',
     '2. IMPLEMENT — execute per the plan',

@@ -31,7 +31,7 @@ export const TEMPLATE_SECTION_ORDER = [
 // Sections we can safely regenerate default content for without instance-specific data
 // (role/scope/verify scripts, all captured only at `caf-init scaffold agents` generation time and
 // not recoverable from the file alone). Every section here is either kind-only (Allowed Tools,
-// Input, Output, What to Look For, Report Format) or fully constant (Working Pattern, Retry
+// Input, Output, Working Pattern, What to Look For, Report Format) or fully constant (Retry
 // Logic) — CAF-CURATE-DIFF-01 extended this from "Input" alone specifically so content drift in
 // Retry Logic (the CDR-38 case: a template fix to the SUCCESS-literal instruction) is detectable
 // and auto-syncable, not just missing-section presence. Role/Scope/Verify Checklist are excluded
@@ -52,15 +52,61 @@ export const TEMPLATE_SECTION_ORDER = [
 // discoveryAgentMd() itself renders from), so the regenerated content matches the actual file
 // byte-for-byte and there's nothing left to guard. Compared normally for every kind now, same as
 // `Retry Logic` since CAF-RETRYLOGIC-01 and `Working Pattern (PIV)` since the header-mismatch fix.
+//
+// Called with `kind` alone, a builder answers "is this section part of that kind's template" and
+// gives the text for a section the file doesn't have yet. To compare against a section that is
+// already in a file, go through templateForExistingSection() below instead: `Input` of qa/reviewer
+// is not kind-only (CAF-SDD-03a2).
 export const SYNCABLE_SECTIONS = {
   'Allowed Tools': (kind) => buildToolsSection(kind),
-  Input: (kind) => buildInputSection(kind),
+  Input: (kind, { appNames = [] } = {}) => buildInputSection(kind, appNames),
   Output: (kind) => buildOutputSection(kind),
-  'Working Pattern (PIV)': () => buildWorkingPatternSection(),
+  'Working Pattern (PIV)': (kind) => buildWorkingPatternSection(kind),
   'Retry Logic': (kind) => buildRetryLogicSection(kind),
   'What to Look For': (kind) => buildWhatToLookForSection(kind),
   'Report Format': (kind) => buildReportFormatSection(kind),
 };
+
+// Kinds whose `## Input` names the assigned app paths (buildAgentMd's `appNames`, MONOREPO only):
+// "...from the implementation agent (apps/web, apps/api) in...". That list is chosen at generate
+// time and stored nowhere but in the file itself.
+const APP_LIST_INPUT_KINDS = ['qa', 'reviewer'];
+
+// The one place the list is rendered: right after this phrase, or not at all.
+const INPUT_APP_LIST = /from the implementation agent(?: \(([^()\n]+)\))?(?! \()/;
+
+/**
+ * The app paths named in a qa/reviewer `## Input` body: `[]` when the sentence is there without a
+ * list (SINGLE_REPO, or no app assigned), `null` when they can't be read with certainty — the
+ * sentence is missing or reworded, or the list isn't in the shape buildInputSection() writes.
+ * Never guesses: `null` means "unknown", and the caller must not treat the section as DRIFT.
+ */
+export function parseInputAppNames(body) {
+  const m = body.match(INPUT_APP_LIST);
+  if (!m) return null;
+  if (m[1] == null) return [];
+  const names = m[1].split(', ');
+  if (names.some((name) => name === '' || name !== name.trim())) return null;
+  return names;
+}
+
+/**
+ * The template text to compare an EXISTING section against — what the current template renders
+ * for this very file, not just for its kind. Returns null when that can't be rendered faithfully
+ * (the per-file context is lost): the caller must then never report or sync the section as DRIFT,
+ * since writing a template built without that context would delete it from the file
+ * (CAF-SDD-03a2: `curate sync` used to drop the app list from qa/reviewer `Input` this way).
+ *
+ * The context is read from the section's current body rather than recorded in the manifest. That
+ * is enough for the write path: only DRIFT is written, DRIFT requires current === baseline, so
+ * the app list in the file is the one that was generated. It also needs no manifest field, so a
+ * manifest written before this fix works unchanged.
+ */
+export function templateForExistingSection(header, kind, body) {
+  if (header !== 'Input' || !APP_LIST_INPUT_KINDS.includes(kind)) return SYNCABLE_SECTIONS[header](kind);
+  const appNames = parseInputAppNames(body);
+  return appNames == null ? null : SYNCABLE_SECTIONS.Input(kind, { appNames });
+}
 
 // 'auditor', 'pm', 'ux-designer' added alongside the caf- rename: buildInputSection/
 // buildOutputSection (or the discovery-commands.js equivalents for pm/ux-designer) already

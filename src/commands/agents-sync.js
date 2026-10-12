@@ -12,6 +12,7 @@ import {
   sectionBody,
   insertSection,
   replaceSectionBody,
+  templateForExistingSection,
 } from '../utils/agent-sections.js';
 import { hashSection, compareSection, SECTION_STATUS } from '../utils/section-diff.js';
 import { readManifest, writeManifest, getBaselineHash, setSectionBaseline } from '../utils/generate-manifest.js';
@@ -43,7 +44,7 @@ export async function agentsSync({ dir, agentDir: agentDirOpt, dryRun = false })
 
   if (files.length === 0) {
     console.log(kleur.red(`No agent definitions found in ${agentDirPath}. Run \`caf-init scaffold agents\` first.`));
-    return { updated: [], skipped: [], drifted: [], needsAttention: [] };
+    return { updated: [], skipped: [], drifted: [], needsAttention: [], unverifiable: [] };
   }
 
   const state = readSyncState(agentDirPath);
@@ -52,6 +53,7 @@ export async function agentsSync({ dir, agentDir: agentDirOpt, dryRun = false })
   const skipped = [];
   const drifted = [];
   const needsAttention = [];
+  const unverifiable = [];
   let manifestChanged = false;
 
   for (const file of files) {
@@ -73,10 +75,17 @@ export async function agentsSync({ dir, agentDir: agentDirOpt, dryRun = false })
       if (presentHeaders.has(header)) {
         const existingSection = sections.find((s) => s.header === header);
         const body = sectionBody(lines, existingSection);
+        const baselineHash = getBaselineHash(manifest, relPath, header);
+        // What the template renders for THIS file (qa/reviewer `Input` carries the app list read
+        // back from the file). null = that context can't be recovered, so whether the template
+        // changed is unknown: compare as "template unchanged", which can only yield IN_SYNC or
+        // CUSTOMIZATION — never DRIFT, so nothing is written — and say so at the end of the run.
+        const template = templateForExistingSection(header, kind, body);
+        if (template == null && baselineHash != null) unverifiable.push(`${relPath}#${header}`);
         const status = compareSection({
-          baselineHash: getBaselineHash(manifest, relPath, header),
+          baselineHash,
           currentHash: hashSection(body),
-          templateHash: hashSection(proposed),
+          templateHash: template == null ? baselineHash : hashSection(template),
         });
 
         if (status === SECTION_STATUS.IN_SYNC) continue;
@@ -96,9 +105,9 @@ export async function agentsSync({ dir, agentDir: agentDirOpt, dryRun = false })
           continue;
         }
 
-        currentContent = replaceSectionBody(lines, existingSection, proposed.trim());
+        currentContent = replaceSectionBody(lines, existingSection, template.trim());
         ({ lines, sections } = parseSections(currentContent));
-        setSectionBaseline(manifest, relPath, header, hashSection(proposed));
+        setSectionBaseline(manifest, relPath, header, hashSection(template));
         manifestChanged = true;
         fileChanged = true;
         drifted.push(`${relPath}#${header}`);
@@ -176,5 +185,20 @@ export async function agentsSync({ dir, agentDir: agentDirOpt, dryRun = false })
     console.log('');
   }
 
-  return { updated, skipped, drifted, needsAttention };
+  if (unverifiable.length > 0) {
+    console.log(kleur.bold(`${unverifiable.length} section(s) could not be compared against the template and were left untouched:`));
+    for (const ref of unverifiable) {
+      const [file, header] = ref.split('#');
+      console.log(`  ${file} ${kleur.dim('—')} \`## ${header}\``);
+    }
+    console.log(
+      kleur.dim(
+        '  the app list this section was generated with cannot be read back from it, so a template change ' +
+          'cannot be told apart — compare it with a freshly generated agent yourself if you want the latest wording'
+      )
+    );
+    console.log('');
+  }
+
+  return { updated, skipped, drifted, needsAttention, unverifiable };
 }

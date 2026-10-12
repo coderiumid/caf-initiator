@@ -139,9 +139,9 @@ test('regression: Allowed Tools/Input/Output for every Delivery kind + auditor i
 });
 
 test('curate audit: correctly-generated caf-pm.md/caf-ux-designer.md read IN_SYNC on Allowed Tools/Input/Output', () => {
-  // Working Pattern (PIV) wording alignment is explicitly out of scope for this ticket (see
-  // requirements.md) and legitimately still compares as DRIFT — this test only asserts the three
-  // sections this ticket owns.
+  // This test only asserts the three sections CAF-DISCOVERY-SECTIONS-01 owns. Working Pattern
+  // (PIV) was out of scope there and compared as DRIFT until CAF-SDD-03a2 fixed it — see
+  // false-drift.test.js.
   for (const [relName, build, kind] of [
     ['caf-pm.md', buildPmAgentMd, 'pm'],
     ['caf-ux-designer.md', buildUxDesignerAgentMd, 'ux-designer'],

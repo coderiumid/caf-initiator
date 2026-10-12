@@ -15,7 +15,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { agentsSync } from '../src/commands/agents-sync.js';
-import { SYNCABLE_SECTIONS, detectKind, parseSections, sectionBody } from '../src/utils/agent-sections.js';
+import {
+  SYNCABLE_SECTIONS,
+  detectKind,
+  parseSections,
+  sectionBody,
+  templateForExistingSection,
+} from '../src/utils/agent-sections.js';
 import { readManifest, getBaselineHash, setSectionBaseline, writeManifest } from '../src/utils/generate-manifest.js';
 import { hashSection, compareSection, SECTION_STATUS } from '../src/utils/section-diff.js';
 import { copyFixture } from './helpers/make-repo.js';
@@ -35,23 +41,6 @@ const FROZEN_MESSAGE =
   'builder kind ini dibekukan (CAF-SDD-03a): perubahan pada section ter-track menimpa file agent ' +
   'lama lewat DRIFT saat `curate sync`. If the change is intended, it needs its own ticket and a ' +
   'deliberate edit of the golden file — do not regenerate the golden to make this pass.';
-
-// AC-2. The only tracked sections allowed to read as anything but IN_SYNC right after generate +
-// baseline. All three are false DRIFT whose root cause is fixed in CAF-SDD-03a2, not here:
-//   - pm / ux-designer `Working Pattern (PIV)`: discovery-commands.js renders Discovery wording,
-//     the comparator always renders the generic one.
-//   - qa `Input` in a monorepo: the file embeds the assigned app paths, the comparator can't.
-// Compared as an exact set: a new DRIFT fails, and so does a row that stopped being DRIFT (delete
-// the row and its todo test below when 03a2 lands).
-const KNOWN_FALSE_DRIFT = [
-  { kind: 'pm', fixture: 'mono-pnpm', section: 'Working Pattern (PIV)', status: 'DRIFT' },
-  { kind: 'pm', fixture: 'single-nuxt', section: 'Working Pattern (PIV)', status: 'DRIFT' },
-  { kind: 'ux-designer', fixture: 'mono-pnpm', section: 'Working Pattern (PIV)', status: 'DRIFT' },
-  { kind: 'ux-designer', fixture: 'single-nuxt', section: 'Working Pattern (PIV)', status: 'DRIFT' },
-  { kind: 'qa', fixture: 'mono-pnpm', section: 'Input', status: 'DRIFT' },
-];
-
-const rowKey = ({ kind, fixture, section, status }) => `${kind} | ${fixture} | ${section} | ${status}`;
 
 const rendered = {
   'mono-pnpm': await renderAgents('mono-pnpm'),
@@ -95,10 +84,12 @@ function sectionStatuses(dir, relPath) {
       out[header] = 'MISSING';
       continue;
     }
+    const baselineHash = getBaselineHash(manifest, relPath, header);
+    const template = templateForExistingSection(header, kind, bodies[header]);
     out[header] = compareSection({
-      baselineHash: getBaselineHash(manifest, relPath, header),
+      baselineHash,
       currentHash: hashSection(bodies[header]),
-      templateHash: hashSection(proposed),
+      templateHash: template == null ? baselineHash : hashSection(template),
     });
   }
   return out;
@@ -119,75 +110,43 @@ for (const { kind, fixture } of FROZEN) {
   });
 }
 
-test('AC-2: after generate + baseline, the non-IN_SYNC tracked sections are exactly the known false DRIFT table', async () => {
-  const actual = [];
+// The false DRIFTs this test used to list as known exceptions (pm / ux-designer `Working Pattern
+// (PIV)`, qa `Input` in a monorepo) were fixed at the root in CAF-SDD-03a2, so there is no
+// exception table any more: every frozen kind must come through `curate sync` untouched.
+test('AC-2: after generate + baseline, every tracked section of every frozen kind is IN_SYNC and curate sync writes nothing', async () => {
+  const notInSync = [];
 
   for (const { kind, fixture } of FROZEN) {
     const agent = rendered[fixture][kind];
     const label = `${agent.file} (${fixture})`;
-    const expectedHeaders = KNOWN_FALSE_DRIFT.filter((r) => r.kind === kind && r.fixture === fixture).map((r) => r.section);
     const { dir, relPath } = makeBaselinedRepo(fixture, agent);
     const filePath = path.join(dir, relPath);
 
-    const statuses = sectionStatuses(dir, relPath);
-    const notInSync = Object.entries(statuses).filter(([, status]) => status !== SECTION_STATUS.IN_SYNC);
-    for (const [section, status] of notInSync) actual.push({ kind, fixture, section, status });
-    // Only DRIFT reaches agentsSync below: MISSING would open an interactive prompt.
-    if (notInSync.some(([, status]) => status !== SECTION_STATUS.DRIFT)) continue;
-    const driftedRefs = notInSync.map(([section]) => `${relPath}#${section}`);
-
-    // dry-run: reports the same sections, writes nothing.
-    const dry = await silenced(() => agentsSync({ dir, agentDir: AGENT_DIR, dryRun: true }));
-    assert.deepEqual(dry.drifted, driftedRefs, `${label}: dry-run drifted list`);
-    assert.deepEqual(dry.needsAttention, [], `${label}: dry-run needsAttention`);
-    assert.equal(fs.readFileSync(filePath, 'utf8'), agent.content, `${label}: dry-run must not write`);
-
-    // write
-    const result = await silenced(() => agentsSync({ dir, agentDir: AGENT_DIR }));
-    const after = fs.readFileSync(filePath, 'utf8');
-    assert.deepEqual(result.drifted, driftedRefs, `${label}: drifted list`);
-    assert.deepEqual(result.needsAttention, [], `${label}: needsAttention`);
-
-    if (expectedHeaders.length === 0) {
-      assert.equal(after, agent.content, `${label}: must stay byte-identical after curate sync. ${FROZEN_MESSAGE}`);
-      assert.deepEqual(result.updated, [], `${label}: must not be reported as updated`);
-      continue;
+    for (const [section, status] of Object.entries(sectionStatuses(dir, relPath))) {
+      if (status !== SECTION_STATUS.IN_SYNC) notInSync.push(`${kind} | ${fixture} | ${section} | ${status}`);
     }
+    // MISSING would open an interactive prompt in agentsSync; it is already recorded above.
+    if (Object.values(sectionStatuses(dir, relPath)).includes('MISSING')) continue;
 
-    // A known-exception file: nothing but the listed section(s) may have changed.
-    const before = trackedSections(agent.content);
-    let restored = after;
-    for (const header of Object.keys(before)) {
-      const body = trackedSections(after)[header];
-      if (expectedHeaders.includes(header)) {
-        restored = restored.replace(`## ${header}\n${body}`, `## ${header}\n${before[header]}`);
-      } else {
-        assert.equal(body, before[header], `${label}: "## ${header}" is outside the exception table and must not change`);
-      }
+    for (const dryRun of [true, false]) {
+      const mode = dryRun ? 'dry-run' : 'write';
+      const result = await silenced(() => agentsSync({ dir, agentDir: AGENT_DIR, dryRun }));
+      assert.deepEqual(result.drifted, [], `${label} (${mode}): drifted list`);
+      assert.deepEqual(result.needsAttention, [], `${label} (${mode}): needsAttention`);
+      assert.deepEqual(result.unverifiable, [], `${label} (${mode}): unverifiable`);
+      assert.deepEqual(result.updated, [], `${label} (${mode}): must not be reported as updated`);
+      assert.equal(
+        fs.readFileSync(filePath, 'utf8'),
+        agent.content,
+        `${label} (${mode}): must stay byte-identical after curate sync. ${FROZEN_MESSAGE}`
+      );
     }
-    assert.equal(restored, agent.content, `${label}: only ${expectedHeaders.join(', ')} may differ after curate sync`);
   }
 
   assert.deepEqual(
-    actual.map(rowKey).sort(),
-    KNOWN_FALSE_DRIFT.map(rowKey).sort(),
-    'the set of non-IN_SYNC tracked sections (kind | fixture | section | status) must equal KNOWN_FALSE_DRIFT ' +
-      'exactly. An extra row is a new DRIFT: `curate sync` would now overwrite that section in existing repos. ' +
-      'A missing row means a known false DRIFT is fixed: remove it from the table together with its todo test.'
+    notInSync,
+    [],
+    'the set of non-IN_SYNC tracked sections (kind | fixture | section | status) must be empty. ' +
+      'A row here is a new DRIFT: `curate sync` would now overwrite that section in existing repos.'
   );
 });
-
-// One per table row: the behaviour 03a2 is expected to deliver. Fails today, reported as todo.
-for (const row of KNOWN_FALSE_DRIFT) {
-  test(
-    `AC-2: ${row.kind} on ${row.fixture} — "## ${row.section}" is IN_SYNC and survives curate sync`,
-    { todo: 'diperbaiki di CAF-SDD-03a2' },
-    async () => {
-      const agent = rendered[row.fixture][row.kind];
-      const { dir, relPath } = makeBaselinedRepo(row.fixture, agent);
-      assert.equal(sectionStatuses(dir, relPath)[row.section], SECTION_STATUS.IN_SYNC);
-      await silenced(() => agentsSync({ dir, agentDir: AGENT_DIR }));
-      assert.equal(fs.readFileSync(path.join(dir, relPath), 'utf8'), agent.content);
-    }
-  );
-}

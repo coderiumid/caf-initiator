@@ -15,8 +15,13 @@ const SLOT_START_PATTERNS = Object.fromEntries(
 );
 
 // `test:watch`, `test-watch`, `lint_watch`: a script that never exits can't be a verify gate.
+// camelCase counts as a segment boundary too (CAF-SDD-03a2): `testWatch` and `watchTest` are
+// watch mode, `watchman:build` and `testWatcher` are not — "watch" must be a whole segment.
 function isWatchScript(name) {
-  return name.split(/[:\-_.\s]+/).some((segment) => segment.toLowerCase() === 'watch');
+  return name
+    .replace(/([a-z0-9])([A-Z])/g, '$1:$2')
+    .split(/[:\-_.\s]+/)
+    .some((segment) => segment.toLowerCase() === 'watch');
 }
 
 // npm lifecycle hooks (`pretest`, `postbuild`) run around another script, they aren't the gate

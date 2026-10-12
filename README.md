@@ -254,12 +254,11 @@ Each tracked section has a baseline hash in `.caf/.generate-manifest.json`. Comp
 
 Only `DRIFT` is ever written, and `DRIFT` requires the file to match its baseline exactly. A section you edited by hand can therefore never be overwritten.
 
-> **Known issue.** Two sections can read as `DRIFT` right after `curate baseline`, although nobody changed the template:
->
-> - `Input` of the QA and Reviewer agents in a monorepo. A sync would replace it with a generic version without the app names.
-> - `Working Pattern (PIV)` of the PM and UX Designer agents. A sync would replace it with the generic wording.
->
-> Run `curate --sync-only --dry-run` first and review what it would change.
+`Input` of the QA and Reviewer agents in a monorepo also names the apps assigned at generate time. `curate` reads that list back from the section itself, so a sync updates the wording around it and keeps the list. If the list cannot be read with certainty (the sentence was reworded), the section is never treated as `DRIFT`: it is left untouched and `curate --sync-only` lists it as not comparable.
+
+`Working Pattern (PIV)` of the PM and UX Designer agents is compared against their own Discovery wording, not the generic one.
+
+Both used to read as `DRIFT` right after `curate baseline` and a sync rewrote them (the app names were lost). A manifest written by an earlier version works unchanged; its format did not change.
 
 #### `caf-init curate baseline`
 
