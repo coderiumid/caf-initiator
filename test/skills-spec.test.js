@@ -193,7 +193,7 @@ for (const [name, fixture] of Object.entries(FIXTURE)) {
 }
 
 test('AC-4: the planner maps to caf-spec, and only the planner', () => {
-  assert.deepEqual(skillsForKind('planner'), ['caf-scope-discipline', 'caf-no-guess', 'caf-spec']);
+  assert.deepEqual(skillsForKind('planner'), ['caf-scope-discipline', 'caf-no-guess', 'caf-spec', 'caf-traceability']);
   for (const kind of Object.keys(SKILLS_BY_KIND)) {
     assert.equal(skillsForKind(kind).includes('caf-spec'), kind === 'planner', kind);
   }
@@ -213,13 +213,15 @@ test('AC-4: while the DRAFT banner is there, no planner gets a pointer to caf-sp
   assert.equal(result.pointers.added.length, 1);
   const existing = read(dir, '.claude/agents/caf-planner.md');
   assert.deepEqual(pointersIn(existing), ['caf-scope-discipline', 'caf-no-guess'].map(skillPath));
-  assert.ok(!existing.includes('caf-spec'));
+  // Since CAF-SDD-02 the planner's Output names the `caf-spec` skill in prose; what must not be
+  // there is a pointer: no path to its SKILL.md anywhere in the file.
+  assert.ok(!existing.includes(skillPath('caf-spec')));
 
   // a planner generated now: same — and byte-identical to what it was before caf-spec existed
   assert.deepEqual(usableSkillPaths(dir, 'planner'), ['caf-scope-discipline', 'caf-no-guess'].map(skillPath));
   const rendered = planner(usableSkillPaths(dir, 'planner'));
   assert.equal(rendered, planner(['caf-scope-discipline', 'caf-no-guess'].map(skillPath)));
-  assert.ok(!rendered.includes('caf-spec'));
+  assert.ok(!rendered.includes(skillPath('caf-spec')));
 
   // a planner that already has `## Skills` is never edited, whatever the run finds
   const before = read(dir, '.claude/agents/caf-planner.md');

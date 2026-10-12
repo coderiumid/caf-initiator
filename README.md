@@ -9,6 +9,8 @@ You can use `caf-init` on its own: the agents it generates also run directly in 
 
 `caf-init` never calls an AI model. Everything it writes is a deterministic draft built from what it detected; anything it could not detect is left as a `TODO`, never guessed.
 
+CAF follows Spec-Driven Development: spec-first, moving toward spec-anchored, and not spec-as-source. The generated Planner writes the spec (`requirements.md`, with numbered acceptance criteria) before it writes `tasks.md`, stops on a blocking open question instead of guessing, and ties every task to the acceptance criteria it serves. Once a human marks the spec `APPROVED`, agents do not edit it: a proposed change is written in `verify-report.md`, next to one line of evidence per acceptance criterion, and a human decides. The spec is kept next to the code as the contract for the work; code is not generated from it. These are instructions in the generated files: `caf-init` does not check that an agent followed them.
+
 The full CAF specification is in [`CAF.md`](./CAF.md).
 
 ## Links
@@ -159,7 +161,7 @@ Options:
 
 ### `caf-init scaffold skills`
 
-Writes six universal skills into `.claude/skills/<name>/SKILL.md`.
+Writes seven universal skills into `.claude/skills/<name>/SKILL.md`.
 
 | Skill | What it tells the reader | Agents that point at it |
 |---|---|---|
@@ -169,6 +171,7 @@ Writes six universal skills into `.claude/skills/<name>/SKILL.md`.
 | `caf-escalate` | When to stop and hand the task back to a human | implementation agents |
 | `caf-piv` | Plan, wait for the go-ahead, implement, verify | none (manual sessions only) |
 | `caf-spec` | The `requirements.md` (spec) format: scope, open questions, acceptance criteria | Planner — always written as a `DRAFT`, so no pointer yet |
+| `caf-traceability` | Link every acceptance criterion to tasks, code and a named test; one evidence line per criterion in `verify-report.md` | Planner, Frontend, Backend — always written as a `DRAFT`, so no pointer yet |
 
 Auditor, PM and UX Designer agents get no skills.
 
@@ -186,7 +189,7 @@ Auditor, PM and UX Designer agents get no skills.
 
 To activate it, resolve the `TODO` lines and remove the whole banner: both the `> DRAFT ...` sentence and the `> Agents: this skill is NOT ready...` line.
 
-`caf-spec` is written with a `DRAFT` banner in every repo. It has no `TODO` line; remove its banner once you have tested the skill in a real agent run.
+`caf-spec` and `caf-traceability` are written with a `DRAFT` banner in every repo. They have no `TODO` line; remove a skill's banner once you have tested that skill in a real agent run.
 
 **Pointers in existing agent definitions**
 

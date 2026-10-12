@@ -43,13 +43,14 @@ const SHAPES = {
   complete: { mode: 'SINGLE_REPO', verifyApps: [{ scripts: ALL_SCRIPTS, packageManager: 'pnpm', packageName: null, appPath: '.' }] },
 };
 
-// caf-spec (CAF-SDD-01) is constant too, but born a DRAFT — covered in skills-spec.test.js.
-const BORN_DRAFT = ['caf-spec'];
+// caf-spec (CAF-SDD-01) and caf-traceability (CAF-SDD-02) are constant too, but born a DRAFT —
+// covered in skills-spec.test.js and sdd02-planner-spec.test.js.
+const BORN_DRAFT = ['caf-spec', 'caf-traceability'];
 const CONSTANT = SKILL_NAMES.filter((n) => n !== 'caf-verify' && !BORN_DRAFT.includes(n));
 const byName = (files, name) => files.find((f) => f.name === name);
 
-test('skill set: six caf- prefixed skills under .claude/skills, in a fixed order', () => {
-  assert.deepEqual(SKILL_NAMES, ['caf-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate', 'caf-piv', 'caf-spec']);
+test('skill set: seven caf- prefixed skills under .claude/skills, in a fixed order', () => {
+  assert.deepEqual(SKILL_NAMES, ['caf-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate', 'caf-piv', 'caf-spec', 'caf-traceability']);
   assert.ok(SKILL_NAMES.every((n) => n.startsWith('caf-')));
   assert.equal(SKILLS_DIR, '.claude/skills');
   const files = buildSkillFiles(SHAPES.single);
@@ -71,7 +72,8 @@ test('mapping (D7): exact table, caf-piv mapped to no kind, restricted kinds get
   assert.deepEqual(
     Object.fromEntries([...KNOWN_KINDS, 'implementation'].map((k) => [k, skillsForKind(k)])),
     {
-      planner: [...writer, 'caf-spec'], architect: writer, frontend: impl, backend: impl, implementer: impl,
+      planner: [...writer, 'caf-spec', 'caf-traceability'], architect: writer,
+      frontend: [...impl, 'caf-traceability'], backend: [...impl, 'caf-traceability'], implementer: impl,
       qa: ['caf-verify', 'caf-no-guess'], reviewer: writer, documentation: writer,
       auditor: [], pm: [], 'ux-designer': [], devops: [], implementation: impl,
     }
