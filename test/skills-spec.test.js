@@ -33,10 +33,10 @@ const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtur
 const FIXTURE = { 'single-nuxt': path.join(FIXTURES, 'single-nuxt'), 'mono-pnpm': path.join(FIXTURES, 'mono-pnpm') };
 const REL = skillPath('caf-spec');
 
-// The proven 3-line banner, exactly as in .ai/tasks/CAF-SDD-01/caf-spec.source.md.
+// The proven 3-line banner, exactly as in .ai/tasks/CAF-SDD-01/caf-spec.source.v2.md.
 const BANNER = [
-  '> DRAFT: skill ini belum diuji dispatch nyata di umkm-pos.',
-  '> Hapus banner ini hanya setelah uji selesai.',
+  '> DRAFT: this skill has not been tested with real agent dispatches yet.',
+  '> Remove this banner only after that test is done.',
   '> Agents: this skill is NOT ready. Do not apply any rule in this file; ignore it entirely until this banner is removed.',
 ];
 
@@ -83,14 +83,43 @@ test('caf-spec template: no placeholder, no open TODO line, example headings sta
   assert.ok(open > 0 && close > open);
   const fenced = lines.slice(open + 1, close).filter((l) => l.startsWith('## '));
   assert.deepEqual(fenced, [
-    '## 1. Hasil Akhir', '## 2. Scope', '## 3. Constraint dan Asumsi',
-    '## 4. Keputusan yang Sudah Diambil', '## 5. Pertanyaan Terbuka', '## 6. Acceptance Criteria',
+    '## 1. Outcome', '## 2. Scope', '## 3. Constraints and Assumptions',
+    '## 4. Decisions Already Made', '## 5. Open Questions', '## 6. Acceptance Criteria',
   ]);
+  const template = lines.slice(open + 1, close);
+  for (const expected of ['In:', 'Out:', 'Status: DRAFT | NEEDS_CLARIFICATION | APPROVED']) {
+    assert.ok(template.includes(expected), expected);
+  }
+  assert.ok(template.some((l) => /^- AC-1: When .*, then .*\. Verify: /.test(l)));
+  assert.ok(template.some((l) => /^- Q-1 \[BLOCKING\|NON-BLOCKING\] .* — Answer: /.test(l)));
   // parseSections is fence-aware: none of the six example headings is a section boundary.
   assert.deepEqual(parseSections(md).sections.map((s) => s.header), [
-    'Ukuran', 'Template `.caf/tasks/<ID-atau-slug>/requirements.md`', 'Aturan Acceptance Criteria',
-    'Aturan Pertanyaan Terbuka', 'Spec Disetujui = Kontrak', 'Cek Sebelum Selesai',
+    'Size', 'Template `.caf/tasks/<ID-or-slug>/requirements.md`', 'Acceptance Criteria rules',
+    'Open Questions rules', 'An approved spec is a contract', 'Check before finishing',
   ]);
+});
+
+test('caf-spec banner: three lines, no project name; the agent definition wins', () => {
+  const md = buildSpecSkill();
+  const banner = md.split('\n').filter((l) => l.startsWith('>'));
+  assert.deepEqual(banner, BANNER);
+  assert.match(banner[0], /^> DRAFT\b/);
+  assert.ok(!/umkm-pos/i.test(md));
+  assert.ok(md.includes('If the agent definition conflicts with this skill, the agent definition wins.'));
+});
+
+// The one narrowed invariant (see CLAUDE.md, "Skills"): caf-spec defines requirements.md, with
+// its own `Status:` line, and may name a report file — it never defines a report's format or
+// its status/verdict words.
+test('caf-spec defines requirements.md only: no report format, no report status or verdict word', () => {
+  const md = buildSpecSkill();
+  const statusLines = md.split('\n').filter((l) => /^Status:/.test(l));
+  assert.deepEqual(statusLines, ['Status: DRAFT | NEEDS_CLARIFICATION | APPROVED']);
+  // the only report file named, and only as the place to write a proposed spec change
+  assert.deepEqual([...new Set(md.match(/\b[a-z-]+-(?:report|notes)(?:\.md)?\b/g))], ['verify-report.md']);
+  assert.ok(!/validate-report|review-notes|qa-report/.test(md));
+  assert.ok(!/\b(?:SUCCESS|NEEDS_HUMAN|PASS(?:ED)?|FAIL(?:ED)?|BLOCKED|REQUEST_CHANGES|CHANGES_REQUESTED)\b/.test(md));
+  assert.ok(!/## (?:Attempt Log|Quality Gate|Verdict)/.test(md));
 });
 
 for (const [name, fixture] of Object.entries(FIXTURE)) {

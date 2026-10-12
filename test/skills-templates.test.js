@@ -155,9 +155,7 @@ test('skills an agent may point at never tell it to wait for a chat reply (headl
   const mapped = [...new Set(Object.values(SKILLS_BY_KIND).flat())];
   for (const name of mapped) {
     assert.ok(!/\bwait for\b|go-ahead|\bconfirmation\b|\bapproval\b/i.test(byName(files, name).content), name);
-    // caf-spec's text is the ticket's, verbatim, and has no "agent definition wins" line. It is a
-    // DRAFT no agent is pointed at; whether it needs that line is decided before its banner goes.
-    if (!BORN_DRAFT.includes(name)) assert.match(byName(files, name).content, /agent definition/);
+    assert.match(byName(files, name).content, /agent definition/);
   }
   assert.match(byName(files, 'caf-piv').content, /wait for the user's go-ahead/);
   assert.match(byName(files, 'caf-piv').content, /do not\s+apply this in an agent or headless run/);

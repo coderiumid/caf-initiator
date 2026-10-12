@@ -140,7 +140,12 @@ in `TARGETS` but not in `CHAIN_ORDER`. No `--skill-dir` — `curate` has no matc
   mention it in prose, and it would inflate `check-drafts`' per-agent count).
 - `caf-piv` tells the reader to wait for the user's go-ahead, so it is mapped to no kind — a test
   enforces that. A skill an agent may point at must never say "wait for confirmation" and must
-  never redefine a report file or status word (those live in the tracked sections).
+  never redefine a report file or status word (those live in the tracked sections). One
+  deliberate, narrow exception (CAF-SDD-01): `caf-spec` defines the format of the spec artifact
+  it exists for — `requirements.md`, including the `Status:` line inside it — and may name a
+  report file. It still must not define the format or the status/verdict words of a report file
+  (verify-report, validate-report, review-notes, qa-report). This covers `caf-spec` and
+  `requirements.md` only; a test in `test/skills-spec.test.js` holds the boundary.
 - Adding the section to an existing agent is the **one** sanctioned rewrite of an existing file:
   preview + per-file confirm, then `writeIfAbsent(..., { overwrite: true })` only after
   `isPureInsertion` proves new content = old content + exactly one block. An agent that already

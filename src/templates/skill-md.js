@@ -243,9 +243,15 @@ Do not commit or push unless the user asks.`,
 // resolve, it waits for a manual dispatch test. Its banner therefore has its own first two lines
 // and sits above the title, so it does not go through skillMd(); the agent-facing line is the
 // shared one. Content is taken verbatim from the ticket — don't reword it here.
+//
+// It is the one skill that defines an artifact format: `requirements.md`, the spec it exists to
+// describe, including the `Status:` line inside that file. That is as far as it goes — it may
+// name a report file (`verify-report.md`) but never defines a report's format or its
+// status/verdict words (verify-report, validate-report, review-notes, qa-report); those stay in
+// the agent definitions' tracked sections.
 const SPEC_DRAFT_BANNER =
-  '> DRAFT: skill ini belum diuji dispatch nyata di umkm-pos.\n' +
-  '> Hapus banner ini hanya setelah uji selesai.\n' +
+  '> DRAFT: this skill has not been tested with real agent dispatches yet.\n' +
+  '> Remove this banner only after that test is done.\n' +
   SKILL_DRAFT_AGENT_LINE;
 
 // The `## ` lines of the requirements.md template stay inside the ```markdown fence: parseSections
@@ -253,74 +259,76 @@ const SPEC_DRAFT_BANNER =
 export function buildSpecSkill() {
   return `---
 name: caf-spec
-description: Format dan aturan menulis requirements.md (spec) untuk ticket CAF. Pakai saat fase Specify/Clarify, sebelum menulis rencana atau tasks.
+description: Format and rules for writing requirements.md (the spec) for a CAF ticket. Use during Specify/Clarify, before writing the plan or tasks.
 ---
 
 ${SPEC_DRAFT_BANNER}
 
-# caf-spec — menulis requirements.md
+# caf-spec — writing requirements.md
 
-Spec = kontrak antara manusia dan agent. Pendek, bisa diuji, tidak menebak.
+The spec is the contract between human and agent: short, testable, no guessing.
+If the agent definition conflicts with this skill, the agent definition wins.
+Write the spec content in the language the ticket is written in.
 
-## Ukuran
-- Kedalaman sesuai ukuran ticket. Ticket kecil: setengah halaman. Jangan menambah section kosong; tulis \`-\` bila memang tidak ada.
-- Spec menjawab APA dan KENAPA. Cara (file, fungsi, library) milik \`design.md\` dan \`tasks.md\`, bukan di sini.
+## Size
+- Depth follows ticket size. Small ticket: half a page. Do not add empty sections; write \`-\` when there is genuinely nothing.
+- The spec answers WHAT and WHY. How (files, functions, libraries) belongs to \`design.md\` and \`tasks.md\`, not here.
 
-## Template \`.caf/tasks/<ID-atau-slug>/requirements.md\`
+## Template \`.caf/tasks/<ID-or-slug>/requirements.md\`
 
 \`\`\`markdown
-# <judul singkat>
+# <short title>
 Status: DRAFT | NEEDS_CLARIFICATION | APPROVED
-Sumber: <ID ticket atau "chat">
+Source: <ticket ID or "chat">
 
-## 1. Hasil Akhir
-<1-3 kalimat: apa yang berbeda bagi user/bisnis setelah selesai>
+## 1. Outcome
+<1-3 sentences: what is different for the user/business when this is done>
 
 ## 2. Scope
-Masuk:
+In:
 - ...
-Tidak masuk:
+Out:
 - ...
 
-## 3. Constraint dan Asumsi
+## 3. Constraints and Assumptions
 - Constraint: ...
-- Asumsi: ... (tandai tiap asumsi; asumsi yang berisiko jadi pertanyaan terbuka)
+- Assumption: ... (label every assumption; a risky assumption becomes an open question)
 
-## 4. Keputusan yang Sudah Diambil
-- ... (tautkan ADR bila ada: .caf/knowledge/decisions/adr-NNN-*.md)
+## 4. Decisions Already Made
+- ... (link the ADR if any: .caf/knowledge/decisions/adr-NNN-*.md)
 
-## 5. Pertanyaan Terbuka
-- Q-1 [BLOCKING|NON-BLOCKING] <pertanyaan> — Jawaban: <kosong sampai dijawab>
+## 5. Open Questions
+- Q-1 [BLOCKING|NON-BLOCKING] <question> — Answer: <empty until answered>
 
 ## 6. Acceptance Criteria
-- AC-1: Ketika <kondisi>, maka <hasil yang teramati>. Verifikasi: <tes otomatis | manual: langkah singkat>
+- AC-1: When <condition>, then <observable result>. Verify: <automated test | manual: short steps>
 - AC-2: ...
 \`\`\`
 
-## Aturan Acceptance Criteria
-- Penanda wajib persis \`AC-<angka>:\` di awal butir (dibaca regex; jangan ganti format).
-- Satu perilaku per AC. Teramati dan bisa diuji; tanpa kata subjektif ("cepat", "rapi", "intuitif") kecuali diberi ambang terukur.
-- Selalu tulis \`Verifikasi:\`. Bila tidak ada cara tes otomatis, tulis \`manual:\` dan langkahnya. Jangan dikosongkan; validator memakainya untuk menandai AC tanpa tes.
-- Sertakan jalur gagal dan edge case yang relevan (input kosong, tidak berizin, error jaringan), bukan hanya jalur sukses.
-- Ticket yang menyentuh UI: alur layar dan state masuk \`flow.md\`, AC tetap di sini.
+## Acceptance Criteria rules
+- The marker must be exactly \`AC-<number>:\` at the start of the item (read by regex; do not change the format).
+- One behavior per AC. Observable and testable; no subjective words ("fast", "clean", "intuitive") unless given a measurable threshold.
+- Always write \`Verify:\`. If no automated test is possible, write \`manual:\` and the steps. Never leave it empty; the validator uses it to flag ACs without tests.
+- Include failure paths and relevant edge cases (empty input, unauthorized, network error), not only the happy path.
+- Ticket touches UI: screen flow and states go in \`flow.md\`; the ACs stay here.
 
-## Aturan Pertanyaan Terbuka
-- Cek dulu ticket, kode, ADR, dan \`CLAUDE.md\`. Jangan bertanya hal yang sudah terjawab di sana.
-- Maksimal 5 pertanyaan, diurutkan dari yang paling menentukan. Satu pertanyaan = satu keputusan, dengan opsi dan rekomendasi bila ada.
-- BLOCKING = jawabannya mengubah scope atau AC; kerja berhenti sampai dijawab. NON-BLOCKING = ada asumsi aman yang ditulis eksplisit di bagian 3.
-- Chat: tanyakan langsung ke user. Ticket via orchestrator: tulis pertanyaan di komentar ticket lalu berhenti.
-- Setelah dijawab: isi \`Jawaban:\`, pindahkan hasilnya ke bagian 4 (Keputusan) atau ubah AC. Jangan menghapus pertanyaannya.
+## Open Questions rules
+- First check the ticket, the code, the ADRs and \`CLAUDE.md\`. Do not ask what is already answered there.
+- At most 5 questions, most decisive first. One question = one decision, with options and a recommendation when you have one.
+- BLOCKING = the answer changes scope or ACs; work stops until answered. NON-BLOCKING = a safe assumption is written explicitly in section 3.
+- Chat: ask the user directly. Ticket via orchestrator: write the questions in a ticket comment and stop.
+- Once answered: fill in \`Answer:\`, move the result to section 4 (Decisions) or change the ACs. Do not delete the question.
 
-## Spec Disetujui = Kontrak
-- Setelah \`Status: APPROVED\`, jangan ubah tujuan, scope, maupun AC.
-- Spec keliru atau mustahil dipenuhi: tulis usulan perubahan di \`verify-report.md\`; manusia yang memutuskan.
+## An approved spec is a contract
+- Once \`Status: APPROVED\`, do not change goal, scope, or ACs.
+- Spec wrong or impossible to satisfy: write the proposed change in \`verify-report.md\`; a human decides.
 
-## Cek Sebelum Selesai
-1. Enam section ada dan terisi (atau \`-\`).
-2. Setiap AC bernomor unik berurutan dan punya \`Verifikasi:\`.
-3. Tidak ada detail implementasi.
-4. Tidak ada tebakan yang tidak ditandai sebagai asumsi atau pertanyaan.
-5. AC saling bertentangan atau mustahil: \`Status: NEEDS_CLARIFICATION\`, jangan lanjut membuat tasks.
+## Check before finishing
+1. All six sections present and filled (or \`-\`).
+2. Every AC has a unique, sequential number and a \`Verify:\`.
+3. No implementation details.
+4. No guess that is not labeled as an assumption or an open question.
+5. ACs contradict each other or are impossible: set \`Status: NEEDS_CLARIFICATION\` and do not continue to tasks.
 `;
 }
 
