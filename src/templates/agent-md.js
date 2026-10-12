@@ -18,7 +18,8 @@ function slugifyAppPath(appPath) {
 // excluded — not yet a finalized kind.
 // `implementer` (CAF-INIT-SINGLE-REPO) is the SINGLE_REPO implementation agent — one agent for
 // the whole repo instead of the monorepo's frontend/backend split.
-export const CAF_PREFIXED_KINDS = ['planner', 'architect', 'qa', 'reviewer', 'documentation', 'auditor', 'pm', 'ux-designer', 'frontend', 'backend', 'implementer'];
+// `validator` (CAF-SDD-03b1) is written as caf-validator.md.
+export const CAF_PREFIXED_KINDS = ['planner', 'architect', 'qa', 'reviewer', 'documentation', 'auditor', 'pm', 'ux-designer', 'frontend', 'backend', 'implementer', 'validator'];
 
 // Kinds that write application code. `implementation` is the per-app agent outside
 // caf-orchestrator's routing (monorepo "extra apps"); `implementer` is SINGLE_REPO's one agent.
@@ -189,6 +190,17 @@ export function buildInputSection(kind, appNames = []) {
     const who = appNames.length > 0 ? `implementation agent (${appNames.join(', ')})` : 'implementation agent';
     return `\`verify-report.md\` from the ${who} in \`.caf/tasks/{TICKET-ID}/\` (required).`;
   }
+  // Kind-only on purpose (CAF-SDD-03b1): `appNames` is ignored, so this section needs no
+  // per-file context to be compared by `curate` (unlike qa/reviewer just around it).
+  if (kind === 'validator') {
+    return [
+      '`requirements.md` (the spec and its acceptance criteria) and `tasks.md` from the Planner Agent,',
+      'and `verify-report.md` from the implementation agent, all in `.caf/tasks/{TICKET-ID}/` (required).',
+      '',
+      'If `requirements.md` or `verify-report.md` is missing, or the spec has no acceptance criteria,',
+      'do not guess what was meant: report it, see Retry Logic.',
+    ].join('\n');
+  }
   if (kind === 'reviewer') {
     const who = appNames.length > 0 ? `implementation agent (${appNames.join(', ')})` : 'implementation agent';
     return [
@@ -237,6 +249,7 @@ const TOOLS_BY_KIND = {
   implementer: ['Read', 'Write', 'Edit', 'Bash'],
   qa: ['Read', 'Write', 'Bash'],
   reviewer: ['Read', 'Write', 'Bash'],
+  validator: ['Read', 'Write', 'Bash'],
   documentation: ['Read', 'Write', 'Edit'],
   auditor: ['Read', 'Bash'],
   devops: ['Read', 'Bash'],
@@ -253,6 +266,11 @@ const TOOLS_RATIONALE = {
   reviewer:
     'Read for code + artifacts, Bash to read diffs (`git diff`/`git log`), Write for ' +
     '`review-notes.md`. Does NOT change code — findings are written as notes, not fixed directly.',
+  validator:
+    'Read for the spec, the artifacts and the code. Bash only for the commands of the Verify ' +
+    'Checklist and read-only git inspection (`git diff`, `git log`, `git status`, `git show`). ' +
+    'Write only for `validate-report.md`. No Edit. Does NOT change code, tests, the spec or ' +
+    '`verify-report.md`.',
   documentation: 'Read/Write/Edit limited to documentation (README, CHANGELOG, `docs/`). Does NOT touch code.',
   auditor:
     'READ-ONLY. Read for code, Bash only for inspection (`ls`, `grep`, `git blame`) — not ' +
@@ -383,9 +401,64 @@ Every row needs a real verification (a command that was actually run, or a manua
 actually performed) — an unverified criterion is a FAIL, not a PASS.`;
 }
 
+// validator's contract (CAF-SDD-03b1): `validate-report.md`. Nothing reads it yet — the gate that
+// does is CAF-SDD-04 — so the `Status:` line keeps the shape readQaReport() already parses for
+// `qa-report.md` (line-anchored, uppercase, first `Status:` line of the file): a reader built on
+// that parse takes PASS as a pass and everything else, NEEDS_HUMAN included, as not a pass.
+// Rules this text must keep:
+// - The `Status:` line is the first line of the skeleton that carries `Status:`; the table header
+//   below it says `Status` without the colon.
+// - `UNVERIFIED` is a per-AC status, never a report status, and never turns the report into FAIL
+//   on its own: the count and the list on the `Unverified:` line are what make it visible.
+// - The per-AC rules themselves are in the validator's `## Output` (VALIDATOR_WORKFLOW); the five
+//   evidence kinds are the ones of the verify-report format in agent-handoff-md.js.
+// - The skeleton stays inside the fence: its `## ` line would otherwise be a section boundary.
+export function buildValidateReportFormat() {
+  return `Save the report to \`.caf/tasks/<TICKET-ID>/validate-report.md\`.
+
+\`\`\`
+## Validate Report — {TICKET-ID}
+Ticket: {TICKET-ID}
+Agent: caf-validator
+Status: PASS | FAIL | NEEDS_HUMAN
+Unverified: {count} — {AC ids, comma-separated, or "none"}
+
+### Acceptance Criteria
+| AC | Status | Evidence kind | Evidence |
+|----|--------|---------------|----------|
+| AC-1 | PASS, FAIL or UNVERIFIED | automated-test, command, build-only, manual or none | {test or command and what you observed when you ran it, or the reason it is unverified} |
+
+### Verification Gate
+| Command | Result |
+|---------|--------|
+| {command from the Verify Checklist} | {exit code observed} |
+
+### Verification Gate Gaps
+{every Verify Checklist line that has no command (no lint, typecheck, test or build script
+detected), one per line — or "None"}
+
+### Notes
+{anything the Reviewer or the developer should know; observations outside the acceptance criteria
+go here, not in the table}
+\`\`\`
+
+\`Status\` MUST be exactly \`PASS\`, \`FAIL\` or \`NEEDS_HUMAN\` — uppercase, on its own \`Status:\` line,
+above the table. A \`PASS\` in a row of the table is not the report status.
+
+- \`Status: PASS\` only when no AC is \`FAIL\` and every command of the verification gate passed.
+- \`Status: FAIL\` when at least one AC is \`FAIL\` or a command of the verification gate failed.
+- \`Status: NEEDS_HUMAN\` when the validation could not be done at all (see Retry Logic).
+
+\`UNVERIFIED\` rows do not make the status \`FAIL\`, and they are never left out: the \`Unverified:\`
+line carries how many there are and which ones, for example \`Unverified: 2 — AC-3, AC-7\`. With
+none, write \`Unverified: 0 — none\`. One row per AC of \`requirements.md\`; a gap of the gate is
+listed under \`### Verification Gate Gaps\`, never counted as a command that passed.`;
+}
+
 export function buildReportFormatSection(kind) {
   if (kind === 'reviewer') return buildReviewerReportFormat();
   if (kind === 'qa') return buildQaReportFormat();
+  if (kind === 'validator') return buildValidateReportFormat();
   if (kind !== 'auditor') return null;
   return `Save the report to \`.caf/audits/<DATE>/audit-report.md\` (this name is reserved for a full-repo
 scan by this agent — the scoped \`/caf-audit-scan\` command uses the suffix \`-{scope-slug}\`).
@@ -420,7 +493,7 @@ ${buildWhatToLookForSection(kind)}
 ${buildReportFormatSection(kind)}
 `;
   }
-  if (kind === 'reviewer' || kind === 'qa') {
+  if (kind === 'reviewer' || kind === 'qa' || kind === 'validator') {
     return `
 ## Report Format
 ${buildReportFormatSection(kind)}
@@ -485,6 +558,20 @@ const REVIEWER_RETRY_LOGIC = [
   '`Verdict:` line as CHANGES REQUESTED, which stops the PR from going out with no explanation.',
 ].join('\n');
 
+// CAF-SDD-03b1: the validator writes `validate-report.md` and nothing else. It must not get the
+// Delivery text below (fix, retry, write `verify-report.md`) — it has no Edit tool and
+// `verify-report.md` is its input.
+const VALIDATOR_RETRY_LOGIC = [
+  'The Validator does not retry and does not fix: it validates once and reports what it found. A',
+  'failing AC or a failing gate command is a result to report, not something to work on.',
+  'Validation complete → write `validate-report.md` with the `Status:` line set as the Report',
+  'Format section below defines (that section is the single source of the values).',
+  'Blocked (`requirements.md` or `verify-report.md` is missing, or the spec has no acceptance',
+  'criteria) → still write `validate-report.md`, with `Status: NEEDS_HUMAN` and the reason under',
+  '`### Notes`.',
+  'Never leave `validate-report.md` unwritten: a missing report is not a pass.',
+].join('\n');
+
 // Role-aware since CAF-RETRYLOGIC-01. Discovery agents produce `prd.md`/`flow.md` for a human to
 // read; they never enter the pipeline that greps `verify-report.md`, so the Delivery wording
 // below (write `Status: SUCCESS`) is actively wrong for them — `curate sync` wrote it into two
@@ -494,6 +581,7 @@ export function buildRetryLogicSection(kind) {
   if (DISCOVERY_KINDS.includes(kind)) return DISCOVERY_RETRY_LOGIC;
   if (kind === 'qa') return QA_RETRY_LOGIC;
   if (kind === 'reviewer') return REVIEWER_RETRY_LOGIC;
+  if (kind === 'validator') return VALIDATOR_RETRY_LOGIC;
   return [
     'Verify passes → write `verify-report.md` with **`Status: SUCCESS`** (this exact literal word —',
     'caf-orchestrator greps for `\\bSUCCESS\\b` and treats anything else, including "PASS"/"DONE"/"OK",',
@@ -629,6 +717,71 @@ const PLANNER_SPEC_WORKFLOW = [
   '- Run the Verify Checklist of this file.',
 ].join('\n');
 
+// How the Validator produces `validate-report.md` (CAF-SDD-03b1): the repo verification gate, then
+// one verdict per acceptance criterion of the spec. Rendered in the validator's `## Output` after
+// the one-line artifact contract, for the reasons PLANNER_SPEC_WORKFLOW is: Output is tracked, and
+// `## Working Pattern (PIV)` is pinned to the generic wording for every non-Discovery kind.
+// Rules this text must keep:
+// - `PASS` only for `automated-test` or `command` evidence the validator ran itself. `manual`,
+//   `build-only`, a test that imports no production code and an AC with no evidence line are
+//   `UNVERIFIED`, never `PASS` and never `FAIL`.
+// - The commands it may run are the Verify Checklist of its own file and read-only git. Nothing
+//   else, and no edit of code, tests, the spec or `verify-report.md`.
+// - The five evidence kinds are the ones of the verify-report format (agent-handoff-md.js) and of
+//   the `caf-traceability` skill. A sixth kind goes in all three or in none.
+// - The report format and its status words live in `## Report Format`, not here.
+// - `###` sub-headings only, no `TODO` word, no generate-time placeholder (same as the planner).
+const VALIDATOR_WORKFLOW = [
+  'How the report is produced. The Validator checks the implementation against every acceptance',
+  'criterion (AC) of the spec and reports what it could confirm itself. It reports; it does not fix.',
+  'Run the three steps below in order.',
+  '',
+  '### 1. Read',
+  '- `requirements.md`: every AC (`AC-1:`, `AC-2:`, ...) and its `Verify:` line.',
+  '- `tasks.md`: which task serves which AC.',
+  '- `verify-report.md`: the evidence line the implementation agent wrote for each AC.',
+  '- The change itself (`git diff`, `git log`, `git show`) and the test files named as evidence.',
+  '',
+  '### 2. Run the repo verification gate',
+  '- Run every command of the Verify Checklist of this file, for the app(s) the change touches,',
+  '  and record the exit code of each one.',
+  '- A checklist line with no command (no script detected) is a gap of the gate. Report it as a',
+  '  gap; do not put a command of your own in its place and do not count it as passed.',
+  '',
+  '### 3. Judge every AC',
+  'One row per AC of `requirements.md`, none skipped. The evidence kind is the one',
+  '`verify-report.md` gives for that AC: `automated-test`, `command`, `build-only`, `manual` or',
+  '`none`.',
+  '- `PASS`: only for `automated-test` or `command` evidence that you ran yourself and whose result',
+  '  matches the AC.',
+  '  - `automated-test`: the named test exists, exercises the behavior of that AC, and passed in',
+  '    the test command of the Verify Checklist.',
+  '  - `command`: it is a command you may run (see below), you ran it, and the exit code or output',
+  '    is the one the AC expects.',
+  '- `FAIL`: you ran it and the result contradicts the AC. Write the output you observed.',
+  '- `UNVERIFIED`: everything else. In particular:',
+  '  - `manual` and `build-only` evidence: nothing you ran shows the behavior;',
+  '  - evidence that names no test;',
+  '  - a test that does not import the production code it claims to cover: it is not counted as',
+  '    evidence;',
+  '  - a command outside the ones you may run: do not run it;',
+  '  - an AC with no line in `verify-report.md`: `UNVERIFIED`, evidence kind `none`, reason',
+  '    `no evidence reported`. It is not a `FAIL`.',
+  '- What `verify-report.md` claims is never a reason for `PASS` on its own: only what you ran is.',
+  '',
+  '### Commands you may run',
+  '- The commands of the Verify Checklist of this file.',
+  '- Read-only git inspection: `git diff`, `git log`, `git status`, `git show`.',
+  '- Nothing else. No install, no script of your own, no command copied from `verify-report.md`',
+  '  or from the spec that is not one of the above.',
+  '',
+  '### What the Validator never does',
+  '- Edit code, tests, the spec (`requirements.md`, `tasks.md`) or `verify-report.md`. The only',
+  '  file it writes is `validate-report.md`.',
+  '- Fix a failure, or run something again until it passes.',
+  '- Turn a missing or weak piece of evidence into a `PASS`.',
+].join('\n');
+
 // devops: CAF.md Layer 3 (.caf/tasks/{TICKET-ID}/) doesn't yet have an official artifact contract
 // for DevOps (post-merge, next phase) — stays TODO until CAF.md defines it.
 export function buildOutputSection(kind) {
@@ -646,7 +799,9 @@ export function buildOutputSection(kind) {
     return 'TODO: which artifact is produced for the next agent';
   }
   const contract = `Produces ${artifact} in \`.caf/tasks/{TICKET-ID}/\` for the next agent to read.`;
-  return kind === 'planner' ? `${contract}\n\n${PLANNER_SPEC_WORKFLOW}` : contract;
+  if (kind === 'planner') return `${contract}\n\n${PLANNER_SPEC_WORKFLOW}`;
+  if (kind === 'validator') return `${contract}\n\n${VALIDATOR_WORKFLOW}`;
+  return contract;
 }
 
 // Frontmatter is what makes the file a real, dispatchable subagent type instead of an inert

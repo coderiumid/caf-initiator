@@ -164,8 +164,8 @@ in `TARGETS` but not in `CHAIN_ORDER`. No `--skill-dir` — `curate` has no matc
   stays in the template until CAF-SDD-02c (after the re-test of v3 passes); don't remove it, or
   add a planner pointer, before that. A skill already in a user's repo is never replaced
   (`writeIfAbsent`): a repo with the older text keeps it until the file is deleted by hand.
-  `caf-traceability` is mapped to `planner`, `frontend` and `backend` only — not to
-  `implementer`/`implementation`, which share the rest of the implementation list.
+  `caf-traceability` is mapped to `planner`, `frontend`, `backend` and `validator` (CAF-SDD-03b1)
+  — not to `implementer`/`implementation`, which share the rest of the implementation list.
 - Adding the section to an existing agent is the **one** sanctioned rewrite of an existing file:
   preview + per-file confirm, then `writeIfAbsent(..., { overwrite: true })` only after
   `isPureInsertion` proves new content = old content + exactly one block. An agent that already
@@ -294,3 +294,40 @@ merely generic.
 inside a fence). A `## `-style heading used as example content in a new template section MUST be
 wrapped in a fenced code block for this reason — an unfenced example heading is still misread as
 a real section boundary and will corrupt `curate sync` output.
+
+## The `validator` kind (hidden — CAF-SDD-03b1)
+
+`validator` (`caf-validator.md`, tools `Read`/`Write`/`Bash`, no `Edit`) is a complete kind — it is
+in `KNOWN_KINDS`, `CAF_PREFIXED_KINDS`, `TOOLS_BY_KIND`, `ARTIFACT_BY_ROLE` and `SKILLS_BY_KIND`,
+and every tracked builder has a real branch for it — but it is hidden until the ticket that
+connects it to the pipeline (03c/04):
+
+- It is **not** an entry of `buildCandidates()`, and must not become one before that ticket.
+  `test/helpers/mono-snapshot.js` renders every candidate, hidden ones included (that is why
+  `devops.md` is in the snapshot), so a candidate would add a file to the frozen `mono-pnpm.json`.
+  `HIDDEN_CANDIDATE_KINDS` is not involved: it only filters the picker.
+- The one way to render it is `buildValidatorAgent(dir, stack, { skills })` in
+  `src/commands/agents.js`. No command calls it; only `test/sdd03b1-validator.test.js` does.
+- Its `## Verify Checklist` is the repo's verification gate, built with `collectVerifyApps` (the
+  derivation the implementation agents and `caf-verify` use) over every detected app. `qa`'s
+  checklist is the two-line "not a single app" placeholder and stays that way (`qa` is frozen).
+- Its `## Input` is kind-only: no app list, so `validator` is not in `APP_LIST_INPUT_KINDS` and
+  needs no `templateForExistingSection` context.
+- The per-AC rules are in its tracked `## Output` (`VALIDATOR_WORKFLOW` in `agent-md.js`, same
+  placement and same reasons as `PLANNER_SPEC_WORKFLOW`); the `validate-report.md` skeleton and
+  its status words are in `## Report Format` (`buildValidateReportFormat`). Its Retry Logic is its
+  own (`VALIDATOR_RETRY_LOGIC`): it never gets the Delivery text, which tells an agent to fix and
+  to write `verify-report.md`.
+- Per AC: `PASS` only for `automated-test`/`command` evidence the validator ran itself; `FAIL`
+  when run and contradicted; `UNVERIFIED` for everything else (`manual`, `build-only`, no named
+  test, a test that imports no production code, a command it may not run, no evidence line).
+  `UNVERIFIED` is never a report status and never makes the report `FAIL` on its own; the
+  `Unverified:` line (count and ids) is mandatory.
+- The five evidence kinds are now named in three places: the verify-report format
+  (`agent-handoff-md.js`), the `caf-traceability` skill, and `VALIDATOR_WORKFLOW`. Change all
+  three or none.
+- `Status: PASS | FAIL | NEEDS_HUMAN` in `validate-report.md` keeps the shape `readQaReport()`
+  parses for `qa-report.md` (first `Status:` line, uppercase). Nothing reads the file yet; under
+  that parse `NEEDS_HUMAN` reads as not-a-pass. What the orchestrator does with it is CAF-SDD-04.
+- Out of scope until their own tickets: renaming or removing `qa`, a `/caf-*` command for the
+  validator, and removing the `caf-traceability` banner.

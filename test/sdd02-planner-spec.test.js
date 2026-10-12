@@ -368,9 +368,9 @@ for (const fixture of FIXTURE_NAMES) {
 // AC-8 — mapping, and no pointer while the banner is there
 // ---------------------------------------------------------------------------------------------
 
-test('AC-8: caf-traceability maps to planner, frontend and backend, and to nothing else', () => {
+test('AC-8: caf-traceability maps to planner, frontend, backend and validator, and to nothing else', () => {
   const mapped = [...KNOWN_KINDS, 'implementation'].filter((kind) => skillsForKind(kind).includes('caf-traceability'));
-  assert.deepEqual(mapped.sort(), ['backend', 'frontend', 'planner']);
+  assert.deepEqual(mapped.sort(), ['backend', 'frontend', 'planner', 'validator']);
   assert.deepEqual(skillsForKind('planner'), ['caf-scope-discipline', 'caf-no-guess', 'caf-spec', 'caf-traceability']);
   for (const kind of ['frontend', 'backend']) {
     assert.deepEqual(skillsForKind(kind), ['caf-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate', 'caf-traceability']);

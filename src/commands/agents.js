@@ -10,7 +10,7 @@ import { detectTracker } from '../steps/03-detect-tracker.js';
 import { matchVerifyScripts, readPackageName } from '../utils/package-scripts.js';
 import { buildAgentMd, agentSlug, buildDirScopeSection, IMPLEMENTATION_KINDS } from '../templates/agent-md.js';
 import { REPO_MODE } from '../utils/repo-context.js';
-import { usableSkillPaths } from './skills.js';
+import { usableSkillPaths, collectVerifyApps } from './skills.js';
 import { buildAuditScanMd, buildAuditToTicketMd } from '../templates/audit-commands.js';
 import {
   buildDiscoveryStartMd,
@@ -234,6 +234,35 @@ export function buildCandidates(roleApp, extraApps) {
   );
 
   return candidates;
+}
+
+/**
+ * The Validator agent (CAF-SDD-03b1) for a detected repo: `{ file, content }`.
+ *
+ * Deliberately NOT an entry of buildCandidates(): until the ticket that connects it to the
+ * pipeline, no scaffold run offers or writes caf-validator.md, and the frozen MONOREPO snapshot
+ * (which renders every candidate, hidden ones included) does not gain a file. Nothing in this CLI
+ * calls it yet — it is reached from the tests only.
+ *
+ * Its `## Verify Checklist` is the repo's verification gate, so it is built from every detected
+ * app with the derivation the implementation agents and the caf-verify skill already use
+ * (collectVerifyApps): real commands, and a gap line where a script is missing — never the
+ * "not a single app" placeholder the other whole-repo roles get.
+ */
+export function buildValidatorAgent(dir, stack, { skills = [] } = {}) {
+  const slug = agentSlug('validator');
+  const content = buildAgentMd({
+    name: 'Validator',
+    role: 'Validates the implementation against every acceptance criterion of the spec and reports the evidence it could confirm.',
+    scope: 'TODO: code/artifact area the Validator may read — decide manually.',
+    // Sorted: detection does not return the apps in a stable order, and the same repo must
+    // always render the same file.
+    verifyApps: collectVerifyApps(dir, stack).sort((x, y) => x.appPath.localeCompare(y.appPath)),
+    kind: 'validator',
+    slug,
+    skills,
+  });
+  return { file: `${slug}.md`, content };
 }
 
 /**

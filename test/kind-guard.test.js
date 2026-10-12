@@ -33,6 +33,7 @@ const EXPECTED_KINDS = [
   'pm',
   'ux-designer',
   'devops',
+  'validator',
 ];
 
 // AC-4. Where each kind is rendered from: `implementer` only exists in SINGLE_REPO, and
@@ -74,7 +75,7 @@ test('AC-1: detectKind returns the kind itself for caf-<kind>.md of every known 
   assert.equal(detectKind('devops.md'), 'devops');
 });
 
-test('AC-5: all 12 kinds are still in KNOWN_KINDS', () => {
+test('AC-5: all 13 kinds are still in KNOWN_KINDS', () => {
   const missing = EXPECTED_KINDS.filter((kind) => !KNOWN_KINDS.includes(kind));
   assert.deepEqual(
     missing,
@@ -83,7 +84,7 @@ test('AC-5: all 12 kinds are still in KNOWN_KINDS', () => {
       'a kind missing here is detected as `implementation`, so `curate sync` rewrites that ' +
       "agent's Allowed Tools to Read+Write+Edit+Bash in every repo that already has the file."
   );
-  assert.equal(EXPECTED_KINDS.length, 12);
+  assert.equal(EXPECTED_KINDS.length, 13);
 });
 
 test('AC-6: every HIDDEN_CANDIDATE_KINDS entry is a known kind', () => {

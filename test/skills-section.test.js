@@ -98,7 +98,7 @@ test('buildSkillsBody: lists every pointer in order, gates on the DRAFT banner o
 
 test('every mapped kind opens its ## Skills section with the mandatory first step, still before Constraints', () => {
   const mapped = KINDS.filter((kind) => skillsForKind(kind).length > 0);
-  assert.deepEqual([...mapped].sort(), ['architect', 'backend', 'documentation', 'frontend', 'implementation', 'implementer', 'planner', 'qa', 'reviewer']);
+  assert.deepEqual([...mapped].sort(), ['architect', 'backend', 'documentation', 'frontend', 'implementation', 'implementer', 'planner', 'qa', 'reviewer', 'validator']);
   for (const kind of mapped) {
     const md = agent(kind, { skills: skillsForKind(kind).map(skillPath) });
     const body = extractSection(md, 'Skills');

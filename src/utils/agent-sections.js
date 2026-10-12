@@ -128,7 +128,11 @@ export function templateForExistingSection(header, kind, body) {
 // implementation's — but it has real branches in buildToolsSection/buildInputSection/
 // buildOutputSection, so it is listed here to be compared against its own template rather than
 // whatever the `implementation` fallback happens to render.
-export const KNOWN_KINDS = ['planner', 'architect', 'frontend', 'backend', 'implementer', 'qa', 'reviewer', 'documentation', 'auditor', 'pm', 'ux-designer', 'devops'];
+// 'validator' added at CAF-SDD-03b1 (caf-validator.md, no Edit tool). It has real branches in
+// every tracked builder, `Input` included — kind-only there, so it is NOT in
+// APP_LIST_INPUT_KINDS. Not a buildCandidates() entry yet: see buildValidatorAgent() in
+// commands/agents.js.
+export const KNOWN_KINDS = ['planner', 'architect', 'frontend', 'backend', 'implementer', 'qa', 'reviewer', 'documentation', 'auditor', 'pm', 'ux-designer', 'devops', 'validator'];
 
 export function detectKind(filename) {
   const stem = path.basename(filename, '.md');
