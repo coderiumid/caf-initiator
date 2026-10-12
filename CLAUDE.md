@@ -147,12 +147,23 @@ in `TARGETS` but not in `CHAIN_ORDER`. No `--skill-dir` — `curate` has no matc
   (verify-report, validate-report, review-notes, qa-report). This covers `caf-spec` and
   `requirements.md` only; a test in `test/skills-spec.test.js` holds the boundary.
   A second one (CAF-SDD-02): `caf-traceability` states the per-AC evidence line of
-  `verify-report.md` (`AC-n: automated-test — ...` and the three other forms). It defines no
-  status or verdict word and no other part of any report. Its text is the ticket source verbatim
-  (`test/sdd02-planner-spec.test.js` holds its sha256); the same four forms are in the
-  verify-report format of `src/templates/agent-handoff-md.js`, so change both or neither.
+  `verify-report.md` (`AC-n: automated-test — ...` and the four other forms: `command`,
+  `build-only`, `manual`, `none`). It defines no status or verdict word and no other part of any
+  report. The same five forms are in the verify-report format of
+  `src/templates/agent-handoff-md.js`, so change both or neither (a test compares them).
+- `caf-spec` is at v3 and `caf-traceability` at v2 since CAF-SDD-02b. Both are the ticket source
+  verbatim, held by sha256 in `test/sdd02b-spec-v3.test.js` (`caf-traceability` also in
+  `test/sdd02-planner-spec.test.js`) — never reword them in `skill-md.js`. v3 adds: `Finding:` in
+  section 3 (the ticket says X, the code shows Y), facts read from the code are not questions,
+  an answered question keeps its original tag, no line numbers, and a third `Verify:` form,
+  `command: <command> | expect: <exit code or output>`, reported in `verify-report.md` as
+  `command` with the result observed. Nothing in caf-init runs or parses a `command:` — that is
+  the validator's and the orchestrator's work (CAF-SDD-03b, 04).
 - `caf-spec` and `caf-traceability` are born a DRAFT in every repo (no `TODO` line, their own
-  3-line banner), so no agent is pointed at them until a human removes the banner.
+  3-line banner), so no agent is pointed at them until a human removes the banner. The banner
+  stays in the template until CAF-SDD-02c (after the re-test of v3 passes); don't remove it, or
+  add a planner pointer, before that. A skill already in a user's repo is never replaced
+  (`writeIfAbsent`): a repo with the older text keeps it until the file is deleted by hand.
   `caf-traceability` is mapped to `planner`, `frontend` and `backend` only — not to
   `implementer`/`implementation`, which share the rest of the implementation list.
 - Adding the section to an existing agent is the **one** sanctioned rewrite of an existing file:
@@ -254,6 +265,10 @@ of `Output`. Two things that text must keep: every artifact, path and stop token
 before (`test/fixtures/pre-sdd02/` is the pre-change render — never regenerate it), and the
 headless stop on the ticket path (`Status: NEEDS_HUMAN` + the blocked `tasks.md` note):
 caf-orchestrator throws when the planner leaves no `tasks.md`.
+Since CAF-SDD-02b that text also repeats three `caf-spec` v3 rules (what reading answers is a fact
+and not a question, with at most 5 questions in the file; an answered question keeps its tag; the
+three `Verify:` forms): change them there and in the skill together. `test/fixtures/pre-sdd02b/`
+holds the SDD-02 planner render and the v2 `caf-spec` — never regenerate it.
 
 The verify-report format lives in one generated file, `.caf/workflows/agent-handoff.md`
 (`agent-handoff-md.js`). caf-orchestrator tests the WHOLE `verify-report.md` for `\bSUCCESS\b`,
