@@ -74,6 +74,16 @@ workspaces is **not** an error or a warning: it is `SINGLE_REPO` with
 `apps = [{ name, path: '.' }]`. `--mode single|mono` (on `scaffold`, `docs`, `curate`) overrides
 detection and must be threaded to every `detectStack` call a command makes.
 
+- The app list is in a deterministic order: `findApps` sorts it by app path, in code-unit order
+  (`byAppPath`, plain `<` — not `localeCompare`, so the locale can't change it either). Detection
+  output must never depend on the order the file system or a glob lists entries in: fast-glob
+  hands entries back as its directory reads complete, and before CAF-FIX-01 two calls on the same
+  directory could return `apps/api, apps/web` or the reverse, which reached every file rendered
+  from the list. Anything new that reads a directory or a glob and feeds a generated file sorts
+  its result at the point it is read, not in each consumer. `test/fix01-detect-order.test.js`
+  holds this with a stubbed `fs.readdir` (`test/helpers/readdir-order.js`, which must be the first
+  import of a test file — fast-glob captures `fs.readdir` when it loads). The sort in
+  `buildValidatorAgent` stays as a second guard; don't remove it.
 - The MONOREPO path is frozen: `test/repo-context.test.js` compares detection plus every rendered
   file against `test/fixtures/snapshots/mono-pnpm.json`, recorded from the code before
   SINGLE_REPO support existed (renderer: `test/helpers/mono-snapshot.js`). Don't regenerate that
