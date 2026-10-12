@@ -113,6 +113,16 @@ function getWorkspacePatternsFromPnpmYaml(rootDir) {
   return patterns.length > 0 ? patterns : null;
 }
 
+// The app list is ordered by app path, in code-unit order (CAF-FIX-01). fast-glob hands entries
+// back as its directory reads complete, so its order changes between two calls on the same
+// directory; the list is what generated files are rendered from, so it must not. Plain `<`, not
+// `localeCompare`: the result must not depend on the machine's locale either.
+function byAppPath(a, b) {
+  if (a.path < b.path) return -1;
+  if (a.path > b.path) return 1;
+  return 0;
+}
+
 async function findApps(rootDir, rootPkg, explicitGlobs) {
   let patterns = explicitGlobs && explicitGlobs.length > 0 ? explicitGlobs : null;
   let confidence = patterns ? 'explicit' : null;
@@ -145,7 +155,8 @@ async function findApps(rootDir, rootPkg, explicitGlobs) {
         packageManager: detectPackageManager(path.join(rootDir, appDir), pkg),
       };
     })
-    .filter(Boolean);
+    .filter(Boolean)
+    .sort(byAppPath);
 
   return { apps, confidence, patternsUsed: patterns };
 }
