@@ -161,10 +161,10 @@ test('pointers: every mapped kind gets its section, only usable skills are liste
   const result = await scaffoldSkills(dir);
   const after = snapshotTree(dir);
 
-  assert.deepEqual(result.drafts, ['caf-verify']);
+  assert.deepEqual(result.drafts, ['caf-verify', 'caf-spec']);
   for (const file of agentFiles(dir)) {
     const rel = `${AGENT_DIR}/${file}`;
-    const wanted = skillsForKind(detectKind(file)).filter((n) => n !== 'caf-verify').map(skillPath);
+    const wanted = skillsForKind(detectKind(file)).filter((n) => !result.drafts.includes(n)).map(skillPath);
     if (wanted.length === 0) {
       assert.equal(after[rel], before[rel], `${file} has no skills mapped and must be untouched`);
       continue;
@@ -176,8 +176,10 @@ test('pointers: every mapped kind gets its section, only usable skills are liste
     assert.ok(isPureInsertion(before[rel], after[rel], core), file);
     assert.equal(after[rel].replace(`\n${core}\n\n`, ''), before[rel], file);
   }
-  // AC-11: nothing points at the DRAFT skill.
-  for (const file of agentFiles(dir)) assert.ok(!after[`${AGENT_DIR}/${file}`].includes('caf-verify/SKILL.md'), file);
+  // AC-11: nothing points at a DRAFT skill.
+  for (const file of agentFiles(dir)) {
+    for (const draft of result.drafts) assert.ok(!after[`${AGENT_DIR}/${file}`].includes(`${draft}/SKILL.md`), `${file} → ${draft}`);
+  }
   for (const file of ['caf-pm.md', 'caf-ux-designer.md', 'caf-auditor.md', 'caf-devops.md']) {
     assert.ok(!/^## Skills$/m.test(after[`${AGENT_DIR}/${file}`]), file);
   }
@@ -189,7 +191,7 @@ test('pointers: every mapped kind gets its section, only usable skills are liste
 test('pointers: a usable caf-verify is listed first for implementation and qa agents', async () => {
   const dir = repo({ scripts: FULL_SCRIPTS });
   const result = await scaffoldSkills(dir);
-  assert.deepEqual(result.drafts, []);
+  assert.deepEqual(result.drafts, ['caf-spec']);
   assert.deepEqual(pointersIn(readAgent(dir, 'caf-qa.md')), ['caf-verify', 'caf-no-guess'].map(skillPath));
   assert.deepEqual(pointersIn(readAgent(dir, 'caf-frontend.md')), skillsForKind('frontend').map(skillPath));
   assert.deepEqual(pointersIn(readAgent(dir, 'caf-planner.md')), ['caf-scope-discipline', 'caf-no-guess'].map(skillPath));
@@ -239,7 +241,7 @@ test('AC-11: after the banner is removed, a re-run points agents without a Skill
 
   const frontendBefore = readAgent(dir, 'caf-frontend.md');
   const result = await scaffoldSkills(dir);
-  assert.deepEqual(result.drafts, []);
+  assert.deepEqual(result.drafts, ['caf-spec']);
   assert.deepEqual(result.pointers.added, [agentPath(dir, 'caf-qa.md')]);
   assert.deepEqual(pointersIn(readAgent(dir, 'caf-qa.md')), ['caf-verify', 'caf-no-guess'].map(skillPath));
   // already had the section → untouched, even though caf-verify is now usable and missing there
@@ -311,7 +313,7 @@ test('pointers: a CRLF agent file is refused rather than re-encoded', async () =
 test('pointers: no agent definitions yet → skills are written, nothing else happens', async () => {
   const dir = makeRepo({ 'package.json': { name: 'r' } }, 'caf-skills-ptr-');
   const result = await scaffoldSkills(dir, { expectPrompts: [] });
-  assert.equal(result.written.length, 5);
+  assert.equal(result.written.length, 6);
   assert.deepEqual(result.pointers, { added: [], wouldAdd: [], declined: [], untouched: [], refused: [] });
 });
 

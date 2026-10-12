@@ -17,7 +17,7 @@ export const SKILLS_DIR = '.claude/skills';
 
 // Display/write order. Every name is `caf-`-prefixed so a generated skill can't collide with one
 // the team wrote themselves.
-export const SKILL_NAMES = ['caf-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate', 'caf-piv'];
+export const SKILL_NAMES = ['caf-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate', 'caf-piv', 'caf-spec'];
 
 const IMPLEMENTATION_SKILLS = ['caf-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate'];
 const ARTIFACT_WRITER_SKILLS = ['caf-scope-discipline', 'caf-no-guess'];
@@ -27,13 +27,15 @@ const ARTIFACT_WRITER_SKILLS = ['caf-scope-discipline', 'caf-no-guess'];
 // the user's go-ahead, which a headless agent run can never get.
 // `caf-escalate` stays with the implementation kinds — qa/reviewer/planner have their own
 // escalation contracts in Retry Logic/Constraints that caf-orchestrator parses.
+// `caf-spec` (the requirements.md format) is the planner's only; it is born a DRAFT, so no agent
+// gets a pointer to it until a human removes its banner.
 export const SKILLS_BY_KIND = {
   frontend: IMPLEMENTATION_SKILLS,
   backend: IMPLEMENTATION_SKILLS,
   implementer: IMPLEMENTATION_SKILLS,
   implementation: IMPLEMENTATION_SKILLS,
   qa: ['caf-verify', 'caf-no-guess'],
-  planner: ARTIFACT_WRITER_SKILLS,
+  planner: [...ARTIFACT_WRITER_SKILLS, 'caf-spec'],
   reviewer: ARTIFACT_WRITER_SKILLS,
   architect: ARTIFACT_WRITER_SKILLS,
   documentation: ARTIFACT_WRITER_SKILLS,
@@ -237,6 +239,91 @@ Do not commit or push unless the user asks.`,
   });
 }
 
+// caf-spec (CAF-SDD-01) is born a DRAFT whatever the repo looks like: it has no `TODO` line to
+// resolve, it waits for a manual dispatch test. Its banner therefore has its own first two lines
+// and sits above the title, so it does not go through skillMd(); the agent-facing line is the
+// shared one. Content is taken verbatim from the ticket — don't reword it here.
+const SPEC_DRAFT_BANNER =
+  '> DRAFT: skill ini belum diuji dispatch nyata di umkm-pos.\n' +
+  '> Hapus banner ini hanya setelah uji selesai.\n' +
+  SKILL_DRAFT_AGENT_LINE;
+
+// The `## ` lines of the requirements.md template stay inside the ```markdown fence: parseSections
+// is fence-aware, an unfenced example heading would be read as a real section boundary.
+export function buildSpecSkill() {
+  return `---
+name: caf-spec
+description: Format dan aturan menulis requirements.md (spec) untuk ticket CAF. Pakai saat fase Specify/Clarify, sebelum menulis rencana atau tasks.
+---
+
+${SPEC_DRAFT_BANNER}
+
+# caf-spec — menulis requirements.md
+
+Spec = kontrak antara manusia dan agent. Pendek, bisa diuji, tidak menebak.
+
+## Ukuran
+- Kedalaman sesuai ukuran ticket. Ticket kecil: setengah halaman. Jangan menambah section kosong; tulis \`-\` bila memang tidak ada.
+- Spec menjawab APA dan KENAPA. Cara (file, fungsi, library) milik \`design.md\` dan \`tasks.md\`, bukan di sini.
+
+## Template \`.caf/tasks/<ID-atau-slug>/requirements.md\`
+
+\`\`\`markdown
+# <judul singkat>
+Status: DRAFT | NEEDS_CLARIFICATION | APPROVED
+Sumber: <ID ticket atau "chat">
+
+## 1. Hasil Akhir
+<1-3 kalimat: apa yang berbeda bagi user/bisnis setelah selesai>
+
+## 2. Scope
+Masuk:
+- ...
+Tidak masuk:
+- ...
+
+## 3. Constraint dan Asumsi
+- Constraint: ...
+- Asumsi: ... (tandai tiap asumsi; asumsi yang berisiko jadi pertanyaan terbuka)
+
+## 4. Keputusan yang Sudah Diambil
+- ... (tautkan ADR bila ada: .caf/knowledge/decisions/adr-NNN-*.md)
+
+## 5. Pertanyaan Terbuka
+- Q-1 [BLOCKING|NON-BLOCKING] <pertanyaan> — Jawaban: <kosong sampai dijawab>
+
+## 6. Acceptance Criteria
+- AC-1: Ketika <kondisi>, maka <hasil yang teramati>. Verifikasi: <tes otomatis | manual: langkah singkat>
+- AC-2: ...
+\`\`\`
+
+## Aturan Acceptance Criteria
+- Penanda wajib persis \`AC-<angka>:\` di awal butir (dibaca regex; jangan ganti format).
+- Satu perilaku per AC. Teramati dan bisa diuji; tanpa kata subjektif ("cepat", "rapi", "intuitif") kecuali diberi ambang terukur.
+- Selalu tulis \`Verifikasi:\`. Bila tidak ada cara tes otomatis, tulis \`manual:\` dan langkahnya. Jangan dikosongkan; validator memakainya untuk menandai AC tanpa tes.
+- Sertakan jalur gagal dan edge case yang relevan (input kosong, tidak berizin, error jaringan), bukan hanya jalur sukses.
+- Ticket yang menyentuh UI: alur layar dan state masuk \`flow.md\`, AC tetap di sini.
+
+## Aturan Pertanyaan Terbuka
+- Cek dulu ticket, kode, ADR, dan \`CLAUDE.md\`. Jangan bertanya hal yang sudah terjawab di sana.
+- Maksimal 5 pertanyaan, diurutkan dari yang paling menentukan. Satu pertanyaan = satu keputusan, dengan opsi dan rekomendasi bila ada.
+- BLOCKING = jawabannya mengubah scope atau AC; kerja berhenti sampai dijawab. NON-BLOCKING = ada asumsi aman yang ditulis eksplisit di bagian 3.
+- Chat: tanyakan langsung ke user. Ticket via orchestrator: tulis pertanyaan di komentar ticket lalu berhenti.
+- Setelah dijawab: isi \`Jawaban:\`, pindahkan hasilnya ke bagian 4 (Keputusan) atau ubah AC. Jangan menghapus pertanyaannya.
+
+## Spec Disetujui = Kontrak
+- Setelah \`Status: APPROVED\`, jangan ubah tujuan, scope, maupun AC.
+- Spec keliru atau mustahil dipenuhi: tulis usulan perubahan di \`verify-report.md\`; manusia yang memutuskan.
+
+## Cek Sebelum Selesai
+1. Enam section ada dan terisi (atau \`-\`).
+2. Setiap AC bernomor unik berurutan dan punya \`Verifikasi:\`.
+3. Tidak ada detail implementasi.
+4. Tidak ada tebakan yang tidak ditandai sebagai asumsi atau pertanyaan.
+5. AC saling bertentangan atau mustahil: \`Status: NEEDS_CLARIFICATION\`, jangan lanjut membuat tasks.
+`;
+}
+
 /**
  * Every skill file `caf-init scaffold skills` writes, in SKILL_NAMES order:
  * `[{ name, relPath, content, draft }]`. Pure — no filesystem, no clock.
@@ -248,6 +335,7 @@ export function buildSkillFiles({ mode, verifyApps } = {}) {
     'caf-no-guess': buildNoGuessSkill,
     'caf-escalate': buildEscalateSkill,
     'caf-piv': buildPivSkill,
+    'caf-spec': buildSpecSkill,
   };
   return SKILL_NAMES.map((name) => {
     const content = builders[name]();

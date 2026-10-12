@@ -43,11 +43,13 @@ const SHAPES = {
   complete: { mode: 'SINGLE_REPO', verifyApps: [{ scripts: ALL_SCRIPTS, packageManager: 'pnpm', packageName: null, appPath: '.' }] },
 };
 
-const CONSTANT = SKILL_NAMES.filter((n) => n !== 'caf-verify');
+// caf-spec (CAF-SDD-01) is constant too, but born a DRAFT — covered in skills-spec.test.js.
+const BORN_DRAFT = ['caf-spec'];
+const CONSTANT = SKILL_NAMES.filter((n) => n !== 'caf-verify' && !BORN_DRAFT.includes(n));
 const byName = (files, name) => files.find((f) => f.name === name);
 
-test('skill set: five caf- prefixed skills under .claude/skills, in a fixed order', () => {
-  assert.deepEqual(SKILL_NAMES, ['caf-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate', 'caf-piv']);
+test('skill set: six caf- prefixed skills under .claude/skills, in a fixed order', () => {
+  assert.deepEqual(SKILL_NAMES, ['caf-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate', 'caf-piv', 'caf-spec']);
   assert.ok(SKILL_NAMES.every((n) => n.startsWith('caf-')));
   assert.equal(SKILLS_DIR, '.claude/skills');
   const files = buildSkillFiles(SHAPES.single);
@@ -69,7 +71,7 @@ test('mapping (D7): exact table, caf-piv mapped to no kind, restricted kinds get
   assert.deepEqual(
     Object.fromEntries([...KNOWN_KINDS, 'implementation'].map((k) => [k, skillsForKind(k)])),
     {
-      planner: writer, architect: writer, frontend: impl, backend: impl, implementer: impl,
+      planner: [...writer, 'caf-spec'], architect: writer, frontend: impl, backend: impl, implementer: impl,
       qa: ['caf-verify', 'caf-no-guess'], reviewer: writer, documentation: writer,
       auditor: [], pm: [], 'ux-designer': [], devops: [], implementation: impl,
     }
@@ -153,7 +155,9 @@ test('skills an agent may point at never tell it to wait for a chat reply (headl
   const mapped = [...new Set(Object.values(SKILLS_BY_KIND).flat())];
   for (const name of mapped) {
     assert.ok(!/\bwait for\b|go-ahead|\bconfirmation\b|\bapproval\b/i.test(byName(files, name).content), name);
-    assert.match(byName(files, name).content, /agent definition/);
+    // caf-spec's text is the ticket's, verbatim, and has no "agent definition wins" line. It is a
+    // DRAFT no agent is pointed at; whether it needs that line is decided before its banner goes.
+    if (!BORN_DRAFT.includes(name)) assert.match(byName(files, name).content, /agent definition/);
   }
   assert.match(byName(files, 'caf-piv').content, /wait for the user's go-ahead/);
   assert.match(byName(files, 'caf-piv').content, /do not\s+apply this in an agent or headless run/);
@@ -194,7 +198,7 @@ test('DRAFT banner: the DRAFT sentence is unchanged and is followed directly by 
 });
 
 test('DRAFT banner: finished skills carry neither banner line', () => {
-  for (const f of [...buildSkillFiles(SHAPES.complete)]) {
+  for (const f of buildSkillFiles(SHAPES.complete).filter((s) => !BORN_DRAFT.includes(s.name))) {
     assert.ok(!hasSkillDraftBanner(f.content), f.name);
     assert.ok(!hasSkillDraftAgentNotice(f.content), f.name);
   }
