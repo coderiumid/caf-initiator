@@ -34,6 +34,12 @@ const LEGACY_MANIFEST = path.join(
 
 const APP_LIST = '(apps/web, apps/api)';
 
+// The reviewer file that manifest was recorded from. Its `## Output` is the one-line text the
+// reviewer had until CAF-SDD-03b2 put the spec checks there; every other section is unchanged.
+const LEGACY_REVIEWER = JSON.parse(
+  fs.readFileSync(path.join(path.dirname(LEGACY_MANIFEST), '..', 'pre-sdd03b2', 'reviewer.mono-pnpm.json'), 'utf8')
+);
+
 const rendered = {
   'mono-pnpm': await renderAgents('mono-pnpm'),
   'single-nuxt': await renderAgents('single-nuxt'),
@@ -143,7 +149,11 @@ for (const kind of ['qa', 'reviewer']) {
 }
 
 test('AC-4: a manifest written by the pre-fix code — curate sync keeps the app list of qa and reviewer Input', async () => {
-  const agents = [rendered['mono-pnpm'].qa, rendered['mono-pnpm'].reviewer];
+  // CAF-SDD-03b2: the legacy manifest baselines the reviewer as it was then, so that file is the
+  // one put in the repo. Its `Output` is a real DRIFT now, which makes the sync below write.
+  const qa = rendered['mono-pnpm'].qa;
+  const reviewer = { file: LEGACY_REVIEWER.file, content: LEGACY_REVIEWER.content };
+  const agents = [qa, reviewer];
   const dir = makeRepo('mono-pnpm', agents, { baseline: false });
   fs.mkdirSync(path.dirname(manifestFile(dir)), { recursive: true });
   fs.copyFileSync(LEGACY_MANIFEST, manifestFile(dir));
@@ -156,9 +166,23 @@ test('AC-4: a manifest written by the pre-fix code — curate sync keeps the app
     assert.equal(entry.sections.Input.hash, `sha256:${hashSection(trackedSections(content).Input)}`);
   }
 
-  assert.deepEqual(nonInSyncCounts(dir), {});
-  await assertSyncIsNoOp(dir, agents, 'legacy manifest');
+  // `Input` of both files is IN_SYNC; the one DRIFT is the reviewer's `Output` (CAF-SDD-03b2).
+  assert.deepEqual(nonInSyncCounts(dir), { DRIFT: 1 });
+  const drifted = [`${path.join(AGENT_DIR, reviewer.file)}#Output`];
+
+  const dry = await silenced(() => agentsSync({ dir, agentDir: AGENT_DIR, dryRun: true }));
+  assert.deepEqual(dry.drifted, drifted);
+  assert.deepEqual(dry.needsAttention, []);
+  for (const { file, content } of agents) assert.equal(read(dir, file), content, `dry-run: ${file} must stay byte-identical`);
+
+  const result = await silenced(() => agentsSync({ dir, agentDir: AGENT_DIR }));
+  assert.deepEqual(result.drifted, drifted);
+  assert.deepEqual(result.needsAttention, []);
+  assert.deepEqual(result.unverifiable, []);
+  assert.equal(read(dir, qa.file), qa.content, 'qa must stay byte-identical');
+  assert.equal(read(dir, reviewer.file), rendered['mono-pnpm'].reviewer.content, 'the synced reviewer equals a fresh render, app list included');
   for (const { file } of agents) assert.ok(trackedSections(read(dir, file)).Input.includes(APP_LIST));
+  assert.deepEqual(nonInSyncCounts(dir), {});
 });
 
 for (const kind of ['qa', 'reviewer']) {

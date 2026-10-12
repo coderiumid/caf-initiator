@@ -280,6 +280,27 @@ and not a question, with at most 5 questions in the file; an answered question k
 three `Verify:` forms): change them there and in the skill together. `test/fixtures/pre-sdd02b/`
 holds the SDD-02 planner render and the v2 `caf-spec` — never regenerate it.
 
+The reviewer is spec-aware since CAF-SDD-03b2: `REVIEWER_SPEC_WORKFLOW` in `agent-md.js` is
+rendered inside its tracked `## Output`, after the one-line artifact contract — the same placement
+and the same reasons as the planner's text, so an existing reviewer gets it from `curate sync` as
+an ordinary `DRIFT` of `Output`. It tells the reviewer to read the spec, the tasks, the reports
+(`design.md` and `validate-report.md` "if present"), the ADRs and the diff, and to report scope
+deviations, tasks not done, ACs whose evidence is `manual`/`build-only`/`none`/missing
+(`needs human check`, never counted as passed), a change to an approved spec (blocking), every
+`## Proposed Spec Changes` entry, and ADR violations by name. What that text must keep:
+- `## Output` is the only reviewer section that changed. `## Input` (the sentence
+  `parseInputAppNames` reads), `## Retry Logic`, `## Report Format` and `tools:` are byte-identical
+  to `test/fixtures/pre-sdd03b2/` — the pre-change render, never regenerate it.
+- It names no verdict value and adds no part to the `review-notes.md` skeleton: findings go under
+  the `###` parts the skeleton already has. A test rejects `APPROVE`/`CHANGES REQUESTED`/`DEFER`
+  in that text; `## Report Format` stays the single source.
+- The reviewer reads evidence. It does not run the tests or the verification gate again and does
+  not edit code, tests or the spec.
+- `test/fixtures/legacy-manifest/` holds the hash of the old one-line reviewer `Output`, so the
+  03a2 legacy-manifest test puts the pre-sdd03b2 reviewer in the repo and expects that one `DRIFT`.
+- Out of scope until their own tickets: making `/caf-review`, `/caf-fix-review` and `/caf-plan`
+  spec-aware (03b3), mapping a new skill to `reviewer`, and anything in the orchestrator (04).
+
 The verify-report format lives in one generated file, `.caf/workflows/agent-handoff.md`
 (`agent-handoff-md.js`). caf-orchestrator tests the WHOLE `verify-report.md` for `\bSUCCESS\b`,
 so nothing added to that skeleton may contain the word outside the `Status:` line. That file is
@@ -333,9 +354,9 @@ connects it to the pipeline (03c/04):
   test, a test that imports no production code, a command it may not run, no evidence line).
   `UNVERIFIED` is never a report status and never makes the report `FAIL` on its own; the
   `Unverified:` line (count and ids) is mandatory.
-- The five evidence kinds are now named in three places: the verify-report format
-  (`agent-handoff-md.js`), the `caf-traceability` skill, and `VALIDATOR_WORKFLOW`. Change all
-  three or none.
+- The five evidence kinds are now named in four places: the verify-report format
+  (`agent-handoff-md.js`), the `caf-traceability` skill, `VALIDATOR_WORKFLOW`, and since
+  CAF-SDD-03b2 `REVIEWER_SPEC_WORKFLOW`. Change all four or none.
 - `Status: PASS | FAIL | NEEDS_HUMAN` in `validate-report.md` keeps the shape `readQaReport()`
   parses for `qa-report.md` (first `Status:` line, uppercase). Nothing reads the file yet; under
   that parse `NEEDS_HUMAN` reads as not-a-pass. What the orchestrator does with it is CAF-SDD-04.

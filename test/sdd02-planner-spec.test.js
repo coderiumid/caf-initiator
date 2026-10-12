@@ -145,7 +145,7 @@ for (const fixture of FIXTURE_NAMES) {
     assert.deepEqual(parseSections(plannerOf(fixture)).sections.map((s) => s.header), parseSections(OLD_PLANNER[fixture].content).sections.map((s) => s.header));
   });
 
-  test(`only the planner changed on ${fixture}: every other kind keeps its one-line Output and the generic Working Pattern`, () => {
+  test(`only the planner changed on ${fixture}: every other kind keeps its Output artifact line and the generic Working Pattern`, () => {
     const generic = [
       "1. PLAN — write a plan first, don't touch code yet",
       '2. IMPLEMENT — execute per the plan',
@@ -163,7 +163,6 @@ for (const fixture of FIXTURE_NAMES) {
       backend: line('code + `verify-report.md`'),
       implementer: line('code + `verify-report.md`'),
       qa: line('`qa-report.md`'),
-      reviewer: line('`review-notes.md`'),
       documentation: line('update `docs/` (parallel, non-blocking)'),
       devops: 'TODO: which artifact is produced for the next agent',
     };
@@ -173,6 +172,9 @@ for (const fixture of FIXTURE_NAMES) {
       const sections = trackedSections(rendered[fixture][kind].content);
       assert.equal(sections['Working Pattern (PIV)'], kind === 'pm' || kind === 'ux-designer' ? discovery : generic, kind);
       if (kind in OUTPUT) assert.equal(sections.Output, OUTPUT[kind], kind);
+      // CAF-SDD-03b2: the reviewer's Output keeps its artifact line and now carries the spec checks
+      // after it (locked in test/sdd03b2-reviewer-spec.test.js).
+      else if (kind === 'reviewer') assert.equal(sections.Output.split('\n')[0], line('`review-notes.md`'), kind);
       else assert.ok(['auditor', 'pm', 'ux-designer'].includes(kind), `${kind}: Output not covered`);
       assert.ok(!sections.Output.includes('### 1. Specify'), kind);
     }
