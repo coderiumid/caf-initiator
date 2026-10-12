@@ -336,7 +336,18 @@ The generated `caf-reviewer.md` reviews the change against the spec, on top of i
 
 What did not change: the reviewer's tools (`Read`, `Write`, `Bash`), its `## Input`, and `review-notes.md` with its `Verdict: APPROVE | CHANGES REQUESTED | DEFER` line. The findings go into the parts that report already has. The reviewer does not run the tests or the verification gate again, and it does not edit code, tests or the spec.
 
-A reviewer generated earlier gets the new text from `caf-init curate sync`, as a drift of its `Output` section; a section you edited is never overwritten. The `/caf-review`, `/caf-fix-review` and `/caf-review-ticket` commands are unchanged. Like every other instruction in a generated file, these are instructions to the agent: `caf-init` does not check that a review followed them.
+A reviewer generated earlier gets the new text from `caf-init curate sync`, as a drift of its `Output` section; a section you edited is never overwritten. The `/caf-review` and `/caf-fix-review` commands follow the same spec (see [Spec-aware commands](#spec-aware-commands)); `/caf-review-ticket` is unchanged. Like every other instruction in a generated file, these are instructions to the agent: `caf-init` does not check that a review followed them.
+
+### Spec-aware commands
+
+Two generated commands take the spec into account. Their names, their argument (a PR number) and the formats caf-orchestrator reads (`review-notes.md` with its verdict, `fix-review-log.md` with `Status: FIXED | SKIPPED | NOT_APPLICABLE`) are the same as before.
+
+- **`/caf-review`** looks for the artifact folder of the PR, `.caf/tasks/{TICKET-ID}/`, with the ticket ID it resolved from the argument, the PR and its head branch (or from the user). When the folder has a `requirements.md`, the reviewer is given the folder and checks the change against the spec. When it does not, the review still runs as a code-only review, and both the posted PR Review and the summary in chat say that no spec was checked.
+- **`/caf-fix-review`** never edits `requirements.md`. A review comment that asks to change the goal, the scope or an acceptance criterion is written as a proposal under `## Proposed Spec Changes` in `verify-report.md`, logged as `SKIPPED` with a note that starts `Needs a human decision:`, and listed separately for the user. Every other comment is assessed and fixed as before.
+
+Commands are not tracked by `caf-init curate`: `curate sync` does not update them, and an existing command file is never overwritten. To get the new text in a repository scaffolded earlier, delete `.claude/commands/caf-review.md` or `caf-fix-review.md` and run `caf-init scaffold agents` again (or use `--force`, which also overwrites your edits).
+
+A third command, **`/caf-plan`**, exists in the code but is hidden: no `scaffold` run writes it. It takes a ticket ID or free text (which gets a kebab-case slug of at most five words), uses `.caf/tasks/<ID-or-slug>/` as the artifact folder, spawns `caf-planner` for the Specify, Clarify, Plan, Tasks workflow without repeating the planner's rules, and stops once `tasks.md` is written. It stays hidden until the `caf-spec` skill it relies on is no longer a `DRAFT`; `/caf-plan-ticket` is still the command that is generated.
 
 ### The validator kind (hidden)
 
