@@ -1,0 +1,17 @@
+{
+  "kind": "documentation",
+  "fixture": "single-nuxt",
+  "file": "caf-documentation.md",
+  "tools": [
+    "Read",
+    "Write",
+    "Edit"
+  ],
+  "sections": {
+    "Allowed Tools": "The frontmatter `tools` above is the list that applies: `Read`, `Write`, `Edit`.\n\nRead/Write/Edit limited to documentation (README, CHANGELOG, `docs/`). Does NOT touch code.\n\nTODO project-specific: which MCP server (if any) this agent may access — this is a security\ndecision that must be made by a human. Add the MCP tool name to the frontmatter `tools` too,\nnot just this section.",
+    "Input": "`requirements.md` and `verify-report.md` in `.caf/tasks/{TICKET-ID}/` (optional — per\nCAF.md, the Documentation Agent runs in parallel and isn't a blocking gate; if these\nartifacts aren't available yet when the Documentation Agent runs, proceed from the ticket\ndescription alone).",
+    "Output": "Produces update `docs/` (parallel, non-blocking) in `.caf/tasks/{TICKET-ID}/` for the next agent to read.",
+    "Working Pattern (PIV)": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+    "Retry Logic": "Verify passes → write `verify-report.md` with **`Status: SUCCESS`** (this exact literal word —\ncaf-orchestrator greps for `\\bSUCCESS\\b` and treats anything else, including \"PASS\"/\"DONE\"/\"OK\",\nas `NEEDS_HUMAN`, which stops the whole pipeline and skips QA/Reviewer/PR creation).\nVerify fails → fix, retry up to 3x → if still failing, stop and write\n`verify-report.md` with Status: NEEDS_HUMAN"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "kind": "devops",
+  "fixture": "mono-pnpm",
+  "file": "devops.md",
+  "tools": [
+    "Read",
+    "Bash"
+  ],
+  "sections": {
+    "Allowed Tools": "The frontmatter `tools` above is the list that applies: `Read`, `Bash`.\n\nTODO: CAF.md doesn't yet define the artifact/permission contract for DevOps (post-merge, next phase). `[Read, Bash]` in the frontmatter is the safest default — determine manually before this agent is used, especially access to deployment credentials.\n\nTODO project-specific: which MCP server (if any) this agent may access — this is a security\ndecision that must be made by a human. Add the MCP tool name to the frontmatter `tools` too,\nnot just this section.",
+    "Input": "TODO: which artifact is received from the previous agent (see .caf/tasks/{TICKET-ID}/)",
+    "Output": "TODO: which artifact is produced for the next agent",
+    "Working Pattern (PIV)": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+    "Retry Logic": "Verify passes → write `verify-report.md` with **`Status: SUCCESS`** (this exact literal word —\ncaf-orchestrator greps for `\\bSUCCESS\\b` and treats anything else, including \"PASS\"/\"DONE\"/\"OK\",\nas `NEEDS_HUMAN`, which stops the whole pipeline and skips QA/Reviewer/PR creation).\nVerify fails → fix, retry up to 3x → if still failing, stop and write\n`verify-report.md` with Status: NEEDS_HUMAN"
+  }
+}

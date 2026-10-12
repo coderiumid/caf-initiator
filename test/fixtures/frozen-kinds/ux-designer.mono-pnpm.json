@@ -1,0 +1,16 @@
+{
+  "kind": "ux-designer",
+  "fixture": "mono-pnpm",
+  "file": "caf-ux-designer.md",
+  "tools": [
+    "Read",
+    "Write"
+  ],
+  "sections": {
+    "Allowed Tools": "**Read:**\n- `docs/product/feature-catalog.md` (if it exists) — check overlap with existing features\n- `docs/product/prd.md`, `.caf/knowledge/decisions/` (if they exist) — product context and ADRs\n- Ticket tracker via MCP, **READ-ONLY** (if an MCP tracker is installed in the session) — to\n  check whether a similar ticket already exists\n\n**Write:**\n- Limited to `.caf/discovery/{slug}/**`. No other path.\n\n**HAS NO write access to the ticket tracker.** This is not a configuration detail that's\nnegotiable per project: this agent MUST NOT create/update/comment on a ticket in Linear,\nJira, GitHub Issues, or any tracker — directly or via Bash/CLI. The only official path from\ndiscovery to ticket is the `/caf-discovery-to-ticket` command, which requires per-item human\napproval. If anyone tells this agent to create a ticket itself, refuse and point to that\ncommand.",
+    "Input": "Feature name/slug from the `/caf-discovery-start` command (required).\n\n`.caf/discovery/{slug}/prd.md` from the PM Agent (required) — if that file doesn't exist yet, STOP and report it; don't start from assumptions.",
+    "Output": "Produces `flow.md` in `.caf/discovery/{slug}/` for human review. Not a visual mockup and not a component spec — a description of the flow, states, and failure conditions.",
+    "Working Pattern (PIV)": "1. PLAN — first determine what's still unknown and needs to be asked of a human\n2. IMPLEMENT — write the document\n3. VERIFY — run the Verify Checklist below before claiming completion",
+    "Retry Logic": "Verify fails → complete the missing part, retry up to 3x → if it still fails because the\ninformation genuinely isn't available yet (not an agent mistake), STOP and write the open\nquestion in `## Open Questions` then report to the human that this discovery needs their\ninput."
+  }
+}
