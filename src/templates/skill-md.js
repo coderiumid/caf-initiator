@@ -244,7 +244,9 @@ Do not commit or push unless the user asks.`,
 // caf-spec (CAF-SDD-01) is born a DRAFT whatever the repo looks like: it has no `TODO` line to
 // resolve, it waits for a manual dispatch test. Its banner therefore has its own first two lines
 // and sits above the title, so it does not go through skillMd(); the agent-facing line is the
-// shared one. Content is taken verbatim from the ticket — don't reword it here.
+// shared one. Content is taken verbatim from the ticket — don't reword it here. It is the v3
+// source since CAF-SDD-02b (`Finding:`, facts are not questions, `Verify: command:`); the banner
+// stays until CAF-SDD-02c.
 //
 // It is the one skill that defines an artifact format: `requirements.md`, the spec it exists to
 // describe, including the `Status:` line inside that file. That is as far as it goes — it may
@@ -275,6 +277,7 @@ Write the spec content in the language the ticket is written in.
 ## Size
 - Depth follows ticket size. Small ticket: half a page. Do not add empty sections; write \`-\` when there is genuinely nothing.
 - The spec answers WHAT and WHY. How (files, functions, libraries) belongs to \`design.md\` and \`tasks.md\`, not here.
+- Facts read from the code go in section 3 as short bullets: cite the file path, no line numbers, no full inventories unless an AC depends on the list.
 
 ## Template \`.caf/tasks/<ID-or-slug>/requirements.md\`
 
@@ -295,6 +298,7 @@ Out:
 ## 3. Constraints and Assumptions
 - Constraint: ...
 - Assumption: ... (label every assumption; a risky assumption becomes an open question)
+- Finding: ... (the ticket says X, the code or repo shows Y)
 
 ## 4. Decisions Already Made
 - ... (link the ADR if any: .caf/knowledge/decisions/adr-NNN-*.md)
@@ -303,43 +307,48 @@ Out:
 - Q-1 [BLOCKING|NON-BLOCKING] <question> — Answer: <empty until answered>
 
 ## 6. Acceptance Criteria
-- AC-1: When <condition>, then <observable result>. Verify: <automated test | manual: short steps>
+- AC-1: When <condition>, then <observable result>. Verify: <automated test | command | manual>
 - AC-2: ...
 \`\`\`
 
 ## Acceptance Criteria rules
 - The marker must be exactly \`AC-<number>:\` at the start of the item (read by regex; do not change the format).
 - One behavior per AC. Observable and testable; no subjective words ("fast", "clean", "intuitive") unless given a measurable threshold.
-- Always write \`Verify:\`. If no automated test is possible, write \`manual:\` and the steps. Never leave it empty; the validator uses it to flag ACs without tests.
+- Describe behavior, not location: no line numbers or function names. Exception: a ticket that is itself a refactor or config change may name the artifact, still without line numbers.
+- Always write \`Verify:\` with one of three forms; never leave it empty (the validator uses it to flag ACs without tests):
+  - \`automated test\` — name the test file or suite when known.
+  - \`command: <command> | expect: <exit code or output>\` — a deterministic command from the repo's verify checklist; the validator runs it.
+  - \`manual: <short steps>\` — only when neither of the above is possible.
 - Include failure paths and relevant edge cases (empty input, unauthorized, network error), not only the happy path.
 - Ticket touches UI: screen flow and states go in \`flow.md\`; the ACs stay here.
 
 ## Open Questions rules
-- First check the ticket, the code, the ADRs and \`CLAUDE.md\`. Do not ask what is already answered there.
-- At most 5 questions, most decisive first. One question = one decision, with options and a recommendation when you have one.
+- First check the ticket, the code, the ADRs and \`CLAUDE.md\`. Whatever you can answer by reading is a fact (section 3) or a \`Finding:\`, never a question.
+- Ask only for decisions a human must make. At most 5 questions in the file, most decisive first. One question = one decision, with options and a recommendation when you have one.
 - BLOCKING = the answer changes scope or ACs; work stops until answered. NON-BLOCKING = a safe assumption is written explicitly in section 3.
 - Chat: ask the user directly. Ticket via orchestrator: write the questions in a ticket comment and stop.
-- Once answered: fill in \`Answer:\`, move the result to section 4 (Decisions) or change the ACs. Do not delete the question.
+- Once answered: fill in \`Answer:\`, move the result to section 4 (Decisions) or change the ACs. Keep the question and its original tag; do not delete or retag it.
 
 ## An approved spec is a contract
-- Once \`Status: APPROVED\`, do not change goal, scope, or ACs.
-- Spec wrong or impossible to satisfy: write the proposed change in \`verify-report.md\`; a human decides.
+- Once \`Status: APPROVED\`, do not change goal, scope, or ACs, even when the user asks in chat.
+- Spec wrong, impossible, or the request changes scope: write the proposed change in \`verify-report.md\`; a human decides.
 
 ## Check before finishing
 1. All six sections present and filled (or \`-\`).
 2. Every AC has a unique, sequential number and a \`Verify:\`.
-3. No implementation details.
-4. No guess that is not labeled as an assumption or an open question.
+3. No implementation details; no guess that is not labeled as an assumption or an open question.
+4. No more than 5 questions, none answerable from the code.
 5. ACs contradict each other or are impossible: set \`Status: NEEDS_CLARIFICATION\` and do not continue to tasks.
 `;
 }
 
 // caf-traceability (CAF-SDD-02): AC → task → code → test. Born a DRAFT like caf-spec and with the
 // same banner (it waits for a real dispatch test once a validator exists), so no agent gets a
-// pointer to it yet. Content is taken verbatim from the ticket — don't reword it here.
+// pointer to it yet. Content is taken verbatim from the ticket — don't reword it here (v2 since
+// CAF-SDD-02b: the `command` evidence form).
 //
 // Second narrow exception to "a skill never redefines a report file": it states the per-AC
-// evidence line of `verify-report.md`, the same four forms the verify-report format in
+// evidence line of `verify-report.md`, the same five forms the verify-report format in
 // agent-handoff-md.js carries. It still defines no status or verdict word and no other part of
 // any report.
 export function buildTraceabilitySkill() {
@@ -369,12 +378,13 @@ If the agent definition conflicts with this skill, the agent definition wins.
 ## In verify-report.md
 Write one line per AC, using exactly one of these forms:
 - \`AC-n: automated-test — <file>::<test name>\`
+- \`AC-n: command — <command> | <exit code or output observed>\`
 - \`AC-n: build-only — <command that passed>; no test exists for this behavior\`
 - \`AC-n: manual — <steps a human must run, or steps already run>\`
 - \`AC-n: none — <why>\`
 
 Rules:
-- An AC with \`Verify: manual\` is reported as \`manual\`, never as \`automated-test\`.
+- An AC with \`Verify: manual\` is reported as \`manual\`, never as \`automated-test\`. An AC with \`Verify: command:\` is reported as \`command\` with the observed result.
 - If the touched area has no test runner, report \`build-only\` or \`manual\`. Do not create a fake gate or a fake test; record the gap.
 - State what was proven and what was not. Do not claim more than the evidence shows.
 

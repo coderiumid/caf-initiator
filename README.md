@@ -170,8 +170,8 @@ Writes seven universal skills into `.claude/skills/<name>/SKILL.md`.
 | `caf-no-guess` | Cite what you read; an unknown becomes an open item, never an invented fact | all of the above |
 | `caf-escalate` | When to stop and hand the task back to a human | implementation agents |
 | `caf-piv` | Plan, wait for the go-ahead, implement, verify | none (manual sessions only) |
-| `caf-spec` | The `requirements.md` (spec) format: scope, open questions, acceptance criteria | Planner — always written as a `DRAFT`, so no pointer yet |
-| `caf-traceability` | Link every acceptance criterion to tasks, code and a named test; one evidence line per criterion in `verify-report.md` | Planner, Frontend, Backend — always written as a `DRAFT`, so no pointer yet |
+| `caf-spec` | The `requirements.md` (spec) format: scope, findings, open questions, acceptance criteria with a `Verify:` line (`automated test`, `command:` or `manual:`) | Planner — always written as a `DRAFT`, so no pointer yet |
+| `caf-traceability` | Link every acceptance criterion to tasks, code and a named test; one evidence line per criterion in `verify-report.md` (`automated-test`, `command`, `build-only`, `manual` or `none`) | Planner, Frontend, Backend — always written as a `DRAFT`, so no pointer yet |
 
 Auditor, PM and UX Designer agents get no skills.
 
@@ -189,7 +189,7 @@ Auditor, PM and UX Designer agents get no skills.
 
 To activate it, resolve the `TODO` lines and remove the whole banner: both the `> DRAFT ...` sentence and the `> Agents: this skill is NOT ready...` line.
 
-`caf-spec` and `caf-traceability` are written with a `DRAFT` banner in every repo. They have no `TODO` line; remove a skill's banner once you have tested that skill in a real agent run.
+`caf-spec` and `caf-traceability` are written with a `DRAFT` banner in every repo. They have no `TODO` line; remove a skill's banner once you have tested that skill in a real agent run. A skill file that already exists is never replaced: to get a newer version of a skill (for example `caf-spec` with the `command:` form), delete the file and run `scaffold skills` again.
 
 **Pointers in existing agent definitions**
 

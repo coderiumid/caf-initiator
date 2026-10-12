@@ -561,6 +561,9 @@ ${buildSkillsBody(skillPaths)}
 //   throws when the planner leaves no `tasks.md`. `NEEDS_CLARIFICATION` is the chat-path status.
 // - The requirements.md format is the `caf-spec` skill's; it is named, not copied. caf-spec is
 //   still a DRAFT, so the text has to stand on its own when the skill is not in `## Skills`.
+// - Three rules are stated here as the `caf-spec` skill (v3) states them, since CAF-SDD-02b: what
+//   reading answers is a fact and not a question, an answered question keeps its tag, and the
+//   three `Verify:` forms (`command:` included). Change them here and in the skill together.
 // - `###` sub-headings only: a `## ` line here would be read as a section boundary.
 // - No `TODO` word (check-drafts counts them per agent) and no generate-time placeholder.
 const PLANNER_SPEC_WORKFLOW = [
@@ -573,17 +576,23 @@ const PLANNER_SPEC_WORKFLOW = [
   '### 1. Specify',
   '- Write `requirements.md`: what is asked and why. Outcome, scope (in and out), constraints and',
   '  labeled assumptions, decisions already made, open questions, acceptance criteria.',
-  '- Number every acceptance criterion `AC-1:`, `AC-2:`, ... and end each one with `Verify:`',
-  '  (`automated test`, or `manual:` and the steps). One observable behavior per AC.',
+  '- Number every acceptance criterion `AC-1:`, `AC-2:`, ... and end each one with `Verify:` in',
+  '  one of three forms: `automated test`, `command: <command> | expect: <exit code or output>`',
+  '  (a deterministic command from the verify checklist of the repo), or `manual:` and the steps',
+  '  when neither of the other two is possible. One observable behavior per AC.',
   '- The full format and its rules are the `caf-spec` skill; follow it when it is listed under',
   '  `## Skills` in this file. It is not repeated here.',
   '- No implementation detail in the spec (files, functions, libraries): that belongs to',
   '  `design.md` and `tasks.md`.',
   '',
   '### 2. Clarify',
-  '- First check the ticket, the code, the ADRs and `CLAUDE.md`; do not ask what is answered there.',
-  '- Ask at most 5 questions, the most decisive first. Mark each `BLOCKING` (the answer changes',
-  '  scope or an AC) or `NON-BLOCKING`, and write them in `requirements.md`.',
+  '- First check the ticket, the code, the ADRs and `CLAUDE.md`. Whatever you can answer by reading',
+  '  them is a fact, written with the constraints and assumptions, never a question.',
+  '- Ask only for decisions a human must make. At most 5 questions in the file, the most decisive',
+  '  first. Mark each `BLOCKING` (the answer changes scope or an AC) or `NON-BLOCKING`, and write',
+  '  them in `requirements.md`.',
+  '- Once a question is answered, write the answer and keep the question and its original tag; do',
+  '  not delete or retag it.',
   '- `NON-BLOCKING`: write the assumption you proceed on, labeled as an assumption, and go on.',
   '- `BLOCKING` and unanswered: set `Status: NEEDS_CLARIFICATION` in `requirements.md` and stop.',
   '  Do not go on to Plan or Tasks, and do not write the task breakdown in `tasks.md` while a',

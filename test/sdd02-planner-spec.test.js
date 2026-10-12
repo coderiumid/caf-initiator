@@ -199,20 +199,22 @@ async function handoffSkeleton() {
   return { md, section: lines.slice(at, lines.indexOf('## Additional Agents (Custom)')).join('\n'), skeleton: lines.slice(open + 1, close) };
 }
 
-test('AC-6: verify-report format — one evidence line per AC, in one of four forms', async () => {
+// CAF-SDD-02b added the `command` form (second line) — five forms since then.
+test('AC-6: verify-report format — one evidence line per AC, in one of five forms', async () => {
   const { skeleton, section } = await handoffSkeleton();
   const at = skeleton.indexOf('## Acceptance Criteria');
   assert.ok(at > 0, 'the skeleton has an Acceptance Criteria part');
   const evidence = skeleton.slice(at + 1, skeleton.indexOf('', at));
   assert.deepEqual(evidence, [
     '- AC-1: automated-test — <file>::<test name>',
-    '- AC-2: build-only — <command that passed>; no test exists for this behavior',
-    '- AC-3: manual — <steps a human must run, or steps already run>',
-    '- AC-4: none — <why>',
+    '- AC-2: command — <command> | <exit code or output observed>',
+    '- AC-3: build-only — <command that passed>; no test exists for this behavior',
+    '- AC-4: manual — <steps a human must run, or steps already run>',
+    '- AC-5: none — <why>',
   ]);
   const flat = section.replace(/\s+/g, ' ');
   assert.match(flat, /one line per AC/i);
-  assert.match(flat, /exactly one of the four forms/);
+  assert.match(flat, /exactly one of the five forms/);
   assert.match(flat, /number of passing tests is never evidence/i);
 });
 
@@ -257,9 +259,10 @@ test('AC-6: the handoff builder is the same text whatever the roster', () => {
 // ---------------------------------------------------------------------------------------------
 
 const TRACE_REL = '.claude/skills/caf-traceability/SKILL.md';
-// sha256 of .ai/tasks/CAF-SDD-02/caf-traceability.source.md (no trailing newline in that file).
+// sha256 of the ticket source (no trailing newline in that file): since CAF-SDD-02b
+// .ai/tasks/CAF-SDD-02b/caf-traceability.source.v2.md, which adds the `command` evidence form.
 // `.ai/` is not committed, so the hash is what proves the skill is the source, byte for byte.
-const TRACE_SOURCE_SHA256 = '38d5ddaa4e2e4f365ea9f89df5b0b1fb7826264a3f745915215c1ad64d3a8c4f';
+const TRACE_SOURCE_SHA256 = 'a1a89ede52d423f20d5df08111988dbaef97e27460a715767ce54ddc437d536c';
 const BANNER = [
   '> DRAFT: this skill has not been tested with real agent dispatches yet.',
   '> Remove this banner only after that test is done.',

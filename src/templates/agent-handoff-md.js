@@ -35,7 +35,7 @@ function customSection(custom) {
 // lives here. The per-AC evidence forms are the ones the `caf-traceability` skill states — keep
 // the two identical. caf-orchestrator's readVerifyReport() tests the WHOLE file for
 // `\bSUCCESS\b`, so nothing added to the skeleton may contain that word outside the `Status:`
-// line (guarded by test/sdd02-planner-spec.test.js).
+// line (guarded by test/sdd02-planner-spec.test.js). Five forms since CAF-SDD-02b (`command`).
 export function buildAgentHandoffMd({ roster }) {
   const presentRoles = roster.known.filter((r) => r.present);
   const table = presentRoles.map(artifactRow).join('\n');
@@ -72,9 +72,10 @@ Status: SUCCESS | NEEDS_HUMAN
 
 ## Acceptance Criteria
 - AC-1: automated-test — <file>::<test name>
-- AC-2: build-only — <command that passed>; no test exists for this behavior
-- AC-3: manual — <steps a human must run, or steps already run>
-- AC-4: none — <why>
+- AC-2: command — <command> | <exit code or output observed>
+- AC-3: build-only — <command that passed>; no test exists for this behavior
+- AC-4: manual — <steps a human must run, or steps already run>
+- AC-5: none — <why>
 
 ## Proposed Spec Changes
 -
@@ -83,10 +84,11 @@ Status: SUCCESS | NEEDS_HUMAN
 TODO: verification result details, errors if any
 \`\`\`
 
-\`## Acceptance Criteria\`: one line per AC of \`requirements.md\`, in exactly one of the four forms
+\`## Acceptance Criteria\`: one line per AC of \`requirements.md\`, in exactly one of the five forms
 above. Name the test; the number of passing tests is never evidence. An AC marked
-\`Verify: manual\` is reported as \`manual\`, and an area with no test runner as \`build-only\` or
-\`manual\` — not as \`automated-test\`.
+\`Verify: manual\` is reported as \`manual\`, an AC marked \`Verify: command:\` as \`command\` with the
+result observed, and an area with no test runner as \`build-only\` or \`manual\` — not as
+\`automated-test\`.
 
 \`## Proposed Spec Changes\`: once \`requirements.md\` says \`Status: APPROVED\`, never edit it. If
 the spec is wrong or impossible to satisfy, write the proposed change here and a human decides.
