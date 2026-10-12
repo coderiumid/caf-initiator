@@ -20,6 +20,6 @@ test('devops is listed in HIDDEN_CANDIDATE_KINDS and would be filtered from the 
   const candidates = buildCandidates({}, []);
   const offered = candidates.filter((c) => !HIDDEN_CANDIDATE_KINDS.includes(c.kind));
   assert.ok(!offered.some((c) => c.kind === 'devops'), 'devops must not appear in the offered choices');
-  // Every other candidate stays offered — hiding devops must not affect anything else.
-  assert.equal(offered.length, candidates.length - 1);
+  // Every candidate that is not hidden stays offered (CAF-SDD-03c1 hid four more kinds).
+  assert.equal(offered.length, candidates.length - HIDDEN_CANDIDATE_KINDS.length);
 });

@@ -9,7 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { detectStack } from '../../src/steps/02-detect-stack.js';
-import { buildCandidates } from '../../src/commands/agents.js';
+import { buildCandidates, HIDDEN_CANDIDATE_KINDS } from '../../src/commands/agents.js';
 import { matchVerifyScripts, readPackageName } from '../../src/utils/package-scripts.js';
 import { buildAgentMd, agentSlug } from '../../src/templates/agent-md.js';
 import { buildClaudeMd } from '../../src/templates/claude-md.js';
@@ -48,7 +48,12 @@ export async function renderMonoSnapshot(detectOpts = {}) {
 
   const web = sortedApps.find((a) => a.path === 'apps/web');
   const api = sortedApps.find((a) => a.path === 'apps/api');
-  const candidates = buildCandidates({ frontend: [web], backend: [api] }, []);
+  // CAF-SDD-03c1: only what a scaffold run can write — the candidates the picker offers. Until
+  // then every candidate was rendered, hidden ones included, so the snapshot held files no run
+  // wrote (devops.md).
+  const candidates = buildCandidates({ frontend: [web], backend: [api] }, []).filter(
+    (c) => !HIDDEN_CANDIDATE_KINDS.includes(c.kind)
+  );
 
   const agentFiles = {};
   for (const candidate of candidates) {
@@ -93,7 +98,8 @@ export async function renderMonoSnapshot(detectOpts = {}) {
         implementationRoles: ['caf-frontend', 'caf-backend'],
         appPaths: { 'caf-frontend': ['apps/web'], 'caf-backend': ['apps/api'] },
         hasArchitect: true,
-        hasDocumentation: true,
+        // As commands/agents.js derives it: from the agents that were picked.
+        hasDocumentation: candidates.some((c) => c.kind === 'documentation'),
       }),
       '.caf/workflows/task-completion.md': buildTaskCompletionMd({
         scripts: matchVerifyScripts(dir, 'apps/api'),

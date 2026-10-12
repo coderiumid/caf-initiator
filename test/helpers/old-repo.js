@@ -50,6 +50,9 @@ export async function makeOldRepo(fixture) {
 export async function curateOldRepo(dir) {
   const relative = (value) => JSON.parse(JSON.stringify(value).split(JSON.stringify(dir).slice(1, -1)).join('<repo>'));
   const before = snapshotTree(dir);
+  // audit() sets process.exitCode on a required gap (this repo has no task-completion.md); that
+  // must not become the exit code of the test file.
+  const savedExitCode = process.exitCode;
   prompts.inject([]);
   try {
     const { layers, requiredGaps, optionalGaps, declined, sectionCounts } = await silenced(() => audit({ dir }));
@@ -66,5 +69,6 @@ export async function curateOldRepo(dir) {
     };
   } finally {
     prompts._injected.length = 0;
+    process.exitCode = savedExitCode;
   }
 }

@@ -37,6 +37,12 @@ export const TARGETS = {
   'complete-drafts': { label: 'AI Draft Completion Command Generator', run: (ctx) => completeDrafts({ dir: ctx.dir, agentDir: ctx.agentDir, dryRun: ctx.dryRun, mode: ctx.mode }) },
 };
 
+// CAF-SDD-03c1: targets the help no longer lists, because what they generate is no longer
+// scaffolded (see HIDDEN_COMMAND_FILES). The target itself still resolves: running it says so
+// and writes nothing.
+const HIDDEN_TARGETS = ['feature-catalog-sync'];
+export const OFFERED_TARGETS = Object.keys(TARGETS).filter((key) => !HIDDEN_TARGETS.includes(key));
+
 // Order for the bare chain — feature-catalog-sync stays out per decision B above, and so does
 // skills (explicit-only).
 export const CHAIN_ORDER = ['golden-examples', 'adr', 'agents', 'task-completion', 'workflow', 'complete-drafts'];
@@ -116,7 +122,7 @@ export async function runScaffold({ dir, dryRun, explicitGlobs, agentDir, overwr
  */
 export async function runScaffoldTarget(target, { dir, dryRun, agentDir, app, commandDir, overwrite, mode, scope, role }) {
   if (!TARGETS[target]) {
-    console.error(kleur.red(`scaffold: unknown target "${target}" (choices: ${Object.keys(TARGETS).join(', ')})`));
+    console.error(kleur.red(`scaffold: unknown target "${target}" (choices: ${OFFERED_TARGETS.join(', ')})`));
     process.exitCode = 1;
     return;
   }

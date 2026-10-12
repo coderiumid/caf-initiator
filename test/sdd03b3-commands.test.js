@@ -17,6 +17,7 @@ import { agentsSync } from '../src/commands/agents-sync.js';
 import { buildPlanMd, PLAN_COMMAND_NAME } from '../src/templates/plan-command.js';
 import { buildFixReviewMd } from '../src/templates/fix-review-command.js';
 import { buildReviewMd } from '../src/templates/review-command.js';
+import { buildRunPipelineMd } from '../src/templates/run-pipeline-command.js';
 import { SKILL_NAMES } from '../src/templates/skill-md.js';
 import { writeIfAbsent } from '../src/util.js';
 import { readManifest } from '../src/utils/generate-manifest.js';
@@ -53,6 +54,34 @@ const COMMAND_FILES = [
   'caf-run-pipeline.md',
 ];
 const CHANGED_FILES = ['caf-fix-review.md', 'caf-review.md'];
+// CAF-SDD-03c1: eight of the 13 are no longer scaffolded. The golden still holds all 13; the
+// builders of the eight are compared against it in test/sdd03c1-stop-scaffold.test.js.
+const WRITTEN_FILES = ['caf-complete-drafts.md', 'caf-fix-review.md', 'caf-plan-ticket.md', 'caf-review.md', 'caf-run-pipeline.md'];
+
+// CAF-SDD-03c1: what the golden text of a still-scaffolded command becomes now that four of the
+// agents it was recorded with are no longer written. No template changed:
+// - /caf-complete-drafts lists the agent files that exist, so it lost those four lines;
+// - /caf-run-pipeline is rendered with `hasDocumentation: false`, the branch its template always
+//   had. The golden is first shown to be the `true` render of today's builder, then the scaffolded
+//   file must be the `false` render of the same call.
+const PIPELINE_ROLES = {
+  'mono-pnpm': { implementationRoles: ['caf-frontend', 'caf-backend'], appPaths: { 'caf-frontend': ['apps/web'], 'caf-backend': ['apps/api'] } },
+  'single-nuxt': { implementationRoles: ['caf-implementer'], appPaths: { 'caf-implementer': ['.'] } },
+};
+const SINCE_03C1 = {
+  'caf-plan-ticket.md': (old) => old,
+  'caf-complete-drafts.md': (old) => {
+    const gone = ['caf-auditor', 'caf-documentation', 'caf-pm', 'caf-ux-designer'].map((slug) => `- \`${AGENT_DIR}/${slug}.md\``);
+    const lines = old.split('\n');
+    for (const line of gone) assert.equal(lines.filter((l) => l === line).length, 1, `the golden lists ${line} once`);
+    return lines.filter((l) => !gone.includes(l)).join('\n');
+  },
+  'caf-run-pipeline.md': (old, fixture) => {
+    const render = (hasDocumentation) => buildRunPipelineMd({ agentDir: AGENT_DIR, ...PIPELINE_ROLES[fixture], hasArchitect: true, hasDocumentation });
+    assert.equal(render(true), old, 'the /caf-run-pipeline template is the one recorded in the golden');
+    return render(false);
+  },
+};
 
 // T1(e): the sections of the two commands that change. Nothing else in them may.
 const REVIEW_CHANGED = [
@@ -235,7 +264,7 @@ test('AC-2: /caf-plan stops after tasks.md and starts no implementation', () => 
 for (const [fixture, role] of [['mono-pnpm'], ['single-nuxt'], ['single-nuxt', 'frontend'], ['single-nuxt', 'backend']]) {
   test(`AC-3: a full scaffold on ${fixture}${role ? ` (--role ${role})` : ''} — every agent picked, every opt-in command accepted — writes no caf-plan.md`, async () => {
     const { dir, files } = role ? await renderCommands(fixture, { role }) : now[fixture];
-    assert.deepEqual(Object.keys(files), COMMAND_FILES, 'precondition: the run did write the commands');
+    assert.deepEqual(Object.keys(files), WRITTEN_FILES, 'precondition: the run did write the commands');
     const everything = Object.keys(snapshotTree(dir));
     assert.deepEqual(everything.filter((rel) => /caf-plan(?!-ticket|ner)/.test(rel)), []);
   });
@@ -267,12 +296,12 @@ test('AC-3: no command of the CLI imports the /caf-plan builder', () => {
 // ---------------------------------------------------------------------------------------------
 
 for (const fixture of FIXTURE_NAMES) {
-  test(`AC-4: ${fixture} — the same 13 commands, and all but /caf-review and /caf-fix-review are byte-identical to the golden`, () => {
+  test(`AC-4: ${fixture} — the commands still scaffolded, all but /caf-review and /caf-fix-review, are the golden of 13 — byte-identical, or different only by the agents no longer scaffolded`, () => {
     assert.deepEqual(Object.keys(OLD[fixture]), COMMAND_FILES, 'the golden holds every command');
-    assert.deepEqual(Object.keys(now[fixture].files), COMMAND_FILES);
-    for (const file of COMMAND_FILES) {
+    assert.deepEqual(Object.keys(now[fixture].files), WRITTEN_FILES);
+    for (const file of WRITTEN_FILES) {
       if (CHANGED_FILES.includes(file)) continue;
-      assert.equal(now[fixture].files[file], OLD[fixture][file], `${file} must stay byte-identical`);
+      assert.equal(now[fixture].files[file], SINCE_03C1[file](OLD[fixture][file], fixture), `${file} must stay byte-identical`);
     }
   });
 }

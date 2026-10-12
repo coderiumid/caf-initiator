@@ -38,7 +38,34 @@ import { buildReviewMd } from '../templates/review-command.js';
 // it isn't offered to users until that's decided. The candidate definition itself stays in
 // buildCandidates() below — only the offer is suppressed — so kind-detection/section builders
 // still answer for it correctly if a caf-devops.md somehow exists via another path.
-export const HIDDEN_CANDIDATE_KINDS = ['devops'];
+//
+// CAF-SDD-03c1: four more kinds the SDD design dropped are hidden the same way, so a new repo is
+// no longer scaffolded with them. Hidden, not removed: each stays in KNOWN_KINDS with its
+// builder, because a repo scaffolded earlier still holds the file and `curate` must keep reading
+// it as its own kind. The picker is the only place an agent kind is chosen (there is no flag for
+// it), so filtering the offer is the whole mechanism. `implementer` is dropped by the design too
+// but stays offered until CAF-SDD-03c3: in SINGLE_REPO without --role it is the only
+// implementation agent, and /caf-run-pipeline is only offered when there is one.
+export const HIDDEN_CANDIDATE_KINDS = ['devops', 'documentation', 'pm', 'ux-designer', 'auditor'];
+
+// The same for commands (CAF-SDD-03c1): files no scaffold run writes any more. Their builders and
+// templates stay, and a command file already in a repo is never touched. Checked where a command
+// is written (isHiddenCommand), not where it is offered: three of these belong to kinds that are
+// still scaffolded (architect, qa, reviewer).
+export const HIDDEN_COMMAND_FILES = [
+  'caf-discovery-start.md',
+  'caf-discovery-to-ticket.md',
+  'caf-audit-scan.md',
+  'caf-audit-to-ticket.md',
+  'caf-design-ticket.md',
+  'caf-feature-catalog-sync.md',
+  'caf-qa-check.md',
+  'caf-review-ticket.md',
+];
+
+export function isHiddenCommand(file) {
+  return HIDDEN_COMMAND_FILES.includes(file);
+}
 
 const PREVIEW_COMMANDS = [
   { kind: 'planner', label: 'Planner', file: 'caf-plan-ticket.md', build: buildPlanTicketMd },
@@ -51,9 +78,6 @@ const CAF_WARNING = [
   'CAF.md: "Do not create every agent at once — start with Planner + 1 implementation agent."',
   'Recommendation: pick Planner + one implementation agent first, add other agents after that',
   'proves stable on 1-2 real tickets.',
-  '',
-  'Auditor is independent (proactive scan, does not wait for a ticket) — it can be picked any',
-  'time without Planner. The recommendation above still applies to the normal ticket-driven flow.',
 ].join('\n');
 
 // caf-orchestrator only recognizes these two fixed implementation roles (agents.modelOverrides
@@ -560,6 +584,7 @@ export async function agents({
   }
 
   for (const preview of PREVIEW_COMMANDS) {
+    if (isHiddenCommand(preview.file)) continue;
     if (!selected.some((c) => c.kind === preview.kind)) continue;
 
     console.log('');
@@ -736,49 +761,46 @@ export async function agents({
     }
   }
 
-  const auditorPicked = selected.some((c) => c.kind === 'auditor');
-  if (auditorPicked) {
+  // Companion commands of the auditor and the PM. Since CAF-SDD-03c1 all four are in
+  // HIDDEN_COMMAND_FILES, so nothing is written here (and the tracker is not asked for) even for
+  // a selection that still holds one of those kinds.
+  const companionGroups = [
+    {
+      picked: selected.some((c) => c.kind === 'auditor'),
+      title: 'Auditor selected — generate companion commands (/caf-audit-scan, /caf-audit-to-ticket)',
+      commands: [
+        { file: 'caf-audit-scan.md', build: () => buildAuditScanMd({ agentDir: relativeAgentDir }) },
+        { file: 'caf-audit-to-ticket.md', build: (tracker) => buildAuditToTicketMd({ tracker, agentDir: relativeAgentDir }) },
+      ],
+    },
+    {
+      picked: pmPicked,
+      title: 'Product Manager selected — generate companion commands (/caf-discovery-start, /caf-discovery-to-ticket)',
+      commands: [
+        {
+          file: 'caf-discovery-start.md',
+          build: () => buildDiscoveryStartMd({ agentDir: relativeAgentDir, hasUxDesigner: uxSelected }),
+        },
+        { file: 'caf-discovery-to-ticket.md', build: (tracker) => buildDiscoveryToTicketMd({ tracker, agentDir: relativeAgentDir }) },
+      ],
+    },
+  ];
+
+  for (const group of companionGroups) {
+    const commands = group.commands.filter((command) => !isHiddenCommand(command.file));
+    if (!group.picked || commands.length === 0) continue;
+
     console.log('');
-    section('Auditor selected — generate companion commands (/caf-audit-scan, /caf-audit-to-ticket)');
+    section(group.title);
 
     const tracker = await getTracker();
 
-    const scanContent = buildAuditScanMd({ agentDir: relativeAgentDir });
-    const scanPath = path.join(commandDirPath, 'caf-audit-scan.md');
-    const scanResult = writeIfAbsentGuarded(scanPath, scanContent, { dryRun, overwrite }, collisions);
-    if (scanResult === 'written') written.push(scanPath);
-    else if (scanResult === 'skipped') skipped.push(scanPath);
-
-    const ticketContent = buildAuditToTicketMd({ tracker, agentDir: relativeAgentDir });
-    const ticketPath = path.join(commandDirPath, 'caf-audit-to-ticket.md');
-    const ticketResult = writeIfAbsentGuarded(ticketPath, ticketContent, { dryRun, overwrite }, collisions);
-    if (ticketResult === 'written') written.push(ticketPath);
-    else if (ticketResult === 'skipped') skipped.push(ticketPath);
-
-    console.log('');
-    console.log(kleur.green(`generated command draft(s) in ${commandDirPath}`));
-  }
-
-  if (pmPicked) {
-    console.log('');
-    section('Product Manager selected — generate companion commands (/caf-discovery-start, /caf-discovery-to-ticket)');
-
-    const tracker = await getTracker();
-
-    const startContent = buildDiscoveryStartMd({
-      agentDir: relativeAgentDir,
-      hasUxDesigner: uxSelected,
-    });
-    const startPath = path.join(commandDirPath, 'caf-discovery-start.md');
-    const startResult = writeIfAbsentGuarded(startPath, startContent, { dryRun, overwrite }, collisions);
-    if (startResult === 'written') written.push(startPath);
-    else if (startResult === 'skipped') skipped.push(startPath);
-
-    const discoveryTicketContent = buildDiscoveryToTicketMd({ tracker, agentDir: relativeAgentDir });
-    const discoveryTicketPath = path.join(commandDirPath, 'caf-discovery-to-ticket.md');
-    const discoveryTicketResult = writeIfAbsentGuarded(discoveryTicketPath, discoveryTicketContent, { dryRun, overwrite }, collisions);
-    if (discoveryTicketResult === 'written') written.push(discoveryTicketPath);
-    else if (discoveryTicketResult === 'skipped') skipped.push(discoveryTicketPath);
+    for (const command of commands) {
+      const filePath = path.join(commandDirPath, command.file);
+      const result = writeIfAbsentGuarded(filePath, command.build(tracker), { dryRun, overwrite }, collisions);
+      if (result === 'written') written.push(filePath);
+      else if (result === 'skipped') skipped.push(filePath);
+    }
 
     console.log('');
     console.log(kleur.green(`generated command draft(s) in ${commandDirPath}`));
