@@ -298,8 +298,8 @@ deviations, tasks not done, ACs whose evidence is `manual`/`build-only`/`none`/m
   not edit code, tests or the spec.
 - `test/fixtures/legacy-manifest/` holds the hash of the old one-line reviewer `Output`, so the
   03a2 legacy-manifest test puts the pre-sdd03b2 reviewer in the repo and expects that one `DRIFT`.
-- Out of scope until their own tickets: making `/caf-review`, `/caf-fix-review` and `/caf-plan`
-  spec-aware (03b3), mapping a new skill to `reviewer`, and anything in the orchestrator (04).
+- Out of scope until their own tickets: mapping a new skill to `reviewer`, and anything in the
+  orchestrator (04). The commands became spec-aware in 03b3 — see "Commands and the spec" below.
 
 The verify-report format lives in one generated file, `.caf/workflows/agent-handoff.md`
 (`agent-handoff-md.js`). caf-orchestrator tests the WHOLE `verify-report.md` for `\bSUCCESS\b`,
@@ -362,3 +362,46 @@ connects it to the pipeline (03c/04):
   that parse `NEEDS_HUMAN` reads as not-a-pass. What the orchestrator does with it is CAF-SDD-04.
 - Out of scope until their own tickets: renaming or removing `qa`, a `/caf-*` command for the
   validator, and removing the `caf-traceability` banner.
+
+## Commands and the spec (CAF-SDD-03b3)
+
+Slash commands are plain files written once through `writeIfAbsent`. They are **not** tracked:
+the manifest records agent sections only, `curate audit`/`curate sync` never read
+`.claude/commands/` (except the existence check of `caf-feature-catalog-sync.md`), and nothing
+propagates a template change to a command that already exists. A repo scaffolded earlier keeps
+its old command until the file is deleted and scaffolded again. Don't describe a command change
+as reaching existing repos through `curate sync`.
+
+`test/fixtures/pre-sdd03b3/` is the render of all 13 commands for both fixtures from before this
+ticket (`test/helpers/commands-render.js` runs the real scaffold commands on a temp copy) — never
+regenerate it. `test/sdd03b3-commands.test.js` compares every command against it: 11 are
+byte-identical, and `/caf-review` and `/caf-fix-review` differ only in the sections listed there.
+A ticket that changes another command on purpose moves that file out of the identical list in
+its own test and says so; it does not re-record the golden.
+
+- `/caf-review` and `/caf-fix-review` are the webhook contract of caf-orchestrator
+  (`run-pr-review.use-case.ts` mirrors their spawn prompts, `report-reader.ts` parses
+  `fix-review-log.md`). Name, argument (a PR number), the verbatim prohibition sentence, the
+  `review-notes.md` field list, the verdict → event table, the `fix-review-log.md` block and its
+  three status values are held line by line in the test (`REVIEW_MARKERS`, `FIX_REVIEW_MARKERS`).
+  Change text only inside a section that already exists; no new header, no new status value.
+- `/caf-review` (sections 1, 3, 4, 5): the artifact folder is `.caf/tasks/{TICKET-ID}/` with the
+  ticket ID step 0.5 resolved; with a `requirements.md` the reviewer gets the folder and its own
+  `## Output` does the spec checks (referred to, not copied). Without one it is a code-only
+  review, stated in the PR Review `body` and in chat. It never fails for a missing folder.
+- `/caf-fix-review` (section 4, section 6, Constraints): a comment that asks to change goal,
+  scope or an AC never edits `requirements.md`. The proposal is appended under
+  `## Proposed Spec Changes` of `verify-report.md` — the one write besides `fix-review-log.md`,
+  stated as an exception next to the unchanged prohibition sentence — and the log entry is
+  `SKIPPED` with `Notes:` starting `Needs a human decision:`. The text must not contain the word
+  the orchestrator greps `verify-report.md` for (a test holds that), and it tells the agent not
+  to create `verify-report.md` when it is missing.
+- `/caf-plan` (`src/templates/plan-command.js`, `buildPlanMd`) is **hidden**: no file under
+  `src/` imports it (a test walks `src/` for that), so no scaffold run writes `caf-plan.md` and
+  the snapshot has no entry. It stays hidden until the `caf-spec` banner is removed (02c) and the
+  ticket that connects it; don't add it to `PREVIEW_COMMANDS` or to a prompt before that. It
+  spawns `caf-planner` through the Task tool and carries none of the planner's rules — a test
+  rejects planner rule text in it. `/caf-plan-ticket` is still generated, byte-identical, until
+  03c replaces it.
+- Out of scope until their own tickets: removing `/caf-plan-ticket` and the other commands to be
+  dropped, renaming `/caf-run-pipeline` (03c), and anything in the orchestrator (04).

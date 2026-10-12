@@ -205,6 +205,21 @@ Besides the prohibition above, the prompt MUST include:
   \`\`\`
   One \`### Comment ...\` block per comment processed — global mode means one block per
   outstanding comment, not one combined summary.
+- The rule for a comment that asks to change the spec — the goal, scope or an acceptance
+  criterion of \`.caf/tasks/{TICKET-ID}/requirements.md\`, as opposed to the code:
+  - Never edit \`requirements.md\`, and don't change the code to match the requested spec
+    either. Whether the spec changes is a human decision.
+  - Write the request as a proposal under \`## Proposed Spec Changes\` in
+    \`.caf/tasks/{TICKET-ID}/verify-report.md\`: the comment, what it would change in the spec,
+    and why. This is the one write allowed besides \`fix-review-log.md\`. Append only — leave
+    the \`Status:\` line and every other line of that file as they are. If that file doesn't
+    exist, don't create it: put the full proposal in \`Notes:\` instead and say the file is
+    missing.
+  - In \`fix-review-log.md\` give that comment \`SKIPPED\` (no new status value), with
+    \`Notes:\` starting \`Needs a human decision:\` followed by the proposal in one line.
+  - No \`requirements.md\` for this ticket → there is no spec to protect; this rule doesn't
+    apply and the comment is handled like any other.
+- Every other comment is assessed and fixed as usual.
 
 Wait for the spawn to finish before proceeding to step 5.`;
 }
@@ -240,7 +255,11 @@ function summarySection() {
 
 Show in chat: list of comments processed + their statuses, links to the reply/summary
 comment just created (from the \`gh api\` responses in step 5), and the location of
-\`fix-review-log.md\` to read in full.`;
+\`fix-review-log.md\` to read in full.
+
+List separately every comment whose \`Notes:\` starts with \`Needs a human decision:\` — a
+comment that asked to change the goal, scope or an acceptance criterion. Nothing was changed
+for those: the proposal is in \`.caf/tasks/{TICKET-ID}/verify-report.md\` and the user decides.`;
 }
 
 /**
@@ -288,8 +307,11 @@ ${summarySection()}
 ## Constraints
 
 - This command NEVER runs \`git push\`, NEVER creates/modifies a PR, NEVER changes ticket status
-  in the tracker — the only write paths are \`fix-review-log.md\` (subagent) and
-  the GitHub reply/comment (main thread, step 5).
+  in the tracker — the only write paths are \`fix-review-log.md\` (subagent), a proposal
+  appended to \`verify-report.md\` (subagent, step 4 — only for a comment that asks to change
+  the spec) and the GitHub reply/comment (main thread, step 5).
+- This command NEVER edits \`requirements.md\`. A review comment is not an approval to change
+  the goal, scope or acceptance criteria of a spec: it becomes a proposal, and a human decides.
 - GitHub "resolved" status filtering is not supported yet (see TODO in step 3) — \`[all]\`
   mode processes ALL outstanding comments without checking whether a human reviewer already
   marked them done manually in the GitHub UI.

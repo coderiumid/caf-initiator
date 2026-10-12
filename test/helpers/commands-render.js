@@ -32,8 +32,9 @@ async function run(answers, fn) {
 /**
  * `{ dir, files }` — `files` is `{ 'caf-x.md': content }` for everything in `.claude/commands/`
  * after a full default scaffold, in file-name order. `dir` is the temp repo it was written to.
+ * `role` is `--role` (SINGLE_REPO only).
  */
-export async function renderCommands(fixture) {
+export async function renderCommands(fixture, { role } = {}) {
   const dir = copyFixture(fixtureDir(fixture), 'caf-commands-render-');
   const stack = await silenced(() => detectStack({ dir, explicitGlobs: undefined }));
   const offered = (c) => !HIDDEN_CANDIDATE_KINDS.includes(c.kind);
@@ -47,9 +48,9 @@ export async function renderCommands(fixture) {
     const api = stack.apps.find((a) => a.path === 'apps/api');
     answers = [[web], [api], buildCandidates({ frontend: [web], backend: [api] }, []).filter(offered), true, true, true, 'Linear'];
   } else {
-    answers = [buildSingleRepoCandidates(stack.apps[0], [], 'implementer').filter(offered), true, true, true, 'Linear'];
+    answers = [buildSingleRepoCandidates(stack.apps[0], [], role || 'implementer').filter(offered), true, true, true, 'Linear'];
   }
-  await run(answers, () => agents({ dir, dryRun: false }));
+  await run(answers, () => agents({ dir, dryRun: false, role }));
   // complete-drafts offers `curate baseline` (declined); feature-catalog-sync asks for the
   // architecture when it can't detect one (the TODO strategy).
   await run([false], () => completeDrafts({ dir, dryRun: false }));

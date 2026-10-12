@@ -150,16 +150,27 @@ idempotency check — not relevant to deciding "has this command already run on 
 function readArtifactsSection() {
   return `## 1. Read Task Artifacts (optional, best-effort)
 
-Additional context for the reviewer — path: \`.caf/tasks/{TICKET-ID}/\`:
+Find the artifact folder of the work this PR belongs to — \`.caf/tasks/{TICKET-ID}/\`. The
+\`{TICKET-ID}\` is the one step 0.5 already resolved, in that order: the argument gives the PR,
+the PR gives its head branch, the branch gives the ticket ID (or the user gave the ticket ID
+when asked). Don't search for a folder under any other name.
 
-- \`requirements.md\`
+The reviewer checks the change against these files, when they are there:
+
+- \`requirements.md\` (the spec)
+- \`tasks.md\`
 - \`design.md\`
 - \`verify-report.md\`
 
 Check each file with \`test -f\` (or read directly and catch not-found) before
-assuming it exists. **Any missing folder or file → skip silently, DO NOT fail or STOP**
-— a PR reviewed by this command isn't necessarily from the CAF pipeline (could be a manual PR),
-so this artifact is purely optional.`;
+assuming it exists. Then keep ONE of these two results for steps 3, 4 and 5:
+
+- **Folder found, with \`requirements.md\`** → a review against the spec. Note which of the
+  other files are there and which are missing.
+- **Folder not found, or it has no \`requirements.md\`** → a **code-only review**: there is no
+  spec to check the change against. **DO NOT fail or STOP** — a PR reviewed by this command
+  isn't necessarily from the CAF pipeline (could be a manual PR), so the review of the code
+  still runs. But it is no longer silent: steps 4 and 5 say that no spec was checked.`;
 }
 
 function diffSection() {
@@ -190,8 +201,16 @@ In addition to the prohibition above, the prompt MUST include:
 - \`commentContext = []\` (empty array, as-is — no comments to carry over, unlike
   \`/caf-fix-review\` which carries thread history).
 - The TICKET-ID (resolved in 0.5 — don't re-detect it here).
-- The PR diff from step 2, plus the task artifact from step 1 if present (leave that section
-  empty in the prompt if it genuinely wasn't found, don't pretend it exists).
+- The PR diff from step 2.
+- The result of step 1, as ONE of these two — never both, never neither:
+  - The artifact folder \`.caf/tasks/{TICKET-ID}/\` and which of its files exist, with the
+    instruction to check the change against the spec the way the \`## Output\` of
+    \`${agentDir}/caf-reviewer.md\` describes. The reviewer reads the files itself; don't paste
+    or summarize them, and don't pretend a missing file exists.
+  - Or, when step 1 found no spec: the statement that this is a **code-only review** — there
+    is no spec for this PR, so the reviewer does the security audit and the qualitative review
+    of the diff, makes no claim about scope or acceptance criteria, and says in
+    \`Verdict Rationale\` that no spec was checked.
 - Instructions to write \`.caf/tasks/{TICKET-ID}/review-notes.md\` — format EXACTLY as defined
   in \`${agentDir}/caf-reviewer.md\` (Ticket, Agent, Verdict, Security Audit, Qualitative Review,
   Verdict Rationale, For Developer) — **don't invent a new structure**, reuse the existing one.
@@ -221,6 +240,11 @@ silently to \`COMMENT\`.
 \`body\` = a summary of \`review-notes.md\` (Verdict Rationale + a concise list of
 Blockers/Non-blockers — not the entire raw file pasted in, but complete enough that a human
 reviewer doesn't have to open the file to get the gist).
+
+When step 1 ended in a code-only review, the \`body\` MUST say so in its own sentence, before
+the summary: the code was reviewed, and no spec was found for this PR, so scope and acceptance
+criteria were not checked. An approval that leaves this out reads as an approval of the spec
+too. The verdict and the \`event\` mapping above don't change because of it.
 
 \`comments[]\` (optional) — if \`review-notes.md\` has findings with a specific \`path\`+\`line\`
 that can be mapped to the PR diff (e.g. from a Security Audit section naming a specific file),
@@ -267,7 +291,10 @@ function summarySection() {
   return `## 5. Summary to the User
 
 Show in chat: the final Verdict, the GitHub event used, a link to the newly created PR Review
-(from the step 4 \`gh api\` response), and the location of \`review-notes.md\` for full details.`;
+(from the step 4 \`gh api\` response), and the location of \`review-notes.md\` for full details.
+
+Also say which review this was: against the spec in \`.caf/tasks/{TICKET-ID}/\` (name the
+artifact files that were missing, if any), or a code-only review because step 1 found no spec.`;
 }
 
 /**
