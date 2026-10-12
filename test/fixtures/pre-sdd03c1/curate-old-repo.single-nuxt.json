@@ -1,0 +1,228 @@
+{
+  "fixture": "single-nuxt",
+  "agents": [
+    "caf-architect.md",
+    "caf-auditor.md",
+    "caf-documentation.md",
+    "caf-implementer.md",
+    "caf-planner.md",
+    "caf-pm.md",
+    "caf-qa.md",
+    "caf-reviewer.md",
+    "caf-ux-designer.md",
+    "devops.md"
+  ],
+  "commands": [
+    "caf-audit-scan.md",
+    "caf-audit-to-ticket.md",
+    "caf-complete-drafts.md",
+    "caf-design-ticket.md",
+    "caf-discovery-start.md",
+    "caf-discovery-to-ticket.md",
+    "caf-feature-catalog-sync.md",
+    "caf-fix-review.md",
+    "caf-plan-ticket.md",
+    "caf-qa-check.md",
+    "caf-review-ticket.md",
+    "caf-review.md",
+    "caf-run-pipeline.md"
+  ],
+  "added": [
+    ".claude/agents/.caf-sync-state.json"
+  ],
+  "audit": {
+    "layers": [
+      {
+        "name": "Layer 1 (Knowledge Base)",
+        "entries": [
+          {
+            "status": "ok",
+            "filePath": "CLAUDE.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          },
+          {
+            "status": "ok",
+            "filePath": "AGENTS.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          },
+          {
+            "status": "ok",
+            "filePath": ".caf/knowledge/INDEX.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          },
+          {
+            "status": "gap",
+            "filePath": "docs/product/prd.md",
+            "message": "missing (optional)",
+            "syncCommand": "caf-init docs",
+            "severity": "optional"
+          },
+          {
+            "status": "gap",
+            "filePath": "docs/architecture/system-overview.md",
+            "message": "missing (optional)",
+            "syncCommand": "caf-init docs",
+            "severity": "optional"
+          },
+          {
+            "status": "gap",
+            "filePath": "docs/schema/erd.md",
+            "message": "missing (optional)",
+            "syncCommand": "caf-init docs",
+            "severity": "optional"
+          },
+          {
+            "status": "gap",
+            "filePath": "docs/testing-strategy.md",
+            "message": "missing (optional)",
+            "syncCommand": "caf-init docs",
+            "severity": "optional"
+          },
+          {
+            "status": "gap",
+            "filePath": "docs/api-contract.md",
+            "message": "missing (optional)",
+            "syncCommand": "caf-init docs",
+            "severity": "optional"
+          }
+        ]
+      },
+      {
+        "name": "Layer 2 (Agent Definitions)",
+        "entries": [
+          {
+            "status": "ok",
+            "filePath": ".claude/agents/caf-architect.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          },
+          {
+            "status": "ok",
+            "filePath": ".claude/agents/caf-auditor.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          },
+          {
+            "status": "ok",
+            "filePath": ".claude/agents/caf-documentation.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          },
+          {
+            "status": "ok",
+            "filePath": ".claude/agents/caf-implementer.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          },
+          {
+            "status": "ok",
+            "filePath": ".claude/agents/caf-planner.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          },
+          {
+            "status": "ok",
+            "filePath": ".claude/agents/caf-pm.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          },
+          {
+            "status": "ok",
+            "filePath": ".claude/agents/caf-qa.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          },
+          {
+            "status": "ok",
+            "filePath": ".claude/agents/caf-reviewer.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          },
+          {
+            "status": "ok",
+            "filePath": ".claude/agents/caf-ux-designer.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          },
+          {
+            "status": "ok",
+            "filePath": ".claude/agents/devops.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          }
+        ]
+      },
+      {
+        "name": "Layer 3 (Artifact Handoff)",
+        "entries": [
+          {
+            "status": "ok",
+            "filePath": ".caf/workflows/agent-handoff.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          }
+        ]
+      },
+      {
+        "name": "Layer 4 (Quality Gates)",
+        "entries": [
+          {
+            "status": "gap",
+            "filePath": ".caf/workflows/task-completion.md",
+            "message": "missing",
+            "syncCommand": "caf-init scaffold task-completion",
+            "severity": "required"
+          },
+          {
+            "status": "ok",
+            "filePath": ".caf/workflows/piv-workflow.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          }
+        ]
+      }
+    ],
+    "requiredGaps": 1,
+    "optionalGaps": 5,
+    "declined": 0,
+    "sectionCounts": {
+      "IN_SYNC": 54,
+      "DRIFT": 0,
+      "CUSTOMIZATION": 0,
+      "CONFLICT": 0,
+      "UNTRACKED": 0
+    }
+  },
+  "syncDryRun": {
+    "updated": [],
+    "skipped": [],
+    "drifted": [],
+    "needsAttention": [],
+    "unverifiable": []
+  },
+  "syncWrite": {
+    "updated": [],
+    "skipped": [],
+    "drifted": [],
+    "needsAttention": [],
+    "unverifiable": []
+  }
+}
