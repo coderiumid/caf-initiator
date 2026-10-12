@@ -9,7 +9,7 @@ You can use `caf-init` on its own: the agents it generates also run directly in 
 
 `caf-init` never calls an AI model. Everything it writes is a deterministic draft built from what it detected; anything it could not detect is left as a `TODO`, never guessed.
 
-CAF follows Spec-Driven Development: spec-first, moving toward spec-anchored, and not spec-as-source. The generated Planner writes the spec (`requirements.md`, with numbered acceptance criteria) before it writes `tasks.md`, stops on a blocking open question instead of guessing, and ties every task to the acceptance criteria it serves. Once a human marks the spec `APPROVED`, agents do not edit it: a proposed change is written in `verify-report.md`, next to one line of evidence per acceptance criterion, and a human decides. The spec is kept next to the code as the contract for the work; code is not generated from it. These are instructions in the generated files: `caf-init` does not check that an agent followed them.
+CAF follows Spec-Driven Development: spec-first, moving toward spec-anchored, and not spec-as-source. The generated Planner writes the spec (`requirements.md`, with numbered acceptance criteria) before it writes `tasks.md`, stops on a blocking open question instead of guessing, and ties every task to the acceptance criteria it serves. Once a human marks the spec `APPROVED`, agents do not edit it: a proposed change is written in `verify-report.md`, next to one line of evidence per acceptance criterion, and a human decides. The generated Reviewer checks the change against that spec as well as the quality of the code (see [The spec-aware reviewer](#the-spec-aware-reviewer)). The spec is kept next to the code as the contract for the work; code is not generated from it. These are instructions in the generated files: `caf-init` does not check that an agent followed them.
 
 The full CAF specification is in [`CAF.md`](./CAF.md).
 
@@ -324,6 +324,19 @@ Only Claude Code is validated to technically enforce an agent's tool and scope r
 | `--kind <agent\|command\|both>` | What to publish | `agent` |
 | `--dry-run` | Show what would be published without writing | `false` |
 | `--force` | Overwrite files that already exist at the destination | `false` |
+
+### The spec-aware reviewer
+
+The generated `caf-reviewer.md` reviews the change against the spec, on top of its security and code quality review. Its `## Output` section tells it to:
+
+- **Read** `requirements.md`, `tasks.md`, `design.md` if present, `verify-report.md`, `validate-report.md` if present, the ADRs in `.caf/knowledge/decisions/`, and the diff.
+- **Scope.** Report a file or change that no task and no Scope In item covers as a scope deviation, and a task the diff does not reflect as a task not done. Each finding names the task or the Scope item.
+- **Acceptance criteria.** Map every criterion to its task and to its evidence line in `verify-report.md`. A criterion with `manual`, `build-only` or `none` evidence, or with no evidence line, is listed as `needs human check` and is not counted as passed.
+- **Spec integrity.** Treat a change to the goal, the scope or a criterion of `requirements.md` in a commit after the one that set `Status: APPROVED` as a blocking finding. Raise every entry under `## Proposed Spec Changes` of `verify-report.md` to a human. Report an ADR violation with the name of the ADR.
+
+What did not change: the reviewer's tools (`Read`, `Write`, `Bash`), its `## Input`, and `review-notes.md` with its `Verdict: APPROVE | CHANGES REQUESTED | DEFER` line. The findings go into the parts that report already has. The reviewer does not run the tests or the verification gate again, and it does not edit code, tests or the spec.
+
+A reviewer generated earlier gets the new text from `caf-init curate sync`, as a drift of its `Output` section; a section you edited is never overwritten. The `/caf-review`, `/caf-fix-review` and `/caf-review-ticket` commands are unchanged. Like every other instruction in a generated file, these are instructions to the agent: `caf-init` does not check that a review followed them.
 
 ### The validator kind (hidden)
 

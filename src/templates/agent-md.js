@@ -727,8 +727,9 @@ const PLANNER_SPEC_WORKFLOW = [
 //   `UNVERIFIED`, never `PASS` and never `FAIL`.
 // - The commands it may run are the Verify Checklist of its own file and read-only git. Nothing
 //   else, and no edit of code, tests, the spec or `verify-report.md`.
-// - The five evidence kinds are the ones of the verify-report format (agent-handoff-md.js) and of
-//   the `caf-traceability` skill. A sixth kind goes in all three or in none.
+// - The five evidence kinds are the ones of the verify-report format (agent-handoff-md.js), of
+//   the `caf-traceability` skill and of REVIEWER_SPEC_WORKFLOW. A sixth kind goes in all four or
+//   in none.
 // - The report format and its status words live in `## Report Format`, not here.
 // - `###` sub-headings only, no `TODO` word, no generate-time placeholder (same as the planner).
 const VALIDATOR_WORKFLOW = [
@@ -782,6 +783,87 @@ const VALIDATOR_WORKFLOW = [
   '- Turn a missing or weak piece of evidence into a `PASS`.',
 ].join('\n');
 
+// What the Reviewer checks (CAF-SDD-03b2): the change against the spec — scope, tasks, AC
+// evidence, spec changes after approval, ADRs — on top of the quality of the code. Rendered in the
+// reviewer's `## Output` after the one-line artifact contract, for the reasons
+// PLANNER_SPEC_WORKFLOW is: Output is tracked, so `curate sync` carries the text to a reviewer
+// generated earlier as an ordinary DRIFT, and a new header would not reach it at all.
+// Rules this text must keep:
+// - `## Input`, `## Retry Logic`, `## Report Format` and the frontmatter `tools:` are untouched
+//   (`test/fixtures/pre-sdd03b2/` is the pre-change render — never regenerate it). The Input
+//   sentence is what parseInputAppNames() reads the app list from.
+// - No verdict value is named here, and no part is added to the `review-notes.md` skeleton: the
+//   findings go under the `###` parts the skeleton already has. caf-orchestrator reads the
+//   `Verdict:` line of that file, and Report Format is the single source of its values.
+// - The Reviewer reads evidence. It never runs the tests or the verification gate again (the
+//   Validator's work) and never edits code, tests or the spec.
+// - The five evidence kinds are the ones of the verify-report format (agent-handoff-md.js), of the
+//   `caf-traceability` skill and of VALIDATOR_WORKFLOW. A sixth kind goes in all four or in none.
+// - `design.md` and `validate-report.md` are read "if present": the validator is not connected
+//   to the pipeline yet.
+// - `###` sub-headings only, no `TODO` word, no generate-time placeholder (same as the planner).
+const REVIEWER_SPEC_WORKFLOW = [
+  'How the review is done. The Reviewer checks the change against the spec, not only the quality',
+  'of the code. It reports; it does not fix. Run the four steps below in order, on top of the',
+  'security and code quality review.',
+  '',
+  '### 1. Read',
+  'Everything is in `.caf/tasks/{TICKET-ID}/` unless another path is given.',
+  '- `requirements.md`: the goal, the scope (In and Out) and every acceptance criterion (`AC-1:`,',
+  '  `AC-2:`, ...).',
+  '- `tasks.md`: every task and the AC ids it serves.',
+  '- `design.md`, if present.',
+  '- `verify-report.md`: the evidence line of each AC, and `## Proposed Spec Changes`.',
+  '- `validate-report.md`, if present.',
+  '- The ADRs in `.caf/knowledge/decisions/`.',
+  '- The diff of the change (`git diff`, `git log`).',
+  '',
+  'A missing `requirements.md` or `tasks.md` is missing context: see Retry Logic. Do not guess',
+  'what the spec was.',
+  '',
+  '### 2. Scope',
+  '- A file or change in the diff that no task of `tasks.md` and no item of Scope In covers is a',
+  '  scope deviation. Report it with the file, and with the Scope Out item it falls under when',
+  '  there is one.',
+  '- A task of `tasks.md` that the diff does not reflect is a task not done. Report it with the',
+  '  task id, or the task line when tasks carry no id.',
+  '- Every finding names the task id or the Scope item it is about.',
+  '',
+  '### 3. Acceptance criteria',
+  '- Map every AC of `requirements.md` to the task(s) that serve it and to its evidence line in',
+  '  `verify-report.md`. An AC that no task serves is a finding.',
+  '- Evidence `manual`, `build-only` or `none`, or no evidence line at all: list the AC as',
+  '  `needs human check`. It is not counted as passed.',
+  '- Evidence `automated-test` or `command`: report it as the evidence claimed, with what',
+  '  `validate-report.md` says for that AC when the file is present.',
+  '- The Reviewer reads the evidence; it does not run the tests or the verification gate again.',
+  '',
+  '### 4. Spec integrity and ADRs',
+  '- Read the history of the spec (`git log -p` on `requirements.md`) and find the commit that set',
+  '  `Status: APPROVED`. A change to the goal, the scope or an AC of `requirements.md` in a commit',
+  '  after that one is a blocking finding: name the commit and what changed.',
+  '- If `requirements.md` has no git history, or was never approved, say that this check could not',
+  '  be done. Do not assume the spec is unchanged.',
+  '- An entry under `## Proposed Spec Changes` of `verify-report.md` is always raised to a human:',
+  '  copy it into the notes as proposed. Do not accept it, reject it or apply it.',
+  '- A change that contradicts an ADR is reported with the name of that ADR.',
+  '',
+  '### Where the findings go',
+  'The skeleton of the Report Format section below is used as it is; no part is added to it.',
+  '- Scope deviations, tasks not done, spec changes after approval and ADR violations: under',
+  '  `### Qualitative Review`, one line each, starting with what it is (`Scope deviation:`,',
+  '  `Task not done:`, `Spec changed after approval:`, `ADR violation:`).',
+  '- ACs that need a human check and proposed spec changes: under `### For Developer`.',
+  '- A blocking finding rules out an approving verdict; give it as the reason under',
+  '  `### Verdict Rationale`. The verdict values are the ones of the Report Format section.',
+  '',
+  '### What the Reviewer never does',
+  '- Edit code, tests or the spec (`requirements.md`, `tasks.md`). The only file it writes is',
+  '  `review-notes.md`.',
+  '- Run the tests or the verification gate again, or fix a finding.',
+  '- Count an AC as passed on evidence that needs a human check.',
+].join('\n');
+
 // devops: CAF.md Layer 3 (.caf/tasks/{TICKET-ID}/) doesn't yet have an official artifact contract
 // for DevOps (post-merge, next phase) — stays TODO until CAF.md defines it.
 export function buildOutputSection(kind) {
@@ -801,6 +883,7 @@ export function buildOutputSection(kind) {
   const contract = `Produces ${artifact} in \`.caf/tasks/{TICKET-ID}/\` for the next agent to read.`;
   if (kind === 'planner') return `${contract}\n\n${PLANNER_SPEC_WORKFLOW}`;
   if (kind === 'validator') return `${contract}\n\n${VALIDATOR_WORKFLOW}`;
+  if (kind === 'reviewer') return `${contract}\n\n${REVIEWER_SPEC_WORKFLOW}`;
   return contract;
 }
 
