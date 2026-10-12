@@ -132,17 +132,18 @@ Bare `scaffold` runs these steps in order, asking before each one after Setup:
 | Workflow | `workflow` | `piv-workflow.md` and `agent-handoff.md` from the agent roster |
 | AI Draft Completion | `complete-drafts` | The `/caf-complete-drafts` command |
 
-Two more targets exist but only run when named explicitly:
+One more target exists but only runs when named explicitly:
 
 | Target | Output | Why it is not in the chain |
 |---|---|---|
 | `skills` | `.claude/skills/caf-*/SKILL.md` | It offers to edit agent definitions that already exist |
-| `feature-catalog-sync` | The `/caf-feature-catalog-sync` command | Its catalog needs manual review before it is usable |
 
 Notes:
 
 - `scaffold workflow` needs an agent roster; run `scaffold agents` first.
-- Agents on offer: Planner, Architect, Frontend and Backend (per assigned app), extra per-app implementation agents, QA, Reviewer, Documentation, Auditor, PM, UX Designer. CAF recommends starting with Planner plus one implementation agent.
+- Agents on offer: Planner, Architect, Frontend and Backend (per assigned app; in `SINGLE_REPO` one Implementer instead), extra per-app implementation agents, QA, Reviewer. CAF recommends starting with Planner plus one implementation agent.
+- Commands written: `/caf-plan-ticket` with the Planner, `/caf-run-pipeline` (Planner plus an implementation agent), `/caf-fix-review` and `/caf-review` (Reviewer) after a confirmation each, and `/caf-complete-drafts` from its own step.
+- Five agents and eight commands are no longer scaffolded. See [No longer scaffolded](#no-longer-scaffolded).
 - A `validator` kind (`caf-validator.md`) exists in the code but is hidden: it is not on offer, no `scaffold` run writes it, and nothing in the pipeline calls it yet. See [The validator kind](#the-validator-kind-hidden).
 - The tracker is detected from `.linear/`, `atlassian.yml` or a README mention. Otherwise you are asked (Linear, Jira, GitHub Issues); it is never silently defaulted.
 
@@ -349,6 +350,23 @@ Commands are not tracked by `caf-init curate`: `curate sync` does not update the
 
 A third command, **`/caf-plan`**, exists in the code but is hidden: no `scaffold` run writes it. It takes a ticket ID or free text (which gets a kebab-case slug of at most five words), uses `.caf/tasks/<ID-or-slug>/` as the artifact folder, spawns `caf-planner` for the Specify, Clarify, Plan, Tasks workflow without repeating the planner's rules, and stops once `tasks.md` is written. It stays hidden until the `caf-spec` skill it relies on is no longer a `DRAFT`; `/caf-plan-ticket` is still the command that is generated.
 
+### No longer scaffolded
+
+The spec-driven design dropped five agents and eight commands. A new repo does not get them:
+
+| | No longer written |
+|---|---|
+| Agents | Documentation, DevOps, PM, UX Designer, Auditor |
+| Commands | `/caf-discovery-start`, `/caf-discovery-to-ticket`, `/caf-audit-scan`, `/caf-audit-to-ticket`, `/caf-design-ticket`, `/caf-qa-check`, `/caf-review-ticket`, `/caf-feature-catalog-sync` |
+
+- **A repo scaffolded earlier keeps them.** No file is deleted or changed. The kinds are still known, so `caf-init curate` audits and syncs those agent files exactly as before.
+- **They cannot be selected.** The agent picker does not list them and there is no flag for it. `caf-init scaffold feature-catalog-sync` still resolves, says the command is no longer scaffolded and writes nothing; `curate` still reports the missing command file as an optional gap.
+- **Implementer stays for now.** The design drops it too, but in `SINGLE_REPO` without `--role` it is the only implementation agent and `/caf-run-pipeline` needs one. It stays scaffolded until the ticket that settles the default role (CAF-SDD-03c3).
+- **Architect and QA stay** until what replaces them is connected.
+- **A new repo has no Documentation agent**, so `/caf-run-pipeline` is written with its "no Documentation Agent" stage, and `piv-workflow.md` lists the role as not present.
+- **Some generated text still mentions them** (the planner's Discovery fallback, `.gitignore` lines for `.caf/discovery/` and `.caf/audits/`, a reference to `/caf-review-ticket` in the review commands). That text is unchanged on purpose and is cleaned up in a later ticket.
+- **No npm release yet.** caf-orchestrator still expects `caf-documentation`; a release of `caf-init` with this change waits until the orchestrator handles a repo without it (CAF-SDD-04).
+
 ### The validator kind (hidden)
 
 `caf-init` knows a `validator` agent kind, written as `caf-validator.md`. It is not a scaffold candidate: `scaffold agents` neither offers nor writes it, and neither `/caf-run-pipeline` nor caf-orchestrator calls it. It becomes available with the ticket that connects it to the pipeline. Until then `qa` and `qa-report.md` are unchanged.
@@ -398,7 +416,7 @@ You do not need the orchestrator to use what `caf-init` generates. The agents al
 
 If you do use it, three things in this repo matter:
 
-- **Agent filenames.** The orchestrator calls agents by name: `caf-planner`, `caf-frontend`, `caf-backend`, `caf-qa`, `caf-reviewer`, `caf-documentation`. It does not call `caf-implementer`, so in a single-package repo generate the implementation agent with `--role frontend` or `--role backend` (see [Repo mode](#repo-mode-monorepo-vs-single_repo)).
+- **Agent filenames.** The orchestrator calls agents by name: `caf-planner`, `caf-frontend`, `caf-backend`, `caf-qa`, `caf-reviewer`, `caf-documentation`. A repo scaffolded now has no `caf-documentation` (see [No longer scaffolded](#no-longer-scaffolded)); the orchestrator has to handle that before this version is released. It does not call `caf-implementer`, so in a single-package repo generate the implementation agent with `--role frontend` or `--role backend` (see [Repo mode](#repo-mode-monorepo-vs-single_repo)).
 - **Report formats.** Agents hand over through files in `.caf/tasks/<TICKET-ID>/`, and the orchestrator parses their status lines word for word. Those lines live in the tracked sections `Retry Logic` and `Report Format`; leave them as generated.
 - **Skills.** Agents started by the orchestrator read skills through the `## Skills` pointers, the same as anywhere else.
 

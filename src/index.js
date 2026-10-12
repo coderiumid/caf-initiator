@@ -8,7 +8,7 @@ import { curate } from './commands/curate.js';
 import { curateBaseline } from './commands/curate-baseline.js';
 import { checkDrafts } from './commands/check-drafts.js';
 import { referenceDocs } from './commands/reference-docs.js';
-import { runScaffold, runScaffoldTarget, TARGETS } from './commands/scaffold.js';
+import { runScaffold, runScaffoldTarget, OFFERED_TARGETS } from './commands/scaffold.js';
 import { MODE_FLAG_CHOICES } from './utils/repo-context.js';
 import { SINGLE_REPO_ROLES } from './commands/agents.js';
 
@@ -43,17 +43,17 @@ program
   .description(
     `bare: run Setup → Golden Examples → ADR → Agents → Task Completion → Workflow → AI Draft Completion in sequence, ` +
       `with a skip-confirmation before each step after Setup. With a target ` +
-      `(${Object.keys(TARGETS).join('|')}): run only that part, behavior identical to the old ` +
+      `(${OFFERED_TARGETS.join('|')}): run only that part, behavior identical to the old ` +
       `standalone command.`
   )
-  .argument('[target]', `optional: run only one part (${Object.keys(TARGETS).join('|')})`)
+  .argument('[target]', `optional: run only one part (${OFFERED_TARGETS.join('|')})`)
   .option('--dir <path>', 'target repo directory', process.cwd())
   .option('--dry-run', 'show detection results without writing anything', false)
   .option('--app <app-path>', 'restrict to a specific app path (e.g. apps/api) — only used by golden-examples/adr/agents/task-completion targets')
   .option('--agent-dir <path>', 'directory to read/write agent definitions', '.claude/agents')
   .option(
     '--command-dir <path>',
-    'directory to write companion slash commands into — only used by agents/feature-catalog-sync targets',
+    'directory to write companion slash commands into — only used by agents/complete-drafts targets',
     '.claude/commands'
   )
   .option(

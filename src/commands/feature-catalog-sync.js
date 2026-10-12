@@ -7,6 +7,9 @@ import { writeIfAbsentGuarded, reportCollisions } from '../utils/collision-check
 import { detectStack } from '../steps/02-detect-stack.js';
 import { detectArchitecture } from '../utils/architecture-signatures.js';
 import { buildFeatureCatalogSyncMd } from '../templates/feature-catalog.js';
+import { isHiddenCommand } from './agents.js';
+
+const COMMAND_FILE = 'caf-feature-catalog-sync.md';
 
 const ARCHITECTURE_LABELS = {
   'controller-based': 'controller-based (controller backend × route frontend)',
@@ -29,6 +32,20 @@ export async function featureCatalogSync({
   mode,
 }) {
   section('feature-catalog-sync — generate the docs/feature-catalog.md sync command');
+
+  // CAF-SDD-03c1: /caf-feature-catalog-sync is no longer scaffolded. Checked before detection and
+  // the architecture prompt, so the run asks nothing and writes nothing; a command file already
+  // in the repo is left as it is.
+  if (isHiddenCommand(COMMAND_FILE)) {
+    console.log('');
+    console.log(
+      kleur.yellow(
+        `  /caf-feature-catalog-sync is no longer scaffolded — nothing written. An existing\n` +
+          `  ${path.join(commandDir, COMMAND_FILE)} is left as it is.`
+      )
+    );
+    return { written: [], skipped: [] };
+  }
 
   const stack = await detectStack({ dir, explicitGlobs: undefined, mode });
 
@@ -68,7 +85,7 @@ export async function featureCatalogSync({
     architecture = picked === 'todo' ? null : picked;
   }
 
-  const filePath = path.join(dir, commandDir, 'caf-feature-catalog-sync.md');
+  const filePath = path.join(dir, commandDir, COMMAND_FILE);
   const content = buildFeatureCatalogSyncMd({ architecture, agentDir });
 
   console.log('');
