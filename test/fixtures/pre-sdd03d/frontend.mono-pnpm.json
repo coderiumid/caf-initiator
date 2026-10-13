@@ -1,0 +1,22 @@
+{
+  "id": "frontend.mono-pnpm",
+  "kind": "frontend",
+  "fixture": "mono-pnpm",
+  "role": null,
+  "file": "caf-frontend.md",
+  "tools": [
+    "Read",
+    "Write",
+    "Edit",
+    "Bash"
+  ],
+  "sections": {
+    "Allowed Tools": "The frontmatter `tools` above is the list that applies: `Read`, `Write`, `Edit`, `Bash`.\n\nRead/Write/Edit for code within this agent's scope, Bash to run the Verify Checklist.\n\nTODO project-specific: which MCP server (if any) this agent may access — this is a security\ndecision that must be made by a human. Add the MCP tool name to the frontmatter `tools` too,\nnot just this section.",
+    "Input": "`requirements.md` and `tasks.md` from the Planner Agent in `.caf/tasks/{TICKET-ID}/` (required).\n\nOptional — if the task involves the Architect Agent, read as additional context before\nimplementation; if not available, proceed from `requirements.md`/`tasks.md` alone (not a\nhard requirement):\n- `design.md`",
+    "Output": "Produces code + `verify-report.md` in `.caf/tasks/{TICKET-ID}/` for the next agent to read.",
+    "Working Pattern (PIV)": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+    "Retry Logic": "Verify passes → write `verify-report.md` with **`Status: SUCCESS`** (this exact literal word —\ncaf-orchestrator greps for `\\bSUCCESS\\b` and treats anything else, including \"PASS\"/\"DONE\"/\"OK\",\nas `NEEDS_HUMAN`, which stops the whole pipeline and skips QA/Reviewer/PR creation).\nVerify fails → fix, retry up to 3x → if still failing, stop and write\n`verify-report.md` with Status: NEEDS_HUMAN"
+  },
+  "content": "---\nname: caf-frontend\ndescription: >\n  Implements code changes in apps/web (Nuxt) per the Planner's plan (role: frontend).\n  Use for \"caf-frontend\", \"Frontend (apps/web (Nuxt)) agent\".\ntools: [Read, Write, Edit, Bash]\nmodel: sonnet\n---\n\n# Agent: Frontend (apps/web (Nuxt))\n\n> DRAFT produced by caf-initiator — review and complete before use, especially the\n> parts marked TODO project-specific.\n\n## Role\nImplements code changes in apps/web (Nuxt) per the Planner's plan (role: frontend).\n\n## Scope\n`apps/web/**`\n\n## Allowed Tools\nThe frontmatter `tools` above is the list that applies: `Read`, `Write`, `Edit`, `Bash`.\n\nRead/Write/Edit for code within this agent's scope, Bash to run the Verify Checklist.\n\nTODO project-specific: which MCP server (if any) this agent may access — this is a security\ndecision that must be made by a human. Add the MCP tool name to the frontmatter `tools` too,\nnot just this section.\n\n## Input\n`requirements.md` and `tasks.md` from the Planner Agent in `.caf/tasks/{TICKET-ID}/` (required).\n\nOptional — if the task involves the Architect Agent, read as additional context before\nimplementation; if not available, proceed from `requirements.md`/`tasks.md` alone (not a\nhard requirement):\n- `design.md`\n\n## Output\nProduces code + `verify-report.md` in `.caf/tasks/{TICKET-ID}/` for the next agent to read.\n\n## Working Pattern (PIV)\n1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done\n\n## Verify Checklist\n- [ ] `pnpm --filter @mono/web run lint`\n- [ ] TODO: no typecheck script detected in package.json — verify manually or add the script\n- [ ] `pnpm --filter @mono/web run test`\n- [ ] `pnpm --filter @mono/web run build`\n\n## Retry Logic\nVerify passes → write `verify-report.md` with **`Status: SUCCESS`** (this exact literal word —\ncaf-orchestrator greps for `\\bSUCCESS\\b` and treats anything else, including \"PASS\"/\"DONE\"/\"OK\",\nas `NEEDS_HUMAN`, which stops the whole pipeline and skips QA/Reviewer/PR creation).\nVerify fails → fix, retry up to 3x → if still failing, stop and write\n`verify-report.md` with Status: NEEDS_HUMAN\n",
+  "contentWithSkills": null
+}
