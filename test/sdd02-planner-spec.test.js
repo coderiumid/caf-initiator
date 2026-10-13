@@ -43,6 +43,14 @@ const rendered = Object.fromEntries(await Promise.all(FIXTURE_NAMES.map(async (f
 const plannerOf = (fixture) => rendered[fixture].planner.content;
 const specOf = (fixture) => trackedSections(plannerOf(fixture))[SPEC];
 
+// What `curate sync` makes of an older planner since CAF-SDD-02c: the planner also got `Glob` and
+// `Grep`, so `## Allowed Tools` drifts along with `## Output`, and the frontmatter `tools:` line,
+// which sync never writes, stays the old one.
+const OLD_TOOLS_LINE = 'tools: [Read, Write]';
+const NEW_TOOLS_LINE = 'tools: [Read, Write, Glob, Grep]';
+const syncedOf = (fixture) => plannerOf(fixture).replace(NEW_TOOLS_LINE, OLD_TOOLS_LINE);
+const DRIFTED = [`${PLANNER_REL}#Allowed Tools`, `${PLANNER_REL}#${SPEC}`];
+
 /** The lines of `### <n>. <title>` up to the next `### ` heading. */
 function step(body, heading) {
   const lines = body.split('\n');
@@ -106,8 +114,9 @@ for (const fixture of FIXTURE_NAMES) {
     const md = plannerOf(fixture);
     assert.equal(rendered[fixture].planner.file, 'caf-planner.md');
     assert.match(md, /^---\nname: caf-planner\n/);
-    assert.deepEqual(frontmatterTools(md), ['Read', 'Write']);
-    assert.match(md, /^tools: \[Read, Write\]$/m);
+    // `Glob` and `Grep` were added at CAF-SDD-02c; still no `Edit`, no `Bash`.
+    assert.deepEqual(frontmatterTools(md), ['Read', 'Write', 'Glob', 'Grep']);
+    assert.match(md, /^tools: \[Read, Write, Glob, Grep\]$/m);
 
     for (const literal of [
       'Produces `requirements.md`, `tasks.md` in `.caf/tasks/{TICKET-ID}/` for the next agent to read.',
@@ -127,12 +136,17 @@ for (const fixture of FIXTURE_NAMES) {
     }
 
     // Stronger than the list: the old Output line is still the first line of Output, and outside
-    // `## Output` not one byte changed.
+    // `## Output` not one byte changed — but for the tools line and `## Allowed Tools`, which
+    // CAF-SDD-02c changed (test/sdd02c-spec-active.test.js holds those two).
     const old = OLD_PLANNER[fixture];
     assert.deepEqual(frontmatterTools(old.content), ['Read', 'Write']);
     assert.equal(specOf(fixture).split('\n')[0], old.sections[SPEC]);
     assert.notEqual(specOf(fixture), old.sections[SPEC]);
-    assert.equal(md.replace(specOf(fixture), old.sections[SPEC]), old.content);
+    const restored = md
+      .replace(NEW_TOOLS_LINE, OLD_TOOLS_LINE)
+      .replace(trackedSections(md)['Allowed Tools'], old.sections['Allowed Tools'])
+      .replace(specOf(fixture), old.sections[SPEC]);
+    assert.equal(restored, old.content);
   });
 
   test(`planner on ${fixture} — the spec format is referenced to caf-spec, not copied`, () => {
@@ -461,17 +475,17 @@ for (const fixture of FIXTURE_NAMES) {
     const before = agentTree(dir);
 
     const dry = await sync(dir, true);
-    assert.deepEqual(dry.drifted, [`${PLANNER_REL}#${SPEC}`]);
+    assert.deepEqual(dry.drifted, DRIFTED);
     assert.deepEqual(dry.updated, []);
     assert.deepEqual(agentTree(dir), before, 'dry-run writes nothing');
 
     const real = await sync(dir, false);
-    assert.deepEqual(real.drifted, [`${PLANNER_REL}#${SPEC}`]);
+    assert.deepEqual(real.drifted, DRIFTED);
     assert.deepEqual(real.needsAttention, []);
     assert.deepEqual(real.unverifiable, []);
     assert.deepEqual(real.updated, [path.join(dir, PLANNER_REL)]);
-    // only that section differs between the two templates, so the synced file IS the new render
-    assert.equal(read(dir, PLANNER_REL), plannerOf(fixture));
+    // the tracked sections are the new render; the frontmatter is not synced
+    assert.equal(read(dir, PLANNER_REL), syncedOf(fixture));
     assert.match(read(dir, PLANNER_REL), /^### 2\. Clarify$/m);
     for (const { file, content } of others) assert.equal(read(dir, path.join(AGENT_DIR, file)), content, `${file} must stay byte-identical`);
 
@@ -491,12 +505,13 @@ for (const fixture of FIXTURE_NAMES) {
 
     for (const dryRun of [true, false]) {
       const result = await sync(dir, dryRun);
-      assert.deepEqual(result.drifted, []);
-      assert.deepEqual(result.updated, []);
+      // `## Allowed Tools` was not edited, so it is synced (CAF-SDD-02c); the edited Output is not
+      assert.deepEqual(result.drifted, [`${PLANNER_REL}#Allowed Tools`]);
       assert.deepEqual(result.needsAttention, [{ file: PLANNER_REL, header: SPEC, status: SECTION_STATUS.CONFLICT }]);
-      assert.deepEqual(agentTree(dir), before);
+      if (dryRun) assert.deepEqual(agentTree(dir), before);
     }
-    assert.equal(read(dir, PLANNER_REL), edited);
+    assert.equal(trackedSections(read(dir, PLANNER_REL))[SPEC], trackedSections(edited)[SPEC]);
+    assert.equal(read(dir, PLANNER_REL), edited.replace(trackedSections(edited)['Allowed Tools'], trackedSections(plannerOf(fixture))['Allowed Tools']));
   });
 
   test(`AC-10: ${fixture} — a section the user customized stays theirs (CUSTOMIZATION) while the untouched one is synced`, async () => {
@@ -507,10 +522,10 @@ for (const fixture of FIXTURE_NAMES) {
 
     const result = await sync(dir, false);
     assert.deepEqual(result.needsAttention, [{ file: PLANNER_REL, header: 'Input', status: SECTION_STATUS.CUSTOMIZATION }]);
-    assert.deepEqual(result.drifted, [`${PLANNER_REL}#${SPEC}`]);
+    assert.deepEqual(result.drifted, DRIFTED);
     const now = read(dir, PLANNER_REL);
     assert.equal(trackedSections(now).Input, trackedSections(edited).Input, 'the customized section is kept byte for byte');
-    assert.equal(now, plannerOf(fixture).replace('Ticket description from the tracker (required).', 'Ticket description from Linear, team ENG (required).'));
+    assert.equal(now, syncedOf(fixture).replace('Ticket description from the tracker (required).', 'Ticket description from Linear, team ENG (required).'));
     for (const { file, content } of others) assert.equal(read(dir, path.join(AGENT_DIR, file)), content, file);
   });
 

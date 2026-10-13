@@ -2,7 +2,8 @@
 // sources verbatim (sha256), the verify-report format carries a fifth evidence form, and the
 // planner's `## Output` is aligned with v3 on three points only: facts from the code are not
 // questions, an answered question keeps its tag, `Verify:` may be `command:`.
-// Both skills stay a DRAFT: removing the banner is CAF-SDD-02c.
+// Both skills were left a DRAFT here. CAF-SDD-02c removed the banner of `caf-spec` (same text,
+// see test/sdd02c-spec-active.test.js); `caf-traceability` still has it.
 // Every `scaffold skills` and `curate sync` below runs on a temp directory.
 
 import test from 'node:test';
@@ -33,6 +34,8 @@ const PLANNER_REL = path.join(AGENT_DIR, 'caf-planner.md');
 // sha256 of .ai/tasks/CAF-SDD-02b/caf-spec.source.v3.md and caf-traceability.source.v2.md (neither
 // file ends with a newline). `.ai/` is not committed, so the hash is what proves each skill is
 // its source, byte for byte.
+// SPEC_V3_SHA256 is the 02b source WITH its DRAFT banner. Since CAF-SDD-02c the skill is that same
+// text without the banner: put the banner back and the hash still holds (withBanner below).
 const SPEC_V3_SHA256 = '513407ddee832bd32f627fb512c6d03dd189d6a26a24473d522419f44bece0a5';
 const TRACE_V2_SHA256 = 'a1a89ede52d423f20d5df08111988dbaef97e27460a715767ce54ddc437d536c';
 const BANNER = [
@@ -51,6 +54,21 @@ const SPEC_V2 = fs.readFileSync(path.join(FIXTURES, 'pre-sdd02b', 'caf-spec.v2.S
 const rendered = Object.fromEntries(await Promise.all(FIXTURE_NAMES.map(async (f) => [f, await renderAgents(f)])));
 const plannerOf = (fixture) => rendered[fixture].planner.content;
 const outputOf = (fixture) => trackedSections(plannerOf(fixture)).Output;
+
+// What `curate sync` makes of an older planner since CAF-SDD-02c: the planner also got `Glob` and
+// `Grep`, so `## Allowed Tools` drifts along with `## Output`, and the frontmatter `tools:` line,
+// which sync never writes, stays the old one.
+const OLD_TOOLS_LINE = 'tools: [Read, Write]';
+const NEW_TOOLS_LINE = 'tools: [Read, Write, Glob, Grep]';
+const syncedOf = (fixture) => plannerOf(fixture).replace(NEW_TOOLS_LINE, OLD_TOOLS_LINE);
+const DRIFTED = [`${PLANNER_REL}#Allowed Tools`, `${PLANNER_REL}#Output`];
+
+/** caf-spec as 02b wrote it: the banner block back in place of the blank line 02c left there. */
+function withBanner(md) {
+  const open = '---\n\n\n# caf-spec';
+  assert.equal(md.split(open).length, 2);
+  return md.replace(open, `---\n\n${BANNER.join('\n')}\n\n# caf-spec`);
+}
 
 const sha256 = (text) => crypto.createHash('sha256').update(text).digest('hex');
 const runSkills = (opts) => silenced(() => skillsTarget(opts));
@@ -96,15 +114,16 @@ function skillSection(md, heading) {
 // AC-1, AC-2, AC-3 — caf-spec v3
 // ---------------------------------------------------------------------------------------------
 
-test('AC-1: caf-spec is the v3 ticket source verbatim (sha256), 3-line DRAFT banner, at most 90 lines', () => {
+test('AC-1: caf-spec is the v3 ticket source verbatim (sha256) once its banner is put back, at most 90 lines', () => {
   const md = buildSpecSkill();
-  assertIsSource(md, SPEC_V3_SHA256);
-  assertDraftBanner(md);
+  assertIsSource(withBanner(md), SPEC_V3_SHA256);
+  assertDraftBanner(withBanner(md));
+  assert.ok(!hasSkillDraftBanner(md), 'no banner since CAF-SDD-02c');
   assert.ok(lineCount(md) <= 90, `${lineCount(md)} lines`);
   for (const mode of ['SINGLE_REPO', 'MONOREPO']) {
     const file = buildSkillFiles({ mode, verifyApps: [] }).find((f) => f.name === 'caf-spec');
     assert.equal(file.content, md);
-    assert.equal(file.draft, true);
+    assert.equal(file.draft, false);
   }
 });
 
@@ -113,11 +132,10 @@ test('AC-1: scaffold skills in an empty test repo writes caf-spec identical to t
   assert.ok(!fs.existsSync(path.join(dir, SPEC_REL)));
   const result = await runSkills({ dir });
   assert.ok(result.written.includes(path.join(dir, SPEC_REL)));
-  assert.ok(result.drafts.includes('caf-spec'));
+  assert.ok(!result.drafts.includes('caf-spec'), 'active since CAF-SDD-02c');
 
   const md = read(dir, SPEC_REL);
-  assertIsSource(md, SPEC_V3_SHA256);
-  assertDraftBanner(md);
+  assertIsSource(withBanner(md), SPEC_V3_SHA256);
   assert.ok(lineCount(md) <= 90);
 });
 
@@ -202,7 +220,9 @@ test('AC-4: caf-traceability is the v2 ticket source verbatim (sha256), has the 
   assert.equal(read(dir, TRACE_REL), md);
 });
 
-test('AC-4: no agent points at caf-traceability (or caf-spec) while the banner is there', async () => {
+// caf-spec lost its banner at CAF-SDD-02c, so the planner is now pointed at it — and only the
+// planner. caf-traceability still has the banner: no agent points at it.
+test('AC-4: no agent points at caf-traceability while the banner is there; caf-spec is the planner\'s only', async () => {
   // every agent a fresh scaffold renders, both fixtures
   for (const fixture of FIXTURE_NAMES) {
     for (const [kind, { content }] of Object.entries(rendered[fixture])) {
@@ -227,17 +247,18 @@ test('AC-4: no agent points at caf-traceability (or caf-spec) while the banner i
   const result = await runSkills({ dir });
   prompts._injected.length = 0;
   assert.equal(result.pointers.added.length, 3);
-  assert.ok(result.drafts.includes('caf-traceability') && result.drafts.includes('caf-spec'));
+  assert.ok(result.drafts.includes('caf-traceability') && !result.drafts.includes('caf-spec'));
 
   for (const kind of kinds) {
     const existing = read(dir, `${AGENT_DIR}/caf-${kind}.md`);
     assert.match(existing, /^## Skills$/m, kind);
     assert.ok(!existing.includes(TRACE_REL), `${kind}: no pointer at caf-traceability`);
-    assert.ok(!existing.includes(SPEC_REL), `${kind}: no pointer at caf-spec`);
+    assert.equal(existing.includes(SPEC_REL), kind === 'planner', `${kind}: caf-spec`);
   }
   for (const kind of [...KNOWN_KINDS, 'implementation']) {
     const paths = usableSkillPaths(dir, kind);
-    assert.ok(!paths.includes(TRACE_REL) && !paths.includes(SPEC_REL), kind);
+    assert.ok(!paths.includes(TRACE_REL), kind);
+    assert.equal(paths.includes(SPEC_REL), kind === 'planner', kind);
   }
 });
 
@@ -317,18 +338,24 @@ for (const fixture of FIXTURE_NAMES) {
     }
   });
 
+  // Since CAF-SDD-02c the tools line and `## Allowed Tools` differ too (`Glob`, `Grep`); they are
+  // put back here and held by test/sdd02c-spec-active.test.js.
   test(`AC-6: planner on ${fixture} — everything outside \`## Output\` is byte-identical to the SDD-02 render`, () => {
     const old = SDD02_PLANNER[fixture];
     const md = plannerOf(fixture);
     const output = outputOf(fixture);
     assert.notEqual(output, old.sections.Output, 'the Output text did change');
     // put the SDD-02 Output back: the whole file is then the SDD-02 file, byte for byte
-    assert.equal(md.replace(output, old.sections.Output), old.content);
+    const restored = md
+      .replace(NEW_TOOLS_LINE, OLD_TOOLS_LINE)
+      .replace(trackedSections(md)['Allowed Tools'], old.sections['Allowed Tools'])
+      .replace(output, old.sections.Output);
+    assert.equal(restored, old.content);
 
     const frontmatter = (text) => text.slice(0, text.indexOf('\n---\n', 4) + 5);
-    assert.equal(frontmatter(md), frontmatter(old.content));
+    assert.equal(frontmatter(md).replace(NEW_TOOLS_LINE, OLD_TOOLS_LINE), frontmatter(old.content));
     const now = trackedSections(md);
-    for (const header of ['Allowed Tools', 'Input', 'Working Pattern (PIV)', 'Retry Logic']) {
+    for (const header of ['Input', 'Working Pattern (PIV)', 'Retry Logic']) {
       assert.equal(now[header], old.sections[header], header);
     }
     const body = (text, header) => {
@@ -385,16 +412,16 @@ for (const fixture of FIXTURE_NAMES) {
     const before = agentTree(dir);
 
     const dry = await sync(dir, true);
-    assert.deepEqual(dry.drifted, [`${PLANNER_REL}#Output`]);
+    assert.deepEqual(dry.drifted, DRIFTED);
     assert.deepEqual(dry.updated, []);
     assert.deepEqual(agentTree(dir), before, 'dry-run writes nothing');
 
     const real = await sync(dir, false);
-    assert.deepEqual(real.drifted, [`${PLANNER_REL}#Output`]);
+    assert.deepEqual(real.drifted, DRIFTED);
     assert.deepEqual(real.needsAttention, []);
     assert.deepEqual(real.unverifiable, []);
     assert.deepEqual(real.updated, [path.join(dir, PLANNER_REL)]);
-    assert.equal(read(dir, PLANNER_REL), plannerOf(fixture));
+    assert.equal(read(dir, PLANNER_REL), syncedOf(fixture), 'the new render, but for the frontmatter sync never writes');
     assert.ok(read(dir, PLANNER_REL).includes('original tag'));
     for (const { file, content } of others) assert.equal(read(dir, path.join(AGENT_DIR, file)), content, `${file} must stay byte-identical`);
 
@@ -414,12 +441,12 @@ for (const fixture of FIXTURE_NAMES) {
 
     for (const dryRun of [true, false]) {
       const result = await sync(dir, dryRun);
-      assert.deepEqual(result.drifted, []);
-      assert.deepEqual(result.updated, []);
+      // `## Allowed Tools` was not edited, so it is synced (CAF-SDD-02c); the edited Output is not
+      assert.deepEqual(result.drifted, [`${PLANNER_REL}#Allowed Tools`]);
       assert.deepEqual(result.needsAttention, [{ file: PLANNER_REL, header: 'Output', status: SECTION_STATUS.CONFLICT }]);
-      assert.deepEqual(agentTree(dir), before);
+      if (dryRun) assert.deepEqual(agentTree(dir), before);
     }
-    assert.equal(read(dir, PLANNER_REL), edited);
+    assert.equal(read(dir, PLANNER_REL), edited.replace(trackedSections(edited)['Allowed Tools'], trackedSections(plannerOf(fixture))['Allowed Tools']));
   });
 
   test(`AC-8: ${fixture} — a customized Input stays the user's while the untouched Output is synced`, async () => {
@@ -431,8 +458,8 @@ for (const fixture of FIXTURE_NAMES) {
 
     const result = await sync(dir, false);
     assert.deepEqual(result.needsAttention, [{ file: PLANNER_REL, header: 'Input', status: SECTION_STATUS.CUSTOMIZATION }]);
-    assert.deepEqual(result.drifted, [`${PLANNER_REL}#Output`]);
-    assert.equal(read(dir, PLANNER_REL), swap(plannerOf(fixture)));
+    assert.deepEqual(result.drifted, DRIFTED);
+    assert.equal(read(dir, PLANNER_REL), swap(syncedOf(fixture)));
     for (const { file, content } of others) assert.equal(read(dir, path.join(AGENT_DIR, file)), content, file);
   });
 }

@@ -241,7 +241,7 @@ export function buildInputSection(kind, appNames = []) {
 // Adding MCP servers to any of these is a security decision a human must make — hence the TODO
 // kept in the body text.
 const TOOLS_BY_KIND = {
-  planner: ['Read', 'Write'],
+  planner: ['Read', 'Write', 'Glob', 'Grep'],
   architect: ['Read', 'Write'],
   frontend: ['Read', 'Write', 'Edit', 'Bash'],
   backend: ['Read', 'Write', 'Edit', 'Bash'],
@@ -256,7 +256,9 @@ const TOOLS_BY_KIND = {
 };
 
 const TOOLS_RATIONALE = {
-  planner: 'Read for ticket/docs context, Write for artifacts in `.caf/tasks/{TICKET-ID}/`. Does NOT touch code.',
+  planner:
+    'Read, Glob and Grep (read-only) for ticket/docs context and facts about the repo, Write for ' +
+    'artifacts in `.caf/tasks/{TICKET-ID}/`. Does NOT touch code.',
   architect: 'Read for architecture context, Write for `design.md`. Does NOT touch code.',
   frontend: 'Read/Write/Edit for code within this agent\'s scope, Bash to run the Verify Checklist.',
   backend: 'Read/Write/Edit for code within this agent\'s scope, Bash to run the Verify Checklist.',
@@ -648,7 +650,12 @@ ${buildSkillsBody(skillPaths)}
 //   their headless stop (`Status: NEEDS_HUMAN` + the blocked `tasks.md` note) — caf-orchestrator
 //   throws when the planner leaves no `tasks.md`. `NEEDS_CLARIFICATION` is the chat-path status.
 // - The requirements.md format is the `caf-spec` skill's; it is named, not copied. caf-spec is
-//   still a DRAFT, so the text has to stand on its own when the skill is not in `## Skills`.
+//   active since CAF-SDD-02c, but a planner generated earlier has no pointer to it until one is
+//   added by hand, so the text has to stand on its own when the skill is not in `## Skills`.
+// - Two rules added at CAF-SDD-02c, from a real dispatch: read the files of the task folder
+//   before writing (a planner that did not re-read overwrote an approved spec with a DRAFT), and
+//   a request to change an approved spec is answered in `verify-report.md` under
+//   `## Proposed Spec Changes`, never by writing `requirements.md`.
 // - Three rules are stated here as the `caf-spec` skill (v3) states them, since CAF-SDD-02b: what
 //   reading answers is a fact and not a question, an answered question keeps its tag, and the
 //   three `Verify:` forms (`command:` included). Change them here and in the skill together.
@@ -662,6 +669,9 @@ const PLANNER_SPEC_WORKFLOW = [
   'artifact of the task.',
   '',
   '### 1. Specify',
+  '- Before writing anything, read the files that already exist in the task folder:',
+  '  `requirements.md`, `tasks.md`, `verify-report.md`. A file that is there is the starting point;',
+  '  never write over one you have not read in this run.',
   '- Write `requirements.md`: what is asked and why. Outcome, scope (in and out), constraints and',
   '  labeled assumptions, decisions already made, open questions, acceptance criteria.',
   '- Number every acceptance criterion `AC-1:`, `AC-2:`, ... and end each one with `Verify:` in',
@@ -710,6 +720,10 @@ const PLANNER_SPEC_WORKFLOW = [
   '  criteria. This holds for every agent, the Planner included.',
   '- If an approved spec turns out wrong or impossible to satisfy, the proposed change is written',
   '  in `verify-report.md` and a human decides.',
+  '- Asked to change the content of a `requirements.md` that says `Status: APPROVED`: do not write',
+  '  `requirements.md`, not even its status line. Write the proposed change in `verify-report.md`',
+  '  under `## Proposed Spec Changes`, keeping what that file already holds, then stop with',
+  '  `Status: NEEDS_HUMAN`.',
   '',
   '### Before declaring done',
   '- Every AC id in `requirements.md` appears in at least one task of `tasks.md`.',
