@@ -310,8 +310,8 @@ byte-identical to `test/fixtures/pre-sdd02d/` — the pre-change render, never r
 `test/sdd02d-planner-audit.test.js` holds every added or rewritten line verbatim and fails on any
 other new line in the two sections. What that text must keep:
 - `## Output` gained six rules, all whole lines inside steps that already exist (no new `###`
-  heading): a fact `Read`/`Glob`/`Grep` can answer is read before it is written, no "not read
-  yet" note in an artifact, and what stays unknown is a `Finding:` with no claim and no question;
+  heading): a fact `Read`/`Glob`/`Grep` can answer is read before it is written (this one was
+  rewritten at CAF-SDD-02e, see below: it no longer says that what stays unknown is a `Finding:`);
   a section with nothing to say is written `Tidak ada`, never a placeholder; no `tasks.md` at all
   while a `BLOCKING` question has no `Answer:`; an AC with `Verify: automated test` names the test
   file or the task that creates it; the refusal to change an approved spec is the first line of
@@ -322,7 +322,7 @@ other new line in the two sections. What that text must keep:
   `caf-spec` says to write `-` for an empty section, and `caf-no-guess` says to write an open
   item as a line that starts with the to-do word. Don't "fix" the skills to match.
 - The word `TODO` must still not appear in that text (`check-drafts` counts it per agent), which
-  is why the first rule says "a note ... that says something was not read yet".
+  is why the first rule said "a note ... that says something was not read yet".
 - The ticket run (headless marker) is the one exception to "no `tasks.md`": it still writes the
   blocked note. `## Constraints` names that note, is outside the two sections, and
   caf-orchestrator throws when the planner leaves no `tasks.md`. Dropping the exception is a
@@ -337,6 +337,44 @@ other new line in the two sections. What that text must keep:
 - `mono-pnpm.json` was regenerated for this, one entry changed (`caf-planner.md`). Not a precedent.
 - Out of scope until their own tickets: the orchestrator's handling of `NEEDS_CLARIFICATION`
   (04b), and the language of the planner's artifacts (`Tidak ada` is a literal).
+
+Since CAF-SDD-02e the planner reads what it claims, and neither puts a reading off nor guesses.
+Only its `## Output` changed (`## Input` did not); everything else in the file is byte-identical
+to `test/fixtures/pre-sdd02e/` — the pre-change render, never regenerate it.
+`test/sdd02e-planner-read.test.js` holds every added line verbatim and fails on any other new
+line in the section. The rules come from a re-test on two real tickets, where the 02d wording
+came back as synonyms ("not compared yet", "not known yet") and as tasks that told the
+implementer to read what the spec needed. What that text must keep:
+- Eleven rules, all whole lines inside steps that already exist (no new `###` heading). Specify:
+  a fact `Read`/`Glob`/`Grep` can answer is read before any artifact is written and is never
+  handed on to the implementer (a task may say to read the file it is about to change); a
+  `Finding:` or an AC about a behavior comes from a file opened with `Read` in this run, and a
+  summary in `CLAUDE.md`, an ADR or a `Glob` name is a pointer; the ADRs whose name relates to the
+  ticket are read and named in a `Finding:`, and a `Glob` result of mostly `node_modules` is
+  narrowed; no artifact says something is still to be read, compared, checked or found out; an
+  unsourced claim is `Assumption A-n:` with its basis; a `Finding:` is an observation; the
+  planner's rules win over item 4 of `caf-no-guess`; an AC with several behaviors is split; a
+  path or a symbol name only in a `Finding:`, an assumption and `Verify:`. Tasks: a `tasks.md`
+  that holds tasks ends with `## Coverage`. Before declaring done: the same list, number or term
+  everywhere, checked by reading the written files again.
+- They state an intent, not a list of words to avoid: a list is what 02d had, and the synonyms
+  got past it. A test rejects a quoted phrase in the "still to be read" rule. Don't add one.
+- They replace the four 02d lines about a "not read yet" note, on purpose. The first sentence is
+  kept. What reading cannot settle is no longer a `Finding:` that says what is not known: it is
+  an assumption with its basis, or a question. Two 02d tests therefore compare the 02d text
+  against `pre-sdd02e/`, not against the live render. The other five 02d rules are unchanged.
+- The word `TODO` is still not in that text: the `caf-no-guess` line says "a line that starts
+  with the to-do word".
+- `## Coverage` is named inline, in backticks: a line that starts with `## ` would split the
+  tracked section. The blocked note of a ticket run holds no tasks, so it gets no coverage part.
+- The skills are not changed (`caf-spec` and `caf-no-guess` are both held by sha256 in the test).
+  Where they differ, the agent definition wins: `caf-spec` writes `Assumption:` with no number
+  and lets a refactor ticket name the artifact in an AC.
+- Rollout: `curate sync` carries `## Output` as ordinary `DRIFT`; a planner whose `## Output` was
+  edited by hand is a `CONFLICT` and is left alone. Nothing to roll out for the skills.
+- `mono-pnpm.json` was regenerated for this, one entry changed (`caf-planner.md`). Not a precedent.
+- Out of scope until their own tickets: changing `caf-no-guess` (03f, if the re-test shows the
+  one line is not enough), and whatever reads `tasks.md` learning about `## Coverage`.
 
 Since CAF-SDD-02b that text also repeats three `caf-spec` v3 rules (what reading answers is a fact
 and not a question, with at most 5 questions in the file; an answered question keeps its tag; the
