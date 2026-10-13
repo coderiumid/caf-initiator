@@ -878,6 +878,82 @@ const REVIEWER_SPEC_WORKFLOW = [
   '- Count an AC as passed on evidence that needs a human check.',
 ].join('\n');
 
+// How an implementation agent works against the spec (CAF-SDD-03d): read the task folder first,
+// every AC is a contract, the spec and the tasks are never written, evidence per AC, and a stop
+// with a proposal when the spec is unclear. Rendered in the `## Output` of `frontend`, `backend`
+// and `implementer`, after the one-line artifact contract, for the reasons PLANNER_SPEC_WORKFLOW
+// is: Output is tracked, so `curate sync` carries the text to an agent generated earlier as an
+// ordinary DRIFT, and a new header would not reach it at all.
+// Rules this text must keep:
+// - Those three kinds only, checked by name in buildOutputSection(). The `implementation`
+//   fallback (an agent file no kind claims) shares the artifact line and must not get this text:
+//   `curate sync` would write it into a custom agent.
+// - Nothing outside `## Output` changed: tools, `## Allowed Tools`, `## Input`, `## Retry Logic`
+//   and `## Skills` are the ones of `test/fixtures/pre-sdd03d/` (the pre-change render — never
+//   regenerate it). The `Status:` words of `verify-report.md` stay in Retry Logic; the word
+//   caf-orchestrator greps that file for is not repeated here.
+// - No vocabulary of its own. The five evidence lines are the ones of the verify-report format
+//   (agent-handoff-md.js) and of the `caf-traceability` skill, kind for kind and word for word;
+//   VALIDATOR_WORKFLOW and REVIEWER_SPEC_WORKFLOW judge those same five. A sixth kind goes in
+//   all of them or in none (a test compares this text with the rendered handoff).
+// - The full layout of `verify-report.md` is not copied: it stays in
+//   `.caf/workflows/agent-handoff.md`, which has no sync.
+// - It stops only on `NEEDS_CLARIFICATION` or a `BLOCKING` question with no `Answer:`. `DRAFT`
+//   and `APPROVED` go on: the approval gate is for labeled tickets only.
+// - `###` sub-headings only, no `TODO` word, no generate-time placeholder (same as the planner).
+const IMPLEMENTATION_SPEC_WORKFLOW = [
+  'How the work is done. The spec is the contract: the implementation agent builds what',
+  '`requirements.md` asks for and reports, per acceptance criterion (AC), what shows it. Follow the',
+  'five rules below on top of the Working Pattern of this file. Everything is in',
+  '`.caf/tasks/{TICKET-ID}/`.',
+  '',
+  '### 1. Read',
+  '- Before changing any code, read the files that already exist in the task folder:',
+  '  `requirements.md`, `tasks.md`, and `verify-report.md` if present. A `verify-report.md` that',
+  '  is there is the starting point; never write over one you have not read in this run.',
+  '- `requirements.md`: the scope (In and Out) and every AC (`AC-1:`, `AC-2:`, ...) with its',
+  '  `Verify:` line.',
+  '- `tasks.md`: the tasks of this agent and the AC ids each one serves.',
+  '',
+  '### 2. When to stop before coding',
+  '- `requirements.md` says `Status: NEEDS_CLARIFICATION`, or a question marked `BLOCKING` has no',
+  '  `Answer:`: do not change code. Write `verify-report.md` with `Status: NEEDS_HUMAN` and the',
+  '  reason, then stop.',
+  '- `Status: DRAFT` and `Status: APPROVED` do not stop the work: go on.',
+  '',
+  '### 3. Every AC is a contract',
+  '- Every AC of `requirements.md` is a contract: implement each AC that falls in the scope of this',
+  '  agent (see Scope) as it is written.',
+  '- An AC you cannot satisfy is reported, never skipped silently: give it its evidence line (rule',
+  '  5) with the reason.',
+  '',
+  '### 4. Never edit the spec',
+  '- Do not write `requirements.md` or `tasks.md`, not even a status line.',
+  '- If the spec is wrong, ambiguous, impossible to satisfy, or contradicts the code: do not guess',
+  '  and do not change the spec. Write the proposed change in `verify-report.md` under',
+  '  `## Proposed Spec Changes`, keeping what that file already holds, then stop with',
+  '  `Status: NEEDS_HUMAN` and the reason in `verify-report.md`.',
+  '',
+  '### 5. Evidence per AC',
+  '- In `verify-report.md`: one line per AC of `requirements.md`, in exactly one of five forms:',
+  '  - `AC-n: automated-test — <file>::<test name>`',
+  '  - `AC-n: command — <command> | <exit code or output observed>`',
+  '  - `AC-n: build-only — <command that passed>; no test exists for this behavior`',
+  '  - `AC-n: manual — <steps a human must run, or steps already run>`',
+  '  - `AC-n: none — <why>`',
+  '- Name the test; the number of passing tests is never evidence.',
+  '- An AC marked `Verify: manual` is reported as `manual`, an AC marked `Verify: command:` as',
+  '  `command` with the result observed, and an area with no test runner as `build-only` or',
+  '  `manual` — not as `automated-test`.',
+  '- `manual`, `build-only` and `none` are not counted as passed: such an AC needs a human check.',
+  '  Never report one of them as `automated-test` or `command`.',
+  '- The full layout of `verify-report.md` is in `.caf/workflows/agent-handoff.md`.',
+].join('\n');
+
+// The kinds whose `## Output` carries IMPLEMENTATION_SPEC_WORKFLOW. Written out, not derived:
+// `implementation` (the fallback of detectKind) is deliberately not one of them.
+const SPEC_AWARE_IMPLEMENTATION_KINDS = ['frontend', 'backend', 'implementer'];
+
 // devops: CAF.md Layer 3 (.caf/tasks/{TICKET-ID}/) doesn't yet have an official artifact contract
 // for DevOps (post-merge, next phase) — stays TODO until CAF.md defines it.
 export function buildOutputSection(kind) {
@@ -898,6 +974,7 @@ export function buildOutputSection(kind) {
   if (kind === 'planner') return `${contract}\n\n${PLANNER_SPEC_WORKFLOW}`;
   if (kind === 'validator') return `${contract}\n\n${VALIDATOR_WORKFLOW}`;
   if (kind === 'reviewer') return `${contract}\n\n${REVIEWER_SPEC_WORKFLOW}`;
+  if (SPEC_AWARE_IMPLEMENTATION_KINDS.includes(kind)) return `${contract}\n\n${IMPLEMENTATION_SPEC_WORKFLOW}`;
   return contract;
 }
 

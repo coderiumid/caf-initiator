@@ -351,6 +351,27 @@ Only Claude Code is validated to technically enforce an agent's tool and scope r
 | `--dry-run` | Show what would be published without writing | `false` |
 | `--force` | Overwrite files that already exist at the destination | `false` |
 
+### The spec-aware implementation agents
+
+The generated `caf-frontend.md`, `caf-backend.md` and `caf-implementer.md` work against the spec. Their `## Output` section tells them to:
+
+- **Read first.** Before changing any code, read the files that already exist in the task folder: `requirements.md`, `tasks.md`, and `verify-report.md` if present.
+- **Stop when the spec is not ready.** If `requirements.md` says `Status: NEEDS_CLARIFICATION`, or a question marked `BLOCKING` has no `Answer:`, change no code and write `verify-report.md` with `Status: NEEDS_HUMAN` and the reason. `Status: DRAFT` and `Status: APPROVED` do not stop the work.
+- **Treat every acceptance criterion as a contract.** Implement each criterion that falls in the agent's scope as it is written. A criterion the agent cannot satisfy is reported, never skipped silently.
+- **Never edit the spec.** Do not write `requirements.md` or `tasks.md`, not even a status line. If the spec is wrong, ambiguous, impossible to satisfy or contradicts the code, write the proposed change in `verify-report.md` under `## Proposed Spec Changes` and stop with `Status: NEEDS_HUMAN`.
+- **Give evidence per criterion.** One line per criterion in `verify-report.md`, in one of the five forms the validator and the reviewer judge: `automated-test`, `command`, `build-only`, `manual` or `none`. `manual`, `build-only` and `none` are not counted as passed. The full layout of `verify-report.md` is in `.caf/workflows/agent-handoff.md`.
+
+What did not change: only `## Output` is different. The tools (`Read`, `Write`, `Edit`, `Bash`), `## Allowed Tools`, `## Input`, `## Retry Logic` and `## Skills` are as before, and so is an agent file whose name no kind claims (it is treated as a plain implementation agent and keeps the one-line `## Output`).
+
+**Getting this in a repository scaffolded earlier**
+
+| What | How it gets there |
+|---|---|
+| The `## Output` of `caf-frontend.md`, `caf-backend.md` and `caf-implementer.md` | `caf-init curate sync` (only where you have not edited the section) |
+| The `verify-report.md` layout in `.caf/workflows/agent-handoff.md` (the `## Acceptance Criteria` and `## Proposed Spec Changes` parts) | By hand, and only if the file is older than those parts. It has no sync and is never overwritten: delete it and run `caf-init scaffold workflow` again |
+
+Like every other instruction in a generated file, these are instructions to the agent: `caf-init` does not check that an agent followed them.
+
 ### The spec-aware reviewer
 
 The generated `caf-reviewer.md` reviews the change against the spec, on top of its security and code quality review. Its `## Output` section tells it to:

@@ -135,7 +135,11 @@ test('regression: Allowed Tools/Input/Output for every Delivery kind + auditor i
   assert.equal(buildInputSection('auditor'), 'No required input — the agent proactively scans the whole repo.\n\nOptional: a scope hint from the user (e.g. "focus on apps/api" or "only check the auth module").');
   assert.equal(buildInputSection('devops'), 'TODO: which artifact is received from the previous agent (see .caf/tasks/{TICKET-ID}/)');
 
-  assert.equal(buildOutputSection('frontend'), 'Produces code + `verify-report.md` in `.caf/tasks/{TICKET-ID}/` for the next agent to read.');
+  // CAF-SDD-03d: frontend's Output keeps this artifact line and carries the spec rules after it
+  // (locked in test/sdd03d-implementation-spec.test.js). The `implementation` fallback, which
+  // shares the line, is still the line alone.
+  assert.equal(buildOutputSection('frontend').split('\n')[0], 'Produces code + `verify-report.md` in `.caf/tasks/{TICKET-ID}/` for the next agent to read.');
+  assert.equal(buildOutputSection('implementation'), 'Produces code + `verify-report.md` in `.caf/tasks/{TICKET-ID}/` for the next agent to read.');
   assert.match(buildOutputSection('auditor'), /NOT for the next agent/);
   assert.equal(buildOutputSection('devops'), 'TODO: which artifact is produced for the next agent');
 });
