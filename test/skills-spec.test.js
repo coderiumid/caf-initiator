@@ -1,6 +1,7 @@
 // CAF-SDD-01 — the `caf-spec` skill (requirements.md format for SDD): written by `scaffold
-// skills` like every other skill, mapped to the planner, and born a DRAFT so that no agent is
-// pointed at it until a human has tested it and removed the banner.
+// skills` like every other skill and mapped to the planner. It was born a DRAFT so that no agent
+// was pointed at it until a human had tested it; CAF-SDD-02c removed the banner after that test,
+// so the banner assertions below became "no banner, the planner is pointed at it".
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -33,13 +34,6 @@ const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtur
 const FIXTURE = { 'single-nuxt': path.join(FIXTURES, 'single-nuxt'), 'mono-pnpm': path.join(FIXTURES, 'mono-pnpm') };
 const REL = skillPath('caf-spec');
 
-// The proven 3-line banner, exactly as in .ai/tasks/CAF-SDD-01/caf-spec.source.v2.md.
-const BANNER = [
-  '> DRAFT: this skill has not been tested with real agent dispatches yet.',
-  '> Remove this banner only after that test is done.',
-  '> Agents: this skill is NOT ready. Do not apply any rule in this file; ignore it entirely until this banner is removed.',
-];
-
 const run = (opts) => silenced(() => skillsTarget(opts));
 const read = (dir, rel) => fs.readFileSync(path.join(dir, rel), 'utf8');
 const pointersIn = (md) => [...md.matchAll(/^- `([^`]+\/SKILL\.md)`$/gm)].map((m) => m[1]);
@@ -62,7 +56,7 @@ test('caf-spec template: pure, constant, registered in the one skill list', () =
   const file = buildSkillFiles({ mode: 'SINGLE_REPO', verifyApps: [] }).find((f) => f.name === 'caf-spec');
   assert.equal(file.content, buildSpecSkill());
   assert.equal(file.relPath, REL);
-  assert.equal(file.draft, true);
+  assert.equal(file.draft, false);
   assert.equal(buildSkillFiles({ mode: 'MONOREPO', verifyApps: [] }).find((f) => f.name === 'caf-spec').content, file.content);
 });
 
@@ -99,11 +93,10 @@ test('caf-spec template: no placeholder, no open TODO line, example headings sta
   ]);
 });
 
-test('caf-spec banner: three lines, no project name; the agent definition wins', () => {
+test('caf-spec: no banner since CAF-SDD-02c, no project name; the agent definition wins', () => {
   const md = buildSpecSkill();
-  const banner = md.split('\n').filter((l) => l.startsWith('>'));
-  assert.deepEqual(banner, BANNER);
-  assert.match(banner[0], /^> DRAFT\b/);
+  assert.deepEqual(md.split('\n').filter((l) => l.startsWith('>')), []);
+  assert.ok(!hasSkillDraftBanner(md) && !hasSkillDraftAgentNotice(md));
   assert.ok(!/umkm-pos/i.test(md));
   assert.ok(md.includes('If the agent definition conflicts with this skill, the agent definition wins.'));
 });
@@ -123,7 +116,7 @@ test('caf-spec defines requirements.md only: no report format, no report status 
 });
 
 for (const [name, fixture] of Object.entries(FIXTURE)) {
-  test(`AC-1: scaffold skills writes caf-spec with its frontmatter and the 3-line DRAFT banner — ${name}`, async () => {
+  test(`AC-1: scaffold skills writes caf-spec with its frontmatter and, since CAF-SDD-02c, no DRAFT banner — ${name}`, async () => {
     const dir = copyFixture(fixture);
     assert.ok(!fs.existsSync(path.join(dir, REL)));
     const result = await run({ dir });
@@ -136,13 +129,9 @@ for (const [name, fixture] of Object.entries(FIXTURE)) {
     assert.equal(fm[0], 'name: caf-spec');
     assert.ok(fm[1].length > 'description: '.length);
 
-    const lines = md.split('\n');
-    const at = lines.indexOf(BANNER[0]);
-    assert.ok(at > 0 && at < 15);
-    assert.deepEqual(lines.slice(at - 1, at + 4), ['', ...BANNER, '']);
-    assert.equal(lines.filter((l) => l.startsWith('>')).length, 3);
-    assert.ok(hasSkillDraftBanner(md) && hasSkillDraftAgentNotice(md));
-    assert.ok(result.drafts.includes('caf-spec'));
+    assert.equal(md.split('\n').filter((l) => l.startsWith('>')).length, 0);
+    assert.ok(!hasSkillDraftBanner(md) && !hasSkillDraftAgentNotice(md));
+    assert.ok(!result.drafts.includes('caf-spec'));
   });
 
   test(`AC-2: an existing caf-spec/SKILL.md is not changed by a re-run — ${name}`, async () => {
@@ -199,7 +188,10 @@ test('AC-4: the planner maps to caf-spec, and only the planner', () => {
   }
 });
 
-test('AC-4: while the DRAFT banner is there, no planner gets a pointer to caf-spec', async () => {
+// Was "while the DRAFT banner is there, no planner gets a pointer to caf-spec". The banner rule is
+// the same; the skill no longer has one, so the planner gets the pointer (CAF-SDD-02c). A skill
+// file that still has the banner (a repo scaffolded earlier) is still not pointed at.
+test('AC-4: without the DRAFT banner the planner gets a pointer to caf-spec; with it, none', async () => {
   const planner = (skills) => buildAgentMd({ name: 'planner', role: 'r', scope: 's', kind: 'planner', slug: 'caf-planner', skills });
   const dir = makeRepo(
     { 'package.json': { name: 'r', scripts: { lint: 'x' } }, 'pnpm-lock.yaml': '', '.claude/agents/caf-planner.md': planner() },
@@ -209,19 +201,23 @@ test('AC-4: while the DRAFT banner is there, no planner gets a pointer to caf-sp
   const result = await run({ dir });
   prompts._injected.length = 0;
 
-  // an existing planner: the section it is offered lists the two finished skills only
+  // an existing planner: the section it is offered lists the three finished skills
+  const three = ['caf-scope-discipline', 'caf-no-guess', 'caf-spec'].map(skillPath);
   assert.equal(result.pointers.added.length, 1);
   const existing = read(dir, '.claude/agents/caf-planner.md');
-  assert.deepEqual(pointersIn(existing), ['caf-scope-discipline', 'caf-no-guess'].map(skillPath));
-  // Since CAF-SDD-02 the planner's Output names the `caf-spec` skill in prose; what must not be
-  // there is a pointer: no path to its SKILL.md anywhere in the file.
-  assert.ok(!existing.includes(skillPath('caf-spec')));
+  assert.deepEqual(pointersIn(existing), three);
 
-  // a planner generated now: same — and byte-identical to what it was before caf-spec existed
-  assert.deepEqual(usableSkillPaths(dir, 'planner'), ['caf-scope-discipline', 'caf-no-guess'].map(skillPath));
-  const rendered = planner(usableSkillPaths(dir, 'planner'));
-  assert.equal(rendered, planner(['caf-scope-discipline', 'caf-no-guess'].map(skillPath)));
-  assert.ok(!rendered.includes(skillPath('caf-spec')));
+  // a planner generated now: same
+  assert.deepEqual(usableSkillPaths(dir, 'planner'), three);
+  assert.deepEqual(pointersIn(planner(usableSkillPaths(dir, 'planner'))), three);
+
+  // a caf-spec that still has the banner (written by an earlier caf-init): no pointer
+  const drafted = makeRepo({ 'package.json': { name: 'r', scripts: { lint: 'x' } }, 'pnpm-lock.yaml': '' }, 'caf-skills-spec-old-');
+  await run({ dir: drafted });
+  const banner = '> DRAFT: this skill has not been tested with real agent dispatches yet.';
+  fs.writeFileSync(path.join(drafted, REL), read(drafted, REL).replace('---\n\n\n# caf-spec', `---\n\n${banner}\n\n# caf-spec`));
+  assert.ok(hasSkillDraftBanner(read(drafted, REL)));
+  assert.deepEqual(usableSkillPaths(drafted, 'planner'), ['caf-scope-discipline', 'caf-no-guess'].map(skillPath));
 
   // a planner that already has `## Skills` is never edited, whatever the run finds
   const before = read(dir, '.claude/agents/caf-planner.md');

@@ -164,17 +164,23 @@ in `TARGETS` but not in `CHAIN_ORDER`. No `--skill-dir` — `curate` has no matc
   `src/templates/agent-handoff-md.js`, so change both or neither (a test compares them).
 - `caf-spec` is at v3 and `caf-traceability` at v2 since CAF-SDD-02b. Both are the ticket source
   verbatim, held by sha256 in `test/sdd02b-spec-v3.test.js` (`caf-traceability` also in
-  `test/sdd02-planner-spec.test.js`) — never reword them in `skill-md.js`. v3 adds: `Finding:` in
+  `test/sdd02-planner-spec.test.js`; `caf-spec` as it is now, without its banner, in
+  `test/sdd02c-spec-active.test.js`) — never reword them in `skill-md.js`. v3 adds: `Finding:` in
   section 3 (the ticket says X, the code shows Y), facts read from the code are not questions,
   an answered question keeps its original tag, no line numbers, and a third `Verify:` form,
   `command: <command> | expect: <exit code or output>`, reported in `verify-report.md` as
   `command` with the result observed. Nothing in caf-init runs or parses a `command:` — that is
   the validator's and the orchestrator's work (CAF-SDD-03b, 04).
-- `caf-spec` and `caf-traceability` are born a DRAFT in every repo (no `TODO` line, their own
-  3-line banner), so no agent is pointed at them until a human removes the banner. The banner
-  stays in the template until CAF-SDD-02c (after the re-test of v3 passes); don't remove it, or
-  add a planner pointer, before that. A skill already in a user's repo is never replaced
-  (`writeIfAbsent`): a repo with the older text keeps it until the file is deleted by hand.
+- `caf-spec` is active since CAF-SDD-02c: the re-test of v3 with real dispatches passed, so the
+  builder renders it without a banner (77 lines, the same text otherwise) and a planner gets a
+  pointer to it. The pointer comes from the banner rule (`usableSkillPaths`), not from a
+  hardcoded list — don't add one. `caf-spec` is mapped to `planner` only.
+- `caf-traceability` is still born a DRAFT in every repo (no `TODO` line, its own 3-line banner,
+  `SPEC_DRAFT_BANNER`), so no agent is pointed at it until a human removes the banner. Don't
+  remove it from the template before the dispatch test with a validator.
+- A skill already in a user's repo is never replaced (`writeIfAbsent`): a repo with the older
+  text keeps it until the file is deleted by hand. A `caf-spec` written before 02c keeps its
+  banner, and with it no pointer, until a human removes the banner.
   `caf-traceability` is mapped to `planner`, `frontend`, `backend` and `validator` (CAF-SDD-03b1)
   — not to `implementer`/`implementation`, which share the rest of the implementation list.
 - Adding the section to an existing agent is the **one** sanctioned rewrite of an existing file:
@@ -276,6 +282,28 @@ of `Output`. Two things that text must keep: every artifact, path and stop token
 before (`test/fixtures/pre-sdd02/` is the pre-change render — never regenerate it), and the
 headless stop on the ticket path (`Status: NEEDS_HUMAN` + the blocked `tasks.md` note):
 caf-orchestrator throws when the planner leaves no `tasks.md`.
+Since CAF-SDD-02c the planner has `Glob` and `Grep` on top of `Read` and `Write` (read-only, so a
+fact about the repo is not a question; never `Bash` or `Edit`), and its `## Output` has two more
+rules, both from a real dispatch: read the files that already exist in the task folder before
+writing anything (a planner that did not re-read overwrote an approved spec with a DRAFT), and a
+request to change an approved `requirements.md` is not written there — the proposal goes to
+`verify-report.md` under `## Proposed Spec Changes` and the run stops with `Status: NEEDS_HUMAN`.
+What that change must keep:
+- The frontmatter `tools:` and `## Allowed Tools` are rendered from one map (`TOOLS_BY_KIND`), so
+  a new tool changes both; the planner's rationale line names `Glob`/`Grep` as read-only.
+  `## Allowed Tools` of every other kind is held by sha256 in `test/sdd02c-spec-active.test.js`.
+- The two rules are whole lines added inside steps that already exist (the top of `### 1. Specify`,
+  the end of `### An approved spec is a contract`): no new `###` heading. Everything else in the
+  planner is byte-identical to `test/fixtures/pre-sdd02c/` — the pre-change render, never
+  regenerate it.
+- Rollout to a planner generated earlier is partly manual. `curate sync` carries `## Output` and
+  `## Allowed Tools` as ordinary `DRIFT`. It does not write frontmatter, so `tools:` is edited by
+  hand; and `## Skills` is not syncable and `scaffold skills` never edits an agent that has the
+  section, so the `caf-spec` pointer is added by hand too. Until the frontmatter is edited, such a
+  planner's `## Allowed Tools` names two tools it does not have. Don't make `## Skills` syncable
+  or add a frontmatter write to close that gap.
+- `mono-pnpm.json` was regenerated for this, one entry changed (`caf-planner.md`). Not a precedent.
+
 Since CAF-SDD-02b that text also repeats three `caf-spec` v3 rules (what reading answers is a fact
 and not a question, with at most 5 questions in the file; an answered question keeps its tag; the
 three `Verify:` forms): change them there and in the skill together. `test/fixtures/pre-sdd02b/`
@@ -402,8 +430,8 @@ its own test and says so; it does not re-record the golden.
   to create `verify-report.md` when it is missing.
 - `/caf-plan` (`src/templates/plan-command.js`, `buildPlanMd`) is **hidden**: no file under
   `src/` imports it (a test walks `src/` for that), so no scaffold run writes `caf-plan.md` and
-  the snapshot has no entry. It stays hidden until the `caf-spec` banner is removed (02c) and the
-  ticket that connects it; don't add it to `PREVIEW_COMMANDS` or to a prompt before that. It
+  the snapshot has no entry. The `caf-spec` banner is gone (02c); the command stays hidden until
+  the ticket that connects it; don't add it to `PREVIEW_COMMANDS` or to a prompt before that. It
   spawns `caf-planner` through the Task tool and carries none of the planner's rules — a test
   rejects planner rule text in it. `/caf-plan-ticket` is still generated, byte-identical, until
   03c replaces it.

@@ -73,7 +73,7 @@ for (const [name, fixture] of Object.entries(FIXTURE)) {
     const dry = await run({ dir, dryRun: true });
     const real = await run({ dir });
     assert.deepEqual(dry.drafts, real.drafts);
-    assert.deepEqual(real.drafts, ['caf-verify', 'caf-spec', 'caf-traceability']);
+    assert.deepEqual(real.drafts, ['caf-verify', 'caf-traceability']);
     // the DRAFT skill on disk carries both banner lines, exactly as the dry run announced it
     const verify = read(dir, skillPath('caf-verify'));
     assert.ok(hasSkillDraftBanner(verify));
@@ -107,7 +107,7 @@ test('a repo with all four scripts gets a caf-verify that is not a DRAFT', async
     'caf-skills-full-'
   );
   const result = await run({ dir });
-  assert.deepEqual(result.drafts, ['caf-spec', 'caf-traceability']);
+  assert.deepEqual(result.drafts, ['caf-traceability']);
   assert.ok(!hasSkillDraftBanner(read(dir, skillPath('caf-verify'))));
   assert.match(read(dir, skillPath('caf-verify')), /- \[ \] `pnpm run test`/);
 });
@@ -187,7 +187,7 @@ test('scaffold agents after scaffold skills: new agents point at the usable skil
 
   const generated = await scaffoldAgents(dir);
   const expected = {
-    planner: ['caf-scope-discipline', 'caf-no-guess'],
+    planner: ['caf-scope-discipline', 'caf-no-guess', 'caf-spec'], // caf-spec: active since CAF-SDD-02c
     implementer: ['caf-scope-discipline', 'caf-no-guess', 'caf-escalate'],
     qa: ['caf-no-guess'],
     reviewer: ['caf-scope-discipline', 'caf-no-guess'],

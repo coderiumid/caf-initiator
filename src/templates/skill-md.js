@@ -27,10 +27,11 @@ const ARTIFACT_WRITER_SKILLS = ['caf-scope-discipline', 'caf-no-guess'];
 // the user's go-ahead, which a headless agent run can never get.
 // `caf-escalate` stays with the implementation kinds — qa/reviewer/planner have their own
 // escalation contracts in Retry Logic/Constraints that caf-orchestrator parses.
-// `caf-spec` (the requirements.md format) is the planner's only; it is born a DRAFT, so no agent
-// gets a pointer to it until a human removes its banner.
+// `caf-spec` (the requirements.md format) is the planner's only. It was born a DRAFT and is active
+// since CAF-SDD-02c: the file has no banner, so a planner gets a pointer to it.
 // `caf-traceability` (CAF-SDD-02) goes to the planner and to frontend/backend — the kinds
-// that write tasks.md and verify-report.md in the orchestrated pipeline. Born a DRAFT as well.
+// that write tasks.md and verify-report.md in the orchestrated pipeline. Still born a DRAFT, so
+// no agent gets a pointer to it until a human removes its banner.
 // `validator` (CAF-SDD-03b1) reads those evidence lines, so it gets `caf-traceability` on top of
 // what `qa` has.
 export const SKILLS_BY_KIND = {
@@ -244,18 +245,21 @@ Do not commit or push unless the user asks.`,
   });
 }
 
-// caf-spec (CAF-SDD-01) is born a DRAFT whatever the repo looks like: it has no `TODO` line to
-// resolve, it waits for a manual dispatch test. Its banner therefore has its own first two lines
-// and sits above the title, so it does not go through skillMd(); the agent-facing line is the
-// shared one. Content is taken verbatim from the ticket — don't reword it here. It is the v3
-// source since CAF-SDD-02b (`Finding:`, facts are not questions, `Verify: command:`); the banner
-// stays until CAF-SDD-02c.
+// caf-spec (CAF-SDD-01). Content is taken verbatim from the ticket — don't reword it here. It is
+// the v3 source since CAF-SDD-02b (`Finding:`, facts are not questions, `Verify: command:`), and
+// since CAF-SDD-02c it carries no DRAFT banner: the dispatch re-test of v3 passed, so the skill is
+// active and the planner is pointed at it. A test holds the whole file by sha256.
 //
 // It is the one skill that defines an artifact format: `requirements.md`, the spec it exists to
 // describe, including the `Status:` line inside that file. That is as far as it goes — it may
 // name a report file (`verify-report.md`) but never defines a report's format or its
 // status/verdict words (verify-report, validate-report, review-notes, qa-report); those stay in
 // the agent definitions' tracked sections.
+//
+// SPEC_DRAFT_BANNER is the banner of a skill that has no `TODO` line to resolve and waits for a
+// manual dispatch test instead. It has its own first two lines and sits above the title, so it
+// does not go through skillMd(); the agent-facing line is the shared one. caf-spec had it until
+// CAF-SDD-02c; caf-traceability still does.
 const SPEC_DRAFT_BANNER =
   '> DRAFT: this skill has not been tested with real agent dispatches yet.\n' +
   '> Remove this banner only after that test is done.\n' +
@@ -269,7 +273,6 @@ name: caf-spec
 description: Format and rules for writing requirements.md (the spec) for a CAF ticket. Use during Specify/Clarify, before writing the plan or tasks.
 ---
 
-${SPEC_DRAFT_BANNER}
 
 # caf-spec — writing requirements.md
 
@@ -345,8 +348,8 @@ Out:
 `;
 }
 
-// caf-traceability (CAF-SDD-02): AC → task → code → test. Born a DRAFT like caf-spec and with the
-// same banner (it waits for a real dispatch test once a validator exists), so no agent gets a
+// caf-traceability (CAF-SDD-02): AC → task → code → test. Born a DRAFT, with the banner caf-spec
+// had (it waits for a real dispatch test once a validator exists), so no agent gets a
 // pointer to it yet. Content is taken verbatim from the ticket — don't reword it here (v2 since
 // CAF-SDD-02b: the `command` evidence form).
 //
