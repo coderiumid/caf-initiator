@@ -172,7 +172,7 @@ Writes seven universal skills into `.claude/skills/<name>/SKILL.md`.
 | `caf-no-guess` | Cite what you read; an unknown becomes an open item, never an invented fact | all of the above |
 | `caf-escalate` | When to stop and hand the task back to a human | implementation agents |
 | `caf-piv` | Plan, wait for the go-ahead, implement, verify | none (manual sessions only) |
-| `caf-spec` | The `requirements.md` (spec) format: scope, findings, open questions, acceptance criteria with a `Verify:` line (`automated test`, `command:` or `manual:`) | Planner — always written as a `DRAFT`, so no pointer yet |
+| `caf-spec` | The `requirements.md` (spec) format: scope, findings, open questions, acceptance criteria with a `Verify:` line (`automated test`, `command:` or `manual:`) | Planner |
 | `caf-traceability` | Link every acceptance criterion to tasks, code and a named test; one evidence line per criterion in `verify-report.md` (`automated-test`, `command`, `build-only`, `manual` or `none`) | Planner, Frontend, Backend — always written as a `DRAFT`, so no pointer yet |
 
 Auditor, PM and UX Designer agents get no skills.
@@ -191,7 +191,32 @@ Auditor, PM and UX Designer agents get no skills.
 
 To activate it, resolve the `TODO` lines and remove the whole banner: both the `> DRAFT ...` sentence and the `> Agents: this skill is NOT ready...` line.
 
-`caf-spec` and `caf-traceability` are written with a `DRAFT` banner in every repo. They have no `TODO` line; remove a skill's banner once you have tested that skill in a real agent run. A skill file that already exists is never replaced: to get a newer version of a skill (for example `caf-spec` with the `command:` form), delete the file and run `scaffold skills` again.
+`caf-traceability` is written with a `DRAFT` banner in every repo. It has no `TODO` line; remove its banner once you have tested the skill in a real agent run. A skill file that already exists is never replaced: to get a newer version of a skill, delete the file and run `scaffold skills` again.
+
+`caf-spec` is active: it is written without a banner, and the Planner is pointed at it. It was a `DRAFT` until it passed a test with real agent runs.
+
+**The Planner and `caf-spec`**
+
+The generated Planner:
+
+- has the tools `Read`, `Write`, `Glob` and `Grep`. `Glob` and `Grep` are read-only and let it look up facts about the repo by itself. It has no `Edit` and no `Bash`;
+- reads the files that already exist in the task folder (`requirements.md`, `tasks.md`, `verify-report.md`) before it writes anything;
+- does not write a `requirements.md` that says `Status: APPROVED` when it is asked to change it. It writes the proposed change in `verify-report.md` under `## Proposed Spec Changes` and stops with `Status: NEEDS_HUMAN`.
+
+These are instructions in the generated file: `caf-init` does not check that an agent followed them.
+
+**Getting this in a repository scaffolded earlier**
+
+| What | How it gets there |
+|---|---|
+| `caf-spec` without the banner | By hand. The existing skill file is never replaced: remove the three banner lines, or delete the file and run `caf-init scaffold skills` again |
+| The Planner's `## Output` and `## Allowed Tools` | `caf-init curate sync` (only where you have not edited the section) |
+| The pointer to `caf-spec` in the Planner's `## Skills` | By hand. `scaffold skills` never edits an agent that already has a `## Skills` section; it prints the path that is not listed there. Add the line ``- `.claude/skills/caf-spec/SKILL.md` `` to the list |
+| `Glob` and `Grep` in the Planner's frontmatter | By hand. `curate sync` does not write frontmatter: change the line to `tools: [Read, Write, Glob, Grep]` |
+
+Until the frontmatter line is changed, the Planner's `## Allowed Tools` names two tools it does not have yet.
+
+No npm release carries this yet: a release of `caf-init` waits until caf-orchestrator handles a repo without `caf-documentation` (CAF-SDD-04, see [No longer scaffolded](#no-longer-scaffolded)).
 
 **Pointers in existing agent definitions**
 
@@ -348,7 +373,7 @@ Two generated commands take the spec into account. Their names, their argument (
 
 Commands are not tracked by `caf-init curate`: `curate sync` does not update them, and an existing command file is never overwritten. To get the new text in a repository scaffolded earlier, delete `.claude/commands/caf-review.md` or `caf-fix-review.md` and run `caf-init scaffold agents` again (or use `--force`, which also overwrites your edits).
 
-A third command, **`/caf-plan`**, exists in the code but is hidden: no `scaffold` run writes it. It takes a ticket ID or free text (which gets a kebab-case slug of at most five words), uses `.caf/tasks/<ID-or-slug>/` as the artifact folder, spawns `caf-planner` for the Specify, Clarify, Plan, Tasks workflow without repeating the planner's rules, and stops once `tasks.md` is written. It stays hidden until the `caf-spec` skill it relies on is no longer a `DRAFT`; `/caf-plan-ticket` is still the command that is generated.
+A third command, **`/caf-plan`**, exists in the code but is hidden: no `scaffold` run writes it. It takes a ticket ID or free text (which gets a kebab-case slug of at most five words), uses `.caf/tasks/<ID-or-slug>/` as the artifact folder, spawns `caf-planner` for the Specify, Clarify, Plan, Tasks workflow without repeating the planner's rules, and stops once `tasks.md` is written. The `caf-spec` skill it relies on is active now, but the command stays hidden until the ticket that connects it; `/caf-plan-ticket` is still the command that is generated.
 
 ### No longer scaffolded
 
