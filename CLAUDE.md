@@ -330,6 +330,38 @@ deviations, tasks not done, ACs whose evidence is `manual`/`build-only`/`none`/m
 - Out of scope until their own tickets: mapping a new skill to `reviewer`, and anything in the
   orchestrator (04). The commands became spec-aware in 03b3 — see "Commands and the spec" below.
 
+The implementation agents are spec-aware since CAF-SDD-03d: `IMPLEMENTATION_SPEC_WORKFLOW` in
+`agent-md.js` is rendered inside the tracked `## Output` of `frontend`, `backend` and
+`implementer`, after the one-line artifact contract — the same placement and the same reasons as
+the planner's text, so an agent generated earlier gets it from `curate sync` as an ordinary
+`DRIFT` of `Output`. Five rules: read `requirements.md`, `tasks.md` and `verify-report.md` (if
+present) before changing code; stop with `Status: NEEDS_HUMAN` when the spec says
+`NEEDS_CLARIFICATION` or a `BLOCKING` question has no `Answer:` (`DRAFT` and `APPROVED` go on);
+every AC is a contract and one that cannot be met is reported; never write `requirements.md` or
+`tasks.md`, the proposal goes under `## Proposed Spec Changes` of `verify-report.md`; one evidence
+line per AC. What that text must keep:
+- Three kinds only, named in `SPEC_AWARE_IMPLEMENTATION_KINDS`. The `implementation` fallback of
+  `detectKind()` shares the artifact line and must keep the line alone: giving it the text would
+  make `curate sync` write it into every custom agent file. A test holds the `Output` of every
+  other kind against `test/fixtures/pre-sdd03d/output-by-kind.json`.
+- `## Output` is the only section that changed. Tools, `## Allowed Tools`, `## Input`,
+  `## Retry Logic` and `## Skills` are byte-identical to `test/fixtures/pre-sdd03d/` — the
+  pre-change render of the five cases (frontend/backend on mono-pnpm; implementer and both
+  `--role` agents on single-nuxt, `test/helpers/implementation-agents.js`), never regenerate it.
+- It has no vocabulary of its own. The five evidence lines are those of the verify-report format
+  in `agent-handoff-md.js`, word for word (a test compares them with the rendered handoff), so
+  the five evidence kinds are now named in five places: change all of them or none. The full
+  layout of `verify-report.md` is referred to, not copied, and the word the orchestrator greps
+  that file for is not in the text (the `Status:` words stay in `## Retry Logic`).
+- Rollout to an agent generated earlier: `curate sync` carries `## Output`. `agent-handoff.md` has
+  no sync; a repo whose copy predates the `## Acceptance Criteria` part gets it only by deleting
+  the file and running `scaffold workflow` again.
+- `test/fixtures/frozen-kinds/implementer.single-nuxt.json` was edited once for this, in
+  `sections.Output` only, and `mono-pnpm.json` was regenerated with two entries changed
+  (`caf-frontend.md`, `caf-backend.md`). Neither is a precedent.
+- Out of scope until their own tickets: the `caf-traceability` pointer and banner, hiding
+  `implementer` (03c3), and anything in the orchestrator (04).
+
 The verify-report format lives in one generated file, `.caf/workflows/agent-handoff.md`
 (`agent-handoff-md.js`). caf-orchestrator tests the WHOLE `verify-report.md` for `\bSUCCESS\b`,
 so nothing added to that skeleton may contain the word outside the `Status:` line. That file is
@@ -383,9 +415,10 @@ connects it to the pipeline (03c/04):
   test, a test that imports no production code, a command it may not run, no evidence line).
   `UNVERIFIED` is never a report status and never makes the report `FAIL` on its own; the
   `Unverified:` line (count and ids) is mandatory.
-- The five evidence kinds are now named in four places: the verify-report format
-  (`agent-handoff-md.js`), the `caf-traceability` skill, `VALIDATOR_WORKFLOW`, and since
-  CAF-SDD-03b2 `REVIEWER_SPEC_WORKFLOW`. Change all four or none.
+- The five evidence kinds are now named in five places: the verify-report format
+  (`agent-handoff-md.js`), the `caf-traceability` skill, `VALIDATOR_WORKFLOW`, since
+  CAF-SDD-03b2 `REVIEWER_SPEC_WORKFLOW`, and since CAF-SDD-03d `IMPLEMENTATION_SPEC_WORKFLOW`.
+  Change all five or none.
 - `Status: PASS | FAIL | NEEDS_HUMAN` in `validate-report.md` keeps the shape `readQaReport()`
   parses for `qa-report.md` (first `Status:` line, uppercase). Nothing reads the file yet; under
   that parse `NEEDS_HUMAN` reads as not-a-pass. What the orchestrator does with it is CAF-SDD-04.
