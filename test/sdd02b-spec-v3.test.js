@@ -57,11 +57,12 @@ const outputOf = (fixture) => trackedSections(plannerOf(fixture)).Output;
 
 // What `curate sync` makes of an older planner since CAF-SDD-02c: the planner also got `Glob` and
 // `Grep`, so `## Allowed Tools` drifts along with `## Output`, and the frontmatter `tools:` line,
-// which sync never writes, stays the old one.
+// which sync never writes, stays the old one. Since CAF-SDD-02d `## Input` drifts too: it names
+// the status of `requirements.md` as a `Status:` line (test/sdd02d-planner-audit.test.js).
 const OLD_TOOLS_LINE = 'tools: [Read, Write]';
 const NEW_TOOLS_LINE = 'tools: [Read, Write, Glob, Grep]';
 const syncedOf = (fixture) => plannerOf(fixture).replace(NEW_TOOLS_LINE, OLD_TOOLS_LINE);
-const DRIFTED = [`${PLANNER_REL}#Allowed Tools`, `${PLANNER_REL}#Output`];
+const DRIFTED = [`${PLANNER_REL}#Allowed Tools`, `${PLANNER_REL}#Input`, `${PLANNER_REL}#Output`];
 
 /** caf-spec as 02b wrote it: the banner block back in place of the blank line 02c left there. */
 function withBanner(md) {
@@ -339,7 +340,8 @@ for (const fixture of FIXTURE_NAMES) {
   });
 
   // Since CAF-SDD-02c the tools line and `## Allowed Tools` differ too (`Glob`, `Grep`); they are
-  // put back here and held by test/sdd02c-spec-active.test.js.
+  // put back here and held by test/sdd02c-spec-active.test.js. Since CAF-SDD-02d `## Input`
+  // differs as well (three lines, held by test/sdd02d-planner-audit.test.js) and is put back too.
   test(`AC-6: planner on ${fixture} — everything outside \`## Output\` is byte-identical to the SDD-02 render`, () => {
     const old = SDD02_PLANNER[fixture];
     const md = plannerOf(fixture);
@@ -349,13 +351,14 @@ for (const fixture of FIXTURE_NAMES) {
     const restored = md
       .replace(NEW_TOOLS_LINE, OLD_TOOLS_LINE)
       .replace(trackedSections(md)['Allowed Tools'], old.sections['Allowed Tools'])
+      .replace(trackedSections(md).Input, old.sections.Input)
       .replace(output, old.sections.Output);
     assert.equal(restored, old.content);
 
     const frontmatter = (text) => text.slice(0, text.indexOf('\n---\n', 4) + 5);
     assert.equal(frontmatter(md).replace(NEW_TOOLS_LINE, OLD_TOOLS_LINE), frontmatter(old.content));
     const now = trackedSections(md);
-    for (const header of ['Input', 'Working Pattern (PIV)', 'Retry Logic']) {
+    for (const header of ['Working Pattern (PIV)', 'Retry Logic']) {
       assert.equal(now[header], old.sections[header], header);
     }
     const body = (text, header) => {
@@ -441,23 +444,31 @@ for (const fixture of FIXTURE_NAMES) {
 
     for (const dryRun of [true, false]) {
       const result = await sync(dir, dryRun);
-      // `## Allowed Tools` was not edited, so it is synced (CAF-SDD-02c); the edited Output is not
-      assert.deepEqual(result.drifted, [`${PLANNER_REL}#Allowed Tools`]);
+      // `## Allowed Tools` (CAF-SDD-02c) and `## Input` (CAF-SDD-02d) were not edited, so they
+      // are synced; the edited Output is not
+      assert.deepEqual(result.drifted, [`${PLANNER_REL}#Allowed Tools`, `${PLANNER_REL}#Input`]);
       assert.deepEqual(result.needsAttention, [{ file: PLANNER_REL, header: 'Output', status: SECTION_STATUS.CONFLICT }]);
       if (dryRun) assert.deepEqual(agentTree(dir), before);
     }
-    assert.equal(read(dir, PLANNER_REL), edited.replace(trackedSections(edited)['Allowed Tools'], trackedSections(plannerOf(fixture))['Allowed Tools']));
+    assert.equal(
+      read(dir, PLANNER_REL),
+      edited
+        .replace(trackedSections(edited)['Allowed Tools'], trackedSections(plannerOf(fixture))['Allowed Tools'])
+        .replace(trackedSections(edited).Input, trackedSections(plannerOf(fixture)).Input)
+    );
   });
 
-  test(`AC-8: ${fixture} — a customized Input stays the user's while the untouched Output is synced`, async () => {
+  // The customized section was `## Input` until CAF-SDD-02d changed its template too (an edited
+  // Input is a CONFLICT now). `## Retry Logic` is one whose template did not change.
+  test(`AC-8: ${fixture} — a customized Retry Logic stays the user's while the untouched Output is synced`, async () => {
     const old = SDD02_PLANNER[fixture].content;
-    const swap = (text) => text.replace('Ticket description from the tracker (required).', 'Ticket description from Linear, team ENG (required).');
+    const swap = (text) => text.replace('retry up to 3x', 'retry up to 2x');
     const edited = swap(old);
     assert.notEqual(edited, old);
     const { dir, others } = repoWithSdd02Planner(fixture, { planner: edited, baselineFrom: old });
 
     const result = await sync(dir, false);
-    assert.deepEqual(result.needsAttention, [{ file: PLANNER_REL, header: 'Input', status: SECTION_STATUS.CUSTOMIZATION }]);
+    assert.deepEqual(result.needsAttention, [{ file: PLANNER_REL, header: 'Retry Logic', status: SECTION_STATUS.CUSTOMIZATION }]);
     assert.deepEqual(result.drifted, DRIFTED);
     assert.equal(read(dir, PLANNER_REL), swap(syncedOf(fixture)));
     for (const { file, content } of others) assert.equal(read(dir, path.join(AGENT_DIR, file)), content, file);

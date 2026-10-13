@@ -126,8 +126,8 @@ export function buildInputSection(kind, appNames = []) {
       '   `prd.md`/`flow.md`), then check whether the received prompt/context is prefixed with the',
       '   `[SYSTEM CONTEXT: Environment = headless...]` marker.',
       '   - **No open questions remain at all** (all answered): proceed to generate',
-      '     `requirements.md` with `## Status: PLAN` as usual — unaffected by headless or not, no',
-      '     need to show anything in chat first.',
+      '     `requirements.md` as usual, with the `Status:` line described in Output — unaffected by',
+      '     headless or not, no need to show anything in chat first.',
       '   - **There are unanswered Open Questions, NOT headless**: first show the user a summary',
       '     of `prd.md` (Problem, Scope, Success Metric) and the list of questions, then ask',
       '     explicitly "Found a discovery draft for this. [N open questions unanswered]. Proceed',
@@ -135,7 +135,7 @@ export function buildInputSection(kind, appNames = []) {
       '     no/cancel, don\'t proceed to generate `requirements.md` — report and stop. (Existing',
       '     behavior, unchanged.)',
       '   - **There are unanswered Open Questions, headless**: do NOT STOP waiting for chat — no',
-      '     human will answer. Generate `requirements.md` directly with `## Status: NEEDS_HUMAN`,',
+      '     human will answer. Generate `requirements.md` directly with `Status: NEEDS_HUMAN`,',
       '     and still create `tasks.md` (may be minimal, containing a short note like "blocked —',
       '     waiting on answers to Open Questions, see requirements.md") so caf-orchestrator doesn\'t',
       '     except on its file-existence check. See the `Constraints` section below.',
@@ -659,6 +659,16 @@ ${buildSkillsBody(skillPaths)}
 // - Three rules are stated here as the `caf-spec` skill (v3) states them, since CAF-SDD-02b: what
 //   reading answers is a fact and not a question, an answered question keeps its tag, and the
 //   three `Verify:` forms (`command:` included). Change them here and in the skill together.
+// - Rules added at CAF-SDD-02d, from a real dispatch and an audit, all whole lines inside steps
+//   that already exist: read a fact before writing it and leave no "not read yet" note (what
+//   stays unknown is a `Finding:`), no placeholder section, no `tasks.md` at all while a
+//   `BLOCKING` question is unanswered (the ticket run's blocked note is the one exception:
+//   `## Constraints` names it and caf-orchestrator needs the file), an `automated test` AC names
+//   its test file, the refusal to change an approved spec is the first line of
+//   `verify-report.md`, and the final message starts with a plain `Status:` line.
+// - One status convention: the status of `requirements.md` is a `Status:` line with four values,
+//   stated once in Specify. `## Input` used to call it a heading (`## Status: PLAN`); it now
+//   refers to that line. Don't name a status of `requirements.md` anywhere as a heading.
 // - `###` sub-headings only: a `## ` line here would be read as a section boundary.
 // - No `TODO` word (check-drafts counts them per agent) and no generate-time placeholder.
 const PLANNER_SPEC_WORKFLOW = [
@@ -672,12 +682,23 @@ const PLANNER_SPEC_WORKFLOW = [
   '- Before writing anything, read the files that already exist in the task folder:',
   '  `requirements.md`, `tasks.md`, `verify-report.md`. A file that is there is the starting point;',
   '  never write over one you have not read in this run.',
+  '- A fact about the repo that `Read`, `Glob` or `Grep` can answer is read before it is written',
+  '  down. Never leave a note in an artifact that says something was not read yet. What reading',
+  '  cannot settle is written as a `Finding:` that says what was looked at and what is not known:',
+  '  it makes no claim and asks no question.',
   '- Write `requirements.md`: what is asked and why. Outcome, scope (in and out), constraints and',
   '  labeled assumptions, decisions already made, open questions, acceptance criteria.',
+  '- The status of `requirements.md` is one plain line, `Status: <value>`, never a heading. The',
+  '  values are `DRAFT`, `NEEDS_CLARIFICATION`, `APPROVED` and `NEEDS_HUMAN`. A spec written with',
+  '  no open `BLOCKING` question is `Status: DRAFT`.',
+  '- A section with nothing to say is written `Tidak ada`. Never a placeholder: not `- -`, not an',
+  '  empty section, not `TBD`.',
   '- Number every acceptance criterion `AC-1:`, `AC-2:`, ... and end each one with `Verify:` in',
   '  one of three forms: `automated test`, `command: <command> | expect: <exit code or output>`',
   '  (a deterministic command from the verify checklist of the repo), or `manual:` and the steps',
   '  when neither of the other two is possible. One observable behavior per AC.',
+  '- An AC with `Verify: automated test` names the test file, or the task in `tasks.md` that',
+  '  creates that file.',
   '- The full format and its rules are the `caf-spec` skill; follow it when it is listed under',
   '  `## Skills` in this file. It is not repeated here.',
   '- No implementation detail in the spec (files, functions, libraries): that belongs to',
@@ -693,12 +714,12 @@ const PLANNER_SPEC_WORKFLOW = [
   '  not delete or retag it.',
   '- `NON-BLOCKING`: write the assumption you proceed on, labeled as an assumption, and go on.',
   '- `BLOCKING` and unanswered: set `Status: NEEDS_CLARIFICATION` in `requirements.md` and stop.',
-  '  Do not go on to Plan or Tasks, and do not write the task breakdown in `tasks.md` while a',
-  '  `BLOCKING` question is unanswered.',
+  '  Do not go on to Plan or Tasks, and do not write `tasks.md` at all while a `BLOCKING` question',
+  '  is unanswered (it has no `Answer:`): no task breakdown, no placeholder, no marker line.',
   '- Ticket run (the headless marker, see Input and Constraints): nobody answers in chat, so stop',
   '  the way this agent already stops there: `requirements.md` with `Status: NEEDS_HUMAN` in',
   '  place of `NEEDS_CLARIFICATION`, plus the blocked `tasks.md` note described in Input. That',
-  '  note is not a task breakdown.',
+  '  note is not a task breakdown, and a ticket run is the only case where it is written.',
   '',
   '### 3. Plan',
   '- Only when no `BLOCKING` question is open.',
@@ -722,13 +743,17 @@ const PLANNER_SPEC_WORKFLOW = [
   '  in `verify-report.md` and a human decides.',
   '- Asked to change the content of a `requirements.md` that says `Status: APPROVED`: do not write',
   '  `requirements.md`, not even its status line. Write the proposed change in `verify-report.md`',
-  '  under `## Proposed Spec Changes`, keeping what that file already holds, then stop with',
-  '  `Status: NEEDS_HUMAN`.',
+  '  under `## Proposed Spec Changes`, keeping what that file already holds, then stop. The status',
+  '  of that refusal is the first line of `verify-report.md`, `Status: NEEDS_HUMAN`: it is written',
+  '  in that file, never in `requirements.md`.',
   '',
   '### Before declaring done',
   '- Every AC id in `requirements.md` appears in at least one task of `tasks.md`.',
   '- No guess that is not labeled as an assumption or an open question.',
   '- Run the Verify Checklist of this file.',
+  '- The final message starts with one plain line, `Status: <value>`: no bold, no backticks, no',
+  '  heading mark, nothing before it. The value is the status this run ended on, one of `DRAFT`,',
+  '  `NEEDS_CLARIFICATION`, `APPROVED` and `NEEDS_HUMAN`, the same words the artifacts use.',
 ].join('\n');
 
 // How the Validator produces `validate-report.md` (CAF-SDD-03b1): the repo verification gate, then
