@@ -438,8 +438,11 @@ for (const fixture of FIXTURE_NAMES) {
 
     const plain = await auditOnly(dir);
     assert.deepEqual(plain.warnings, []);
-    assert.equal(plain.requiredGaps.length, recorded.report.audit.requiredGaps);
-    assert.equal(plain.declined.length, recorded.report.audit.declined);
+    // the report recorded before CAF-SDD-03c1 for this very repo: same layers, entry for entry
+    assert.equal(plain.requiredGaps.length, recorded.audit.requiredGaps);
+    assert.equal(plain.declined.length, recorded.audit.declined);
+    assert.deepEqual(JSON.parse(JSON.stringify(plain.layers).split(JSON.stringify(dir).slice(1, -1)).join('<repo>')), recorded.audit.layers);
+    assert.deepEqual(plain.sectionCounts, recorded.audit.sectionCounts);
     assert.deepEqual(layer2(plain).filter((e) => e.status === 'warn'), []);
     assert.equal(plain.exitCode, plain.requiredGaps.length > 0 ? 1 : undefined);
     assert.ok(!/warning/i.test(plain.printed), 'nothing about warnings is printed');

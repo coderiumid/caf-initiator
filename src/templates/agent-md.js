@@ -1,7 +1,7 @@
 import { verifyCommand, unresolvedPmTodo } from '../utils/runner-command.js';
 import { ARTIFACT_BY_ROLE } from './artifact-by-role.js';
 import { WHAT_TO_LOOK_FOR, reportSkeleton } from './audit-report-format.js';
-import { DISCOVERY_RETRY_LOGIC, DISCOVERY_ALLOWED_TOOLS, DISCOVERY_FOCUS } from './discovery-commands.js';
+import { DISCOVERY_RETRY_LOGIC, DISCOVERY_ALLOWED_TOOLS, DISCOVERY_FOCUS, DISCOVERY_TOOLS } from './discovery-commands.js';
 
 function slugifyAppPath(appPath) {
   return appPath
@@ -287,6 +287,16 @@ const TOOLS_RATIONALE = {
 
 function toolsForKind(kind) {
   return TOOLS_BY_KIND[kind] || ['Read'];
+}
+
+// The frontmatter `tools:` list the template gives a kind, for `curate audit` to compare an
+// existing file against (CAF-SDD-02d): `curate sync` never writes frontmatter, so a file generated
+// before a tools change keeps its old line. Covers pm/ux-designer, whose file is rendered by
+// discoveryAgentMd(). null for a kind with no row — the `['Read']` default of toolsForKind() is
+// what an unknown kind is rendered with, not a template to hold a file against.
+export function templateToolsForKind(kind) {
+  if (DISCOVERY_FOCUS[kind]) return [...DISCOVERY_TOOLS];
+  return TOOLS_BY_KIND[kind] ? [...TOOLS_BY_KIND[kind]] : null;
 }
 
 // Exported (alongside buildInputSection/buildOutputSection) so utils/agent-sections.js can
