@@ -670,8 +670,8 @@ ${buildSkillsBody(skillPaths)}
 //   reading answers is a fact and not a question, an answered question keeps its tag, and the
 //   three `Verify:` forms (`command:` included). Change them here and in the skill together.
 // - Rules added at CAF-SDD-02d, from a real dispatch and an audit, all whole lines inside steps
-//   that already exist: read a fact before writing it and leave no "not read yet" note (what
-//   stays unknown is a `Finding:`), no placeholder section, no `tasks.md` at all while a
+//   that already exist: read a fact before writing it (rewritten at CAF-SDD-02e, see below), no
+//   placeholder section, no `tasks.md` at all while a
 //   `BLOCKING` question is unanswered (the ticket run's blocked note is the one exception:
 //   `## Constraints` names it and caf-orchestrator needs the file), an `automated test` AC names
 //   its test file, the refusal to change an approved spec is the first line of
@@ -679,6 +679,20 @@ ${buildSkillsBody(skillPaths)}
 // - One status convention: the status of `requirements.md` is a `Status:` line with four values,
 //   stated once in Specify. `## Input` used to call it a heading (`## Status: PLAN`); it now
 //   refers to that line. Don't name a status of `requirements.md` anywhere as a heading.
+// - Rules added at CAF-SDD-02e, from a re-test on two real tickets where the 02d wording came
+//   back as synonyms ("not compared yet", "not known yet") and as tasks that told the implementer
+//   to read what the spec needed. They state an intent, not a list of words to avoid: a fact is
+//   read before any artifact is written and never handed on; a behavior comes from a file opened
+//   with `Read` in this run (`CLAUDE.md`, an ADR and a `Glob` name are pointers); the related ADRs
+//   are read; no sentence says something is still to be read, compared, checked or found out; an
+//   unsourced claim is `Assumption A-n:` and a `Finding:` is an observation; one AC is one
+//   behavior; a path or a symbol name only in a `Finding:`, an assumption and `Verify:`;
+//   `tasks.md` ends with `## Coverage`; the same list, number or term everywhere, checked by
+//   reading the written files again. They replace the four 02d lines about a "not read yet" note:
+//   what reading cannot settle is no longer a `Finding:` that says what is not known.
+// - Two skills say otherwise and the agent definition wins: `caf-spec` (`-` for an empty section,
+//   `Assumption:` with no number, a refactor ticket may name the artifact in an AC) and
+//   `caf-no-guess` (item 4, the open-item line), which the text names. The skills are not changed.
 // - `###` sub-headings only: a `## ` line here would be read as a section boundary.
 // - No `TODO` word (check-drafts counts them per agent) and no generate-time placeholder.
 const PLANNER_SPEC_WORKFLOW = [
@@ -692,10 +706,28 @@ const PLANNER_SPEC_WORKFLOW = [
   '- Before writing anything, read the files that already exist in the task folder:',
   '  `requirements.md`, `tasks.md`, `verify-report.md`. A file that is there is the starting point;',
   '  never write over one you have not read in this run.',
-  '- A fact about the repo that `Read`, `Glob` or `Grep` can answer is read before it is written',
-  '  down. Never leave a note in an artifact that says something was not read yet. What reading',
-  '  cannot settle is written as a `Finding:` that says what was looked at and what is not known:',
-  '  it makes no claim and asks no question.',
+  '- A fact about the repo that `Read`, `Glob` or `Grep` can answer is read before any artifact is',
+  '  written, in this run, and is never handed on: no task in `tasks.md` asks the implementer to',
+  '  find out a fact the spec needs. A task may tell the implementer to read the file it is about',
+  '  to change.',
+  '- Every `Finding:` and every AC that says how a file or a module behaves comes from a file',
+  '  opened with `Read` in this run. A summary in `CLAUDE.md`, an ADR, or a file name returned by',
+  '  `Glob` shows where to look: it is not the source of a behavior.',
+  '- When `.caf/knowledge/decisions/` holds ADRs, read the ones whose name relates to the subject',
+  '  of the ticket and name each one read in a `Finding:`. When a `Glob` result is mostly',
+  '  `node_modules` or hidden tool directories, narrow the pattern and run it again.',
+  '- An artifact never says that something is still to be read, compared, checked or found out,',
+  '  in whatever words. What reading can answer is read now; what a human must decide is an open',
+  '  question.',
+  '- A claim that comes neither from a file read in this run nor from the ticket is written',
+  '  `Assumption A-n:` (`A-1`, `A-2`, ...) with what it rests on, never as a `Finding:` and never',
+  '  as a fact in an AC. A word of doubt ("maybe", "it seems") is written on an assumption line',
+  '  and nowhere else.',
+  '- A `Finding:` holds only what was observed in the files that were read. A conclusion drawn',
+  '  from them, or a prediction of what the code does when it runs, is an assumption.',
+  '- The `caf-no-guess` skill (its item 4) tells an agent to write an open item as a line that',
+  '  starts with the to-do word. In the artifacts of this agent the rules above win: no such line',
+  '  is written.',
   '- Write `requirements.md`: what is asked and why. Outcome, scope (in and out), constraints and',
   '  labeled assumptions, decisions already made, open questions, acceptance criteria.',
   '- The status of `requirements.md` is one plain line, `Status: <value>`, never a heading. The',
@@ -707,12 +739,16 @@ const PLANNER_SPEC_WORKFLOW = [
   '  one of three forms: `automated test`, `command: <command> | expect: <exit code or output>`',
   '  (a deterministic command from the verify checklist of the repo), or `manual:` and the steps',
   '  when neither of the other two is possible. One observable behavior per AC.',
+  '- An AC that holds more than one behavior is split into one AC per behavior.',
   '- An AC with `Verify: automated test` names the test file, or the task in `tasks.md` that',
   '  creates that file.',
   '- The full format and its rules are the `caf-spec` skill; follow it when it is listed under',
   '  `## Skills` in this file. It is not repeated here.',
   '- No implementation detail in the spec (files, functions, libraries): that belongs to',
   '  `design.md` and `tasks.md`.',
+  '- A file path or a symbol name may be written in a `Finding:`, on an assumption line and on a',
+  '  `Verify:` line. It is never written in the outcome, the scope, the decisions or the',
+  '  `When ... then` sentence of an AC.',
   '',
   '### 2. Clarify',
   '- First check the ticket, the code, the ADRs and `CLAUDE.md`. Whatever you can answer by reading',
@@ -745,6 +781,8 @@ const PLANNER_SPEC_WORKFLOW = [
   '  report it as an open question, do not invent a task.',
   '- For an AC marked `Verify: automated test`, the task that writes the test comes before the',
   '  task that implements the behavior.',
+  '- A `tasks.md` that holds tasks ends with a part headed `## Coverage`: one line per AC, the AC',
+  '  id and the tasks that serve it. Every AC id of `requirements.md` is there.',
   '',
   '### An approved spec is a contract',
   '- Once `requirements.md` says `Status: APPROVED`, do not change its goal, scope or acceptance',
@@ -761,6 +799,8 @@ const PLANNER_SPEC_WORKFLOW = [
   '- Every AC id in `requirements.md` appears in at least one task of `tasks.md`.',
   '- No guess that is not labeled as an assumption or an open question.',
   '- Run the Verify Checklist of this file.',
+  '- The same list, number or term is written the same way in every artifact. Before ending the',
+  '  run, read again the files written in this run and make them agree.',
   '- The final message starts with one plain line, `Status: <value>`: no bold, no backticks, no',
   '  heading mark, nothing before it. The value is the status this run ended on, one of `DRAFT`,',
   '  `NEEDS_CLARIFICATION`, `APPROVED` and `NEEDS_HUMAN`, the same words the artifacts use.',

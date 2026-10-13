@@ -42,6 +42,14 @@ const OLD_PLANNER = Object.fromEntries(
   FIXTURE_NAMES.map((f) => [f, JSON.parse(fs.readFileSync(path.join(FIXTURES, 'pre-sdd02d', `planner.${f}.json`), 'utf8'))])
 );
 
+// The planner as this ticket left it, recorded before CAF-SDD-02e touched src/. Never regenerated.
+// CAF-SDD-02e replaced RULE_READ_FACTS (its first sentence is kept, the rest is restated by
+// intent — test/sdd02e-planner-read.test.js holds that), so the comparisons that need this
+// ticket's own text line for line are made against this render, not against the live one.
+const SDD02D_PLANNER = Object.fromEntries(
+  FIXTURE_NAMES.map((f) => [f, JSON.parse(fs.readFileSync(path.join(FIXTURES, 'pre-sdd02e', `planner.${f}.json`), 'utf8'))])
+);
+
 const rendered = Object.fromEntries(await Promise.all(FIXTURE_NAMES.map(async (f) => [f, await renderAgents(f)])));
 const plannerOf = (fixture) => rendered[fixture].planner.content;
 const outputOf = (fixture) => trackedSections(plannerOf(fixture)).Output;
@@ -163,8 +171,12 @@ const added = (now, old) => now.split('\n').filter((l) => !old.split('\n').inclu
 
 for (const fixture of FIXTURE_NAMES) {
   test(`AC-1: planner on ${fixture} — a fact Read/Glob/Grep can answer is read first, no "not read yet" note, the rest is a \`Finding:\``, () => {
-    const specify = stepLines(outputOf(fixture), '### 1. Specify');
+    // the rule as this ticket wrote it, in the 02d render
+    const specify = stepLines(SDD02D_PLANNER[fixture].sections.Output, '### 1. Specify');
     assertBlock(specify, RULE_READ_FACTS);
+    // what is left of it since CAF-SDD-02e: a fact is still read first, in the same place
+    const live = stepLines(outputOf(fixture), '### 1. Specify');
+    assert.equal(live.indexOf('- A fact about the repo that `Read`, `Glob` or `Grep` can answer is read before any artifact is'), specify.indexOf(RULE_READ_FACTS[0]));
     const text = flat(RULE_READ_FACTS);
     assert.match(text, /`Read`, `Glob` or `Grep` can answer is read before it is written down/);
     assert.match(text, /Never leave a note in an artifact that says something was not read yet/);
@@ -278,11 +290,16 @@ for (const fixture of FIXTURE_NAMES) {
 
   test(`AC-8: planner on ${fixture} — inside the two sections only the rules of this ticket and the status wording changed`, () => {
     const old = OLD_PLANNER[fixture];
-    // `## Output`: every line that is new belongs to one of the blocks, every line that is gone is listed
-    const newLines = added(outputOf(fixture), old.sections.Output);
+    // `## Output`: every line that is new belongs to one of the blocks, every line that is gone is
+    // listed. Compared on the 02d render: CAF-SDD-02e added lines of its own to the live one.
+    const output02d = SDD02D_PLANNER[fixture].sections.Output;
+    const newLines = added(output02d, old.sections.Output);
     const blockLines = NEW_OUTPUT_BLOCKS.flat();
     for (const line of newLines) assert.ok(blockLines.includes(line), `unexpected new line in Output: ${line}`);
-    assert.deepEqual(added(old.sections.Output, outputOf(fixture)), OLD_OUTPUT_LINES);
+    assert.deepEqual(added(old.sections.Output, output02d), OLD_OUTPUT_LINES);
+    // and of those blocks, the live Output lacks only the one CAF-SDD-02e replaced
+    const live = outputOf(fixture).split('\n');
+    assert.deepEqual(blockLines.filter((l) => !live.includes(l)), RULE_READ_FACTS);
     assert.equal(outputOf(fixture).split('\n')[0], old.sections.Output.split('\n')[0], 'the artifact contract line');
 
     // `## Input`: three lines, the ones that named the status as a heading
