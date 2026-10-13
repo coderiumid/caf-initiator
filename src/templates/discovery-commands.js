@@ -181,6 +181,10 @@ information genuinely isn't available yet (not an agent mistake), STOP and write
 question in \`## Open Questions\` then report to the human that this discovery needs their
 input.`;
 
+// The frontmatter `tools:` of pm/ux-designer. A constant so `curate audit` compares an existing
+// file against the list discoveryAgentMd() renders (templateToolsForKind in agent-md.js).
+export const DISCOVERY_TOOLS = ['Read', 'Write'];
+
 // Single source of truth for the `## Allowed Tools` body shared by pm/ux-designer (CAF-RETRYLOGIC-01
 // found the no-write-to-tracker prohibition here is a CAF.md security invariant, not boilerplate —
 // exported so agent-md.js's buildToolsSection(kind) can return this exact string for content-drift
@@ -250,7 +254,7 @@ ${description
   .split('\n')
   .map((line) => `  ${line}`)
   .join('\n')}
-tools: [Read, Write]
+tools: [${DISCOVERY_TOOLS.join(', ')}]
 model: sonnet
 ---
 

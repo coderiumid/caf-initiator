@@ -88,11 +88,14 @@ const RULE_READ_FIRST = [
   '  `requirements.md`, `tasks.md`, `verify-report.md`. A file that is there is the starting point;',
   '  never write over one you have not read in this run.',
 ];
+// Its last sentence was "then stop with `Status: NEEDS_HUMAN`." until CAF-SDD-02d said where that
+// status is written (the first line of `verify-report.md`).
 const RULE_APPROVED_SPEC = [
   '- Asked to change the content of a `requirements.md` that says `Status: APPROVED`: do not write',
   '  `requirements.md`, not even its status line. Write the proposed change in `verify-report.md`',
-  '  under `## Proposed Spec Changes`, keeping what that file already holds, then stop with',
-  '  `Status: NEEDS_HUMAN`.',
+  '  under `## Proposed Spec Changes`, keeping what that file already holds, then stop. The status',
+  '  of that refusal is the first line of `verify-report.md`, `Status: NEEDS_HUMAN`: it is written',
+  '  in that file, never in `requirements.md`.',
 ];
 
 const golden = (folder) =>
@@ -278,7 +281,7 @@ for (const fixture of FIXTURE_NAMES) {
     const text = flat(RULE_APPROVED_SPEC);
     assert.match(text, /`requirements\.md` that says `Status: APPROVED`: do not write `requirements\.md`/);
     assert.match(text, /Write the proposed change in `verify-report\.md` under `## Proposed Spec Changes`/);
-    assert.match(text, /then stop with `Status: NEEDS_HUMAN`\.$/);
+    assert.match(text, /then stop\. The status of that refusal is the first line of `verify-report\.md`, `Status: NEEDS_HUMAN`/);
   });
 
   test(`AC-4: planner on ${fixture} — the new text adds no section boundary, no TODO, no heading`, () => {
@@ -294,14 +297,18 @@ for (const fixture of FIXTURE_NAMES) {
 // ---------------------------------------------------------------------------------------------
 
 for (const fixture of FIXTURE_NAMES) {
-  test(`AC-5: planner on ${fixture} — outside the tools line, two lines of \`## Allowed Tools\` and the two new rules, the file is the pre-ticket golden byte for byte`, () => {
+  // CAF-SDD-02d changed `## Input` (three lines) and added rules to `## Output`, so "Output minus
+  // the two rules is the old Output" no longer holds line for line: that comparison is made
+  // against the 02c render in test/sdd02d-planner-audit.test.js. What stays here: the two rules
+  // are there once each, and with the three tracked sections put back the file is the golden.
+  test(`AC-5: planner on ${fixture} — outside the tools line, two lines of \`## Allowed Tools\`, \`## Input\` and \`## Output\`, the file is the pre-ticket golden byte for byte`, () => {
     const old = SDD02B_PLANNER[fixture];
     const md = plannerOf(fixture);
     assert.notEqual(md, old.content);
 
-    // `## Output` minus the two rules is the old Output
     const output = outputOf(fixture);
-    assert.equal(without(without(output, RULE_READ_FIRST), RULE_APPROVED_SPEC), old.sections.Output);
+    assert.notEqual(without(without(output, RULE_READ_FIRST), RULE_APPROVED_SPEC), output);
+    assert.equal(output.split('\n')[0], old.sections.Output.split('\n')[0]);
 
     // `## Allowed Tools`: the list line and the rationale line, nothing else
     const tools = trackedSections(md)['Allowed Tools'].split('\n');
@@ -313,11 +320,12 @@ for (const fixture of FIXTURE_NAMES) {
     const restored = md
       .replace(toolsLine(md), toolsLine(old.content))
       .replace(trackedSections(md)['Allowed Tools'], old.sections['Allowed Tools'])
+      .replace(trackedSections(md).Input, old.sections.Input)
       .replace(output, old.sections.Output);
     assert.equal(restored, old.content);
 
     const now = trackedSections(md);
-    for (const header of ['Input', 'Working Pattern (PIV)', 'Retry Logic']) assert.equal(now[header], old.sections[header], header);
+    for (const header of ['Working Pattern (PIV)', 'Retry Logic']) assert.equal(now[header], old.sections[header], header);
     assert.deepEqual(parseSections(md).sections.map((s) => s.header), parseSections(old.content).sections.map((s) => s.header));
   });
 }
@@ -355,7 +363,8 @@ function repoWithOldPlanner(fixture, { planner, baselineFrom = planner }) {
 const sync = (dir, dryRun) => silenced(() => agentsSync({ dir, agentDir: AGENT_DIR, dryRun }));
 const agentTree = (dir) =>
   Object.fromEntries(Object.entries(snapshotTree(path.join(dir, AGENT_DIR))).filter(([rel]) => rel.endsWith('.md')));
-const DRIFT_BOTH = [`${PLANNER_REL}#Allowed Tools`, `${PLANNER_REL}#Output`];
+// `## Input` drifts as well since CAF-SDD-02d (test/sdd02d-planner-audit.test.js).
+const DRIFT_BOTH = [`${PLANNER_REL}#Allowed Tools`, `${PLANNER_REL}#Input`, `${PLANNER_REL}#Output`];
 
 const OLD_PLANNERS = [
   { label: 'the 02b planner', of: (fixture) => SDD02B_PLANNER[fixture].content },
@@ -413,15 +422,15 @@ for (const fixture of FIXTURE_NAMES) {
 
     for (const dryRun of [true, false]) {
       const result = await sync(dir, dryRun);
-      assert.deepEqual(result.drifted, []);
-      assert.deepEqual(result.updated, []);
+      // the untouched `## Input` is synced since CAF-SDD-02d; the two edited sections are not
+      assert.deepEqual(result.drifted, [`${PLANNER_REL}#Input`]);
       assert.deepEqual(result.needsAttention, [
         { file: PLANNER_REL, header: 'Allowed Tools', status: SECTION_STATUS.CONFLICT },
         { file: PLANNER_REL, header: 'Output', status: SECTION_STATUS.CONFLICT },
       ]);
-      assert.deepEqual(agentTree(dir), before);
+      if (dryRun) assert.deepEqual(agentTree(dir), before);
     }
-    assert.equal(read(dir, PLANNER_REL), edited);
+    assert.equal(read(dir, PLANNER_REL), edited.replace(bodyOf(edited, 'Input'), bodyOf(plannerOf(fixture), 'Input')));
   });
 
   test(`AC-6: ${fixture} — a customized Output stays the user's while the untouched Allowed Tools is synced`, async () => {
@@ -431,7 +440,7 @@ for (const fixture of FIXTURE_NAMES) {
 
     const result = await sync(dir, false);
     assert.deepEqual(result.needsAttention, [{ file: PLANNER_REL, header: 'Output', status: SECTION_STATUS.CONFLICT }]);
-    assert.deepEqual(result.drifted, [`${PLANNER_REL}#Allowed Tools`]);
+    assert.deepEqual(result.drifted, [`${PLANNER_REL}#Allowed Tools`, `${PLANNER_REL}#Input`]);
     const now = read(dir, PLANNER_REL);
     assert.equal(bodyOf(now, 'Output'), bodyOf(edited, 'Output'));
     assert.equal(bodyOf(now, 'Allowed Tools'), bodyOf(plannerOf(fixture), 'Allowed Tools'));

@@ -10,11 +10,14 @@ import { canonicalHeaders } from '../utils/canonical-sections.js';
 import { extractHeaders } from '../utils/section-headers.js';
 import { hashSection, compareSection, SECTION_STATUS } from '../utils/section-diff.js';
 import { readManifest, getBaselineHash } from '../utils/generate-manifest.js';
+import { templateToolsForKind } from '../templates/agent-md.js';
+import { usableSkillPaths } from './skills.js';
 
-const SYMBOL = { ok: '✓', gap: '✗', declined: '⊘' };
-const COLOR = { ok: kleur.green, gap: kleur.red, declined: kleur.yellow };
+const SYMBOL = { ok: '✓', gap: '✗', declined: '⊘', warn: '!' };
+const COLOR = { ok: kleur.green, gap: kleur.red, declined: kleur.yellow, warn: kleur.yellow };
 
-// status: 'ok' | 'gap' | 'declined'. severity 'optional' never fails the exit code (Layer 1
+// status: 'ok' | 'gap' | 'declined' | 'warn'. 'warn' is a rollout warning (see
+// rolloutWarnings()): shown with the agent definitions, counted on its own, never a gap. severity 'optional' never fails the exit code (Layer 1
 // reference docs are human-owned and not required for the pipeline to run — same stance as
 // reference-docs.js). syncCommand is the CLI command that would address this gap, or null
 // when no apply command exists yet (report the gap as-is — not this command's job to add one).
@@ -161,19 +164,78 @@ const SECTION_STATUS_MESSAGE = {
     `section \`## ${header}\` present but has no manifest baseline yet (UNTRACKED — run \`caf-init curate baseline\` first)`,
 };
 
+/** The inline `tools: [a, b]` list of a file's frontmatter, or null when it has none in that shape. */
+function frontmatterTools(raw) {
+  const m = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\s*$/m);
+  const line = m && m[1].match(/^tools:[ \t]*\[(.*)\][ \t]*$/m);
+  if (!line) return null;
+  return line[1]
+    .split(',')
+    .map((t) => t.trim())
+    .filter(Boolean);
+}
+
+const toolList = (tools) => `\`[${tools.join(', ')}]\``;
+
+// The two parts of a template change that `curate sync` does not carry to an agent generated
+// earlier (CAF-SDD-02d): the frontmatter `tools:` line (sync writes sections, never frontmatter)
+// and a pointer to a skill that became active later (`## Skills` is not tracked, and
+// `scaffold skills` never edits an agent that already has the section). Before this, such an
+// agent read as "already in sync".
+// Warnings on purpose, never gaps: a `tools:` line may differ because a human added an MCP tool
+// or took one away, and a pointer may have been left out by choice. They must not change the
+// exit code. Read-only and deterministic: the same tables the generator renders from.
+// - Only for a file whose name is a known kind. `implementation` is the fallback for any other
+//   name; holding a custom agent against it would be a guess.
+// - Tools are compared as a set: the order of the list means nothing to the harness.
+// - "Active" is the generator's own rule (usableSkillPaths): the skill is mapped to the kind,
+//   its file exists and it has no DRAFT banner. A DRAFT skill is never asked for.
+function rolloutWarnings(dir, relPath, raw, kind, lines, sections) {
+  if (kind === 'implementation') return [];
+  const warnings = [];
+  const warn = (check, message) => warnings.push({ ...entry({ status: 'warn', filePath: relPath, message }), check });
+
+  const template = templateToolsForKind(kind);
+  const current = frontmatterTools(raw);
+  if (template && current && [...current].sort().join('\n') !== [...template].sort().join('\n')) {
+    warn(
+      'tools',
+      `frontmatter \`tools:\` is ${toolList(current)}, the template for kind \`${kind}\` has ${toolList(template)} ` +
+        '(warning — `curate sync` does not write frontmatter: edit the line by hand, or leave it if the difference is on purpose)'
+    );
+  }
+
+  const skillsSection = sections.find((s) => s.header === 'Skills');
+  const pointedAt = skillsSection ? sectionBody(lines, skillsSection) : '';
+  const missing = usableSkillPaths(dir, kind).filter((p) => !pointedAt.includes(p));
+  if (missing.length > 0) {
+    const list = missing.map((p) => `\`${p}\``).join(', ');
+    const what = `no pointer to ${list}, ${missing.length === 1 ? 'an active skill' : 'active skills'} of kind \`${kind}\``;
+    warn(
+      'skill-pointer',
+      skillsSection
+        ? `${what} (warning — \`caf-init scaffold skills\` never edits an agent that has \`## Skills\`: add the pointer line to \`## Skills\` by hand, as \`- \`<path>\`\`)`
+        : `${what} (warning — the file has no \`## Skills\` section: run \`caf-init scaffold skills\`, which offers to add it)`
+    );
+  }
+  return warnings;
+}
+
 export function auditAgentDefinitions(dir, agentDirOpt) {
   const agentDirPath = path.join(dir, agentDirOpt || '.claude/agents');
-  if (!fs.existsSync(agentDirPath)) return { entries: [], sectionCounts: {} };
+  if (!fs.existsSync(agentDirPath)) return { entries: [], sectionCounts: {}, warnings: [] };
 
   const files = fs
     .readdirSync(agentDirPath)
     .filter((f) => f.endsWith('.md'))
     .sort();
-  if (files.length === 0) return { entries: [], sectionCounts: {} };
+  if (files.length === 0) return { entries: [], sectionCounts: {}, warnings: [] };
 
   const state = readSyncState(agentDirPath);
   const manifest = readManifest(dir);
   const entries = [];
+  // Kept out of `entries`: those are the section report, and a warning is not a section status.
+  const warnings = [];
   const sectionCounts = {
     [SECTION_STATUS.IN_SYNC]: 0,
     [SECTION_STATUS.DRIFT]: 0,
@@ -246,9 +308,10 @@ export function auditAgentDefinitions(dir, agentDirOpt) {
     }
 
     entries.push(...(fileEntries.length > 0 ? fileEntries : [entry({ status: 'ok', filePath: relPath, message: 'already in sync' })]));
+    warnings.push(...rolloutWarnings(dir, relPath, raw, kind, lines, sections));
   }
 
-  return { entries, sectionCounts };
+  return { entries, sectionCounts, warnings };
 }
 
 function auditArtifactHandoff(dir) {
@@ -297,7 +360,7 @@ export async function audit({ dir, agentDir: agentDirOpt, output, repoMode }) {
 
   const layers = [
     { name: 'Layer 1 (Knowledge Base)', entries: auditKnowledgeBase(dir, stack) },
-    { name: 'Layer 2 (Agent Definitions)', entries: agentDefsResult.entries },
+    { name: 'Layer 2 (Agent Definitions)', entries: [...agentDefsResult.entries, ...agentDefsResult.warnings] },
     { name: 'Layer 3 (Artifact Handoff)', entries: auditArtifactHandoff(dir) },
     { name: 'Layer 4 (Quality Gates)', entries: auditQualityGates(dir) },
   ];
@@ -312,9 +375,15 @@ export async function audit({ dir, agentDir: agentDirOpt, output, repoMode }) {
   const requiredGaps = allEntries.filter((e) => e.status === 'gap' && e.severity === 'required');
   const optionalGaps = allEntries.filter((e) => e.status === 'gap' && e.severity === 'optional');
   const declined = allEntries.filter((e) => e.status === 'declined');
+  const warnings = agentDefsResult.warnings;
+  const warningSummary =
+    `${warnings.length} warning(s) — rollout steps \`curate sync\` does not carry (frontmatter \`tools:\`, ` +
+    '`## Skills` pointers); they do not change the exit code';
 
   console.log(kleur.bold('Summary'));
   console.log(`  ${requiredGaps.length} required gap(s), ${optionalGaps.length} optional document(s) missing, ${declined.length} need manual review (section name mismatch/declined/customized)`);
+
+  if (warnings.length > 0) console.log(kleur.yellow(`  ${warningSummary}`));
 
   const sc = agentDefsResult.sectionCounts;
   const trackedSectionTotal = sc ? Object.values(sc).reduce((a, b) => a + b, 0) : 0;
@@ -359,6 +428,7 @@ export async function audit({ dir, agentDir: agentDirOpt, output, repoMode }) {
     lines.push(
       `${requiredGaps.length} required gap(s), ${optionalGaps.length} optional document(s) missing, ${declined.length} need manual review (section name mismatch/declined/customized)`
     );
+    if (warnings.length > 0) lines.push(warningSummary);
     lines.push('');
     for (const [cmd, filePaths] of commandsByGap) {
       lines.push(`- \`${cmd}\` → handles ${filePaths.length} gap(s) (${filePaths.join(', ')})`);
@@ -373,7 +443,8 @@ export async function audit({ dir, agentDir: agentDirOpt, output, repoMode }) {
 
   // Optional-doc gaps never fail the run (see reference-docs.js — Layer 1 reference docs are
   // never required for the pipeline). Required gaps do, so `audit` is usable as a CI gate.
+  // Warnings never do (CAF-SDD-02d).
   if (requiredGaps.length > 0) process.exitCode = 1;
 
-  return { layers, requiredGaps, optionalGaps, declined, sectionCounts: agentDefsResult.sectionCounts };
+  return { layers, requiredGaps, optionalGaps, declined, warnings, sectionCounts: agentDefsResult.sectionCounts };
 }

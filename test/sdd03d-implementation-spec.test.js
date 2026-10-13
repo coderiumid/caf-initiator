@@ -27,6 +27,9 @@ const GOLDEN = path.join(FIXTURES, 'pre-sdd03d');
 // The one section that carries the new rules. Everything else is unchanged.
 const CHANGED = 'Output';
 const CHANGED_KINDS = ['frontend', 'backend', 'implementer'];
+// Changed by a later ticket, on purpose: the planner's Output got more rules at CAF-SDD-02d
+// (held against its own golden in test/sdd02d-planner-audit.test.js).
+const CHANGED_LATER = ['planner'];
 const CONTRACT = 'Produces code + `verify-report.md` in `.caf/tasks/{TICKET-ID}/` for the next agent to read.';
 
 // Recorded from main before this ticket touched src/ (T2). Never regenerated.
@@ -218,7 +221,7 @@ test('AC-6: the three kinds share one text, whatever the fixture or the role', (
 test('AC-6: the `implementation` fallback and every other kind keep the Output they had', () => {
   assert.deepEqual(Object.keys(OLD_OUTPUT_BY_KIND).sort(), [...KNOWN_KINDS, 'implementation'].sort());
   for (const [kind, old] of Object.entries(OLD_OUTPUT_BY_KIND)) {
-    if (CHANGED_KINDS.includes(kind)) assert.notEqual(buildOutputSection(kind), old, kind);
+    if (CHANGED_KINDS.includes(kind) || CHANGED_LATER.includes(kind)) assert.notEqual(buildOutputSection(kind), old, kind);
     else assert.equal(buildOutputSection(kind), old, `${kind}: Output must be byte-identical`);
   }
   assert.equal(buildOutputSection('implementation'), CONTRACT);
