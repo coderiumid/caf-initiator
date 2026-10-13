@@ -201,7 +201,13 @@ The generated Planner:
 
 - has the tools `Read`, `Write`, `Glob` and `Grep`. `Glob` and `Grep` are read-only and let it look up facts about the repo by itself. It has no `Edit` and no `Bash`;
 - reads the files that already exist in the task folder (`requirements.md`, `tasks.md`, `verify-report.md`) before it writes anything;
-- does not write a `requirements.md` that says `Status: APPROVED` when it is asked to change it. It writes the proposed change in `verify-report.md` under `## Proposed Spec Changes` and stops with `Status: NEEDS_HUMAN`.
+- does not write a `requirements.md` that says `Status: APPROVED` when it is asked to change it. It writes the proposed change in `verify-report.md` under `## Proposed Spec Changes` and stops. The status of that refusal is the first line of `verify-report.md`, `Status: NEEDS_HUMAN`; it is never written in `requirements.md`;
+- reads a fact about the repo before it writes it down. It leaves no "not read yet" note in an artifact; what reading cannot settle is written as a `Finding:` that makes no claim and asks no question;
+- writes `Tidak ada` for a section with nothing to say, never a placeholder (`- -`, an empty section, `TBD`);
+- writes no `tasks.md` at all while a `BLOCKING` question has no `Answer:`. The one exception is a ticket run (the headless marker): there it still writes the blocked note, because caf-orchestrator fails when the file is missing;
+- names the test file, or the task that creates it, for every acceptance criterion with `Verify: automated test`;
+- starts its final message with one plain line, `Status: <value>`, with no bold and nothing before it;
+- uses one status convention: the status of `requirements.md` is a `Status:` line with the values `DRAFT`, `NEEDS_CLARIFICATION`, `APPROVED` and `NEEDS_HUMAN`. Its `## Input` no longer calls it a heading (`## Status: PLAN`).
 
 These are instructions in the generated file: `caf-init` does not check that an agent followed them.
 
@@ -210,11 +216,13 @@ These are instructions in the generated file: `caf-init` does not check that an 
 | What | How it gets there |
 |---|---|
 | `caf-spec` without the banner | By hand. The existing skill file is never replaced: remove the three banner lines, or delete the file and run `caf-init scaffold skills` again |
-| The Planner's `## Output` and `## Allowed Tools` | `caf-init curate sync` (only where you have not edited the section) |
+| The Planner's `## Input`, `## Output` and `## Allowed Tools` | `caf-init curate sync` (only where you have not edited the section) |
 | The pointer to `caf-spec` in the Planner's `## Skills` | By hand. `scaffold skills` never edits an agent that already has a `## Skills` section; it prints the path that is not listed there. Add the line ``- `.claude/skills/caf-spec/SKILL.md` `` to the list |
 | `Glob` and `Grep` in the Planner's frontmatter | By hand. `curate sync` does not write frontmatter: change the line to `tools: [Read, Write, Glob, Grep]` |
 
 Until the frontmatter line is changed, the Planner's `## Allowed Tools` names two tools it does not have yet.
+
+The two steps done by hand are reported by the audit report of `caf-init curate` as warnings (see [Rollout warnings](#rollout-warnings)), so an older Planner is no longer shown as "already in sync".
 
 No npm release carries this yet: a release of `caf-init` waits until caf-orchestrator handles a repo without `caf-documentation` (CAF-SDD-04, see [No longer scaffolded](#no-longer-scaffolded)).
 
@@ -289,6 +297,20 @@ Only `DRIFT` is ever written, and `DRIFT` requires the file to match its baselin
 `Working Pattern (PIV)` of the PM and UX Designer agents is compared against their own Discovery wording, not the generic one.
 
 Both used to read as `DRIFT` right after `curate baseline` and a sync rewrote them (the app names were lost). A manifest written by an earlier version works unchanged; its format did not change.
+
+#### Rollout warnings
+
+Two parts of a template change never reach an agent file through `curate sync`: the frontmatter and the `## Skills` section. The audit report lists them as warnings, under the agent definitions, marked `!`:
+
+| Warning | When | What to do |
+|---|---|---|
+| `tools:` differs | The frontmatter `tools:` list of an agent is not the list the template gives its kind. The message names the file, the tools it has now and the tools of the template. The order of the list does not matter | Edit the frontmatter line by hand, or leave it if you changed it on purpose (an MCP tool you added, for example) |
+| Skill pointer missing | A skill that is mapped to the agent's kind, exists in `.claude/skills/` and has no DRAFT banner is not listed in the agent's `## Skills`. The message names the agent and the skill | With a `## Skills` section: add the pointer line by hand. Without one: run `caf-init scaffold skills`, which offers to add the section |
+
+- They are warnings only. They are counted on their own line in the summary and never change the exit code, also with `--audit-only`.
+- A skill that still has its DRAFT banner is never asked for.
+- Only agent files whose name is a known CAF kind are checked. A custom agent file is not compared.
+- The check is read-only and uses the same tables the generator renders from.
 
 #### `caf-init curate baseline`
 
