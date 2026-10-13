@@ -173,9 +173,6 @@ for (const fixture of FIXTURE_NAMES) {
     const line = (artifact) => `Produces ${artifact} in \`.caf/tasks/{TICKET-ID}/\` for the next agent to read.`;
     const OUTPUT = {
       architect: line('`design.md`'),
-      frontend: line('code + `verify-report.md`'),
-      backend: line('code + `verify-report.md`'),
-      implementer: line('code + `verify-report.md`'),
       qa: line('`qa-report.md`'),
       documentation: line('update `docs/` (parallel, non-blocking)'),
       devops: 'TODO: which artifact is produced for the next agent',
@@ -189,6 +186,9 @@ for (const fixture of FIXTURE_NAMES) {
       // CAF-SDD-03b2: the reviewer's Output keeps its artifact line and now carries the spec checks
       // after it (locked in test/sdd03b2-reviewer-spec.test.js).
       else if (kind === 'reviewer') assert.equal(sections.Output.split('\n')[0], line('`review-notes.md`'), kind);
+      // CAF-SDD-03d: same for the implementation agents — artifact line first, then the spec rules
+      // (locked in test/sdd03d-implementation-spec.test.js).
+      else if (['frontend', 'backend', 'implementer'].includes(kind)) assert.equal(sections.Output.split('\n')[0], line('code + `verify-report.md`'), kind);
       else assert.ok(['auditor', 'pm', 'ux-designer'].includes(kind), `${kind}: Output not covered`);
       assert.ok(!sections.Output.includes('### 1. Specify'), kind);
     }
