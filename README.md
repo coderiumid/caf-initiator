@@ -202,7 +202,12 @@ The generated Planner:
 - has the tools `Read`, `Write`, `Glob` and `Grep`. `Glob` and `Grep` are read-only and let it look up facts about the repo by itself. It has no `Edit` and no `Bash`;
 - reads the files that already exist in the task folder (`requirements.md`, `tasks.md`, `verify-report.md`) before it writes anything;
 - does not write a `requirements.md` that says `Status: APPROVED` when it is asked to change it. It writes the proposed change in `verify-report.md` under `## Proposed Spec Changes` and stops. The status of that refusal is the first line of `verify-report.md`, `Status: NEEDS_HUMAN`; it is never written in `requirements.md`;
-- reads a fact about the repo before it writes it down. It leaves no "not read yet" note in an artifact; what reading cannot settle is written as a `Finding:` that makes no claim and asks no question;
+- reads what it claims. A fact that `Read`, `Glob` or `Grep` can answer is read before any artifact is written. A `Finding:` or an acceptance criterion about how a file or a module behaves comes from a file it opened in that run: a summary in `CLAUDE.md`, an ADR or a file name from `Glob` only shows where to look. The ADRs in `.caf/knowledge/decisions/` whose name relates to the ticket are read and named in a `Finding:`, and a `Glob` result that is mostly `node_modules` or hidden tool directories is narrowed;
+- does not put a reading off. No artifact says that something is still to be read, compared, checked or found out, in whatever words, and no task in `tasks.md` asks the implementer to find out a fact the spec needs (a task may tell the implementer to read the file it is about to change). What reading can answer is read; what a human must decide is an open question;
+- does not guess. A claim that comes neither from a file it read nor from the ticket is written `Assumption A-n:` with what it rests on, never as a `Finding:` or as a fact in an acceptance criterion. A `Finding:` holds only what was observed; a conclusion or a prediction is an assumption. A word of doubt ("maybe", "it seems") is written on an assumption line only;
+- writes one observable behavior per acceptance criterion, and a file path or a symbol name only in a `Finding:`, on an assumption line and on a `Verify:` line, never in the outcome, the scope, the decisions or the `When ... then` sentence;
+- ends a `tasks.md` that holds tasks with `## Coverage`: one line per acceptance criterion, with the tasks that serve it;
+- writes the same list, number or term the same way in every artifact, and reads the files it wrote again before it ends the run;
 - writes `Tidak ada` for a section with nothing to say, never a placeholder (`- -`, an empty section, `TBD`);
 - writes no `tasks.md` at all while a `BLOCKING` question has no `Answer:`. The one exception is a ticket run (the headless marker): there it still writes the blocked note, because caf-orchestrator fails when the file is missing;
 - names the test file, or the task that creates it, for every acceptance criterion with `Verify: automated test`;
@@ -210,6 +215,8 @@ The generated Planner:
 - uses one status convention: the status of `requirements.md` is a `Status:` line with the values `DRAFT`, `NEEDS_CLARIFICATION`, `APPROVED` and `NEEDS_HUMAN`. Its `## Input` no longer calls it a heading (`## Status: PLAN`).
 
 These are instructions in the generated file: `caf-init` does not check that an agent followed them.
+
+Two skills say something else on a few points, and the agent definition wins. `caf-no-guess` (item 4) tells an agent to write an open item as a line that starts with the to-do word; the Planner's `## Output` names that item and says no such line is written in its artifacts. `caf-spec` writes `-` for an empty section and `Assumption:` with no number. Neither skill was changed, so there is nothing to roll out for them.
 
 **Getting this in a repository scaffolded earlier**
 
