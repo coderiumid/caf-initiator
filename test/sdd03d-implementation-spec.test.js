@@ -29,7 +29,9 @@ const CHANGED = 'Output';
 const CHANGED_KINDS = ['frontend', 'backend', 'implementer'];
 // Changed by a later ticket, on purpose: the planner's Output got more rules at CAF-SDD-02d
 // (held against its own golden in test/sdd02d-planner-audit.test.js).
-const CHANGED_LATER = ['planner'];
+// CAF-SDD-03e changed the validator's Output (its command rules; locked in
+// test/sdd03e-validator-commands.test.js).
+const CHANGED_LATER = ['planner', 'validator'];
 const CONTRACT = 'Produces code + `verify-report.md` in `.caf/tasks/{TICKET-ID}/` for the next agent to read.';
 
 // Recorded from main before this ticket touched src/ (T2). Never regenerated.

@@ -23,6 +23,11 @@ const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtur
 // T1(d): the one section that carries the new checks. Everything else is unchanged.
 const CHANGED = 'Output';
 const REVIEWER_REL = path.join(AGENT_DIR, 'caf-reviewer.md');
+// CAF-SDD-03e gave the reviewer a Working Pattern of its own (locked in
+// test/sdd03e-validator-commands.test.js), so a reviewer from before this ticket now drifts there
+// too. Every other check here is unchanged.
+const WP = 'Working Pattern (PIV)';
+const SYNCED = [`${REVIEWER_REL}#${CHANGED}`, `${REVIEWER_REL}#${WP}`];
 
 // Recorded from main before this ticket touched src/ (T2). Never regenerated.
 const OLD_REVIEWER = Object.fromEntries(
@@ -171,6 +176,7 @@ for (const fixture of FIXTURE_NAMES) {
     assert.deepEqual(Object.keys(now), Object.keys(old.sections));
     for (const header of Object.keys(old.sections)) {
       if (header === CHANGED) assert.notEqual(now[header], old.sections[header], 'Output carries the new checks');
+      else if (header === WP) assert.notEqual(now[header], old.sections[header], 'CAF-SDD-03e: the reviewer pattern');
       else assert.equal(now[header], old.sections[header], `"## ${header}" must be byte-identical`);
     }
     assert.equal(now.Input, old.sections.Input);
@@ -179,7 +185,7 @@ for (const fixture of FIXTURE_NAMES) {
     // byte changed (untracked sections and the frontmatter included).
     assert.equal(now[CHANGED].split('\n')[0], old.sections[CHANGED]);
     assert.equal(now[CHANGED].split('\n')[0], 'Produces `review-notes.md` in `.caf/tasks/{TICKET-ID}/` for the next agent to read.');
-    assert.equal(md.replace(now[CHANGED], old.sections[CHANGED]), old.content);
+    assert.equal(md.replace(now[CHANGED], old.sections[CHANGED]).replace(now[WP], old.sections[WP]), old.content);
   });
 
   test(`reviewer on ${fixture} — the new text splits no section, adds no TODO, no placeholder and no verdict word`, () => {
@@ -245,16 +251,16 @@ for (const fixture of FIXTURE_NAMES) {
     const before = agentTree(dir);
 
     const dry = await sync(dir, true);
-    assert.deepEqual(dry.drifted, [`${REVIEWER_REL}#${CHANGED}`]);
+    assert.deepEqual(dry.drifted, SYNCED);
     assert.deepEqual(dry.updated, []);
     assert.deepEqual(agentTree(dir), before, 'dry-run writes nothing');
 
     const real = await sync(dir, false);
-    assert.deepEqual(real.drifted, [`${REVIEWER_REL}#${CHANGED}`]);
+    assert.deepEqual(real.drifted, SYNCED);
     assert.deepEqual(real.needsAttention, []);
     assert.deepEqual(real.unverifiable, []);
     assert.deepEqual(real.updated, [path.join(dir, REVIEWER_REL)]);
-    // only that section differs between the two templates, so the synced file IS the new render
+    // only those sections differ between the two templates, so the synced file IS the new render
     const now = read(dir, REVIEWER_REL);
     assert.equal(now, reviewerOf(fixture));
     assert.match(now, /^### 3\. Acceptance criteria$/m);
@@ -277,12 +283,14 @@ for (const fixture of FIXTURE_NAMES) {
 
     for (const dryRun of [true, false]) {
       const result = await sync(dir, dryRun);
-      assert.deepEqual(result.drifted, []);
-      assert.deepEqual(result.updated, []);
+      // CAF-SDD-03e: the untouched Working Pattern is an ordinary DRIFT now; Output stays the user's.
+      assert.deepEqual(result.drifted, [`${REVIEWER_REL}#${WP}`]);
+      assert.deepEqual(result.updated, dryRun ? [] : [path.join(dir, REVIEWER_REL)]);
       assert.deepEqual(result.needsAttention, [{ file: REVIEWER_REL, header: CHANGED, status: SECTION_STATUS.CONFLICT }]);
-      assert.deepEqual(agentTree(dir), before);
+      if (dryRun) assert.deepEqual(agentTree(dir), before);
     }
-    assert.equal(read(dir, REVIEWER_REL), edited);
+    assert.equal(trackedSections(read(dir, REVIEWER_REL))[CHANGED], trackedSections(edited)[CHANGED]);
+    assert.equal(read(dir, REVIEWER_REL), edited.replace(OLD_REVIEWER[fixture].sections[WP], trackedSections(reviewerOf(fixture))[WP]));
   });
 
   test(`AC-7: ${fixture} — a section the user customized stays theirs (CUSTOMIZATION) while Output is synced`, async () => {
@@ -295,7 +303,7 @@ for (const fixture of FIXTURE_NAMES) {
 
     const result = await sync(dir, false);
     assert.deepEqual(result.needsAttention, [{ file: REVIEWER_REL, header: 'Retry Logic', status: SECTION_STATUS.CUSTOMIZATION }]);
-    assert.deepEqual(result.drifted, [`${REVIEWER_REL}#${CHANGED}`]);
+    assert.deepEqual(result.drifted, SYNCED);
     const now = read(dir, REVIEWER_REL);
     assert.equal(trackedSections(now)['Retry Logic'], trackedSections(edited)['Retry Logic'], 'the customized section is kept byte for byte');
     assert.equal(now, reviewerOf(fixture).replace(from, to));
@@ -322,7 +330,7 @@ test('AC-7: mono-pnpm — the app list of the reviewer Input survives the sync',
   for (const dryRun of [true, false]) {
     const { dir } = repoWithOldReviewer('mono-pnpm');
     const result = await sync(dir, dryRun);
-    assert.deepEqual(result.drifted, [`${REVIEWER_REL}#${CHANGED}`], 'Input is never among the drifted sections');
+    assert.deepEqual(result.drifted, SYNCED, 'Input is never among the drifted sections');
     assert.deepEqual(result.unverifiable, []);
     const input = trackedSections(read(dir, REVIEWER_REL)).Input;
     assert.equal(input, OLD_REVIEWER['mono-pnpm'].sections.Input);

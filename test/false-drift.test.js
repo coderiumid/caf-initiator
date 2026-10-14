@@ -166,9 +166,10 @@ test('AC-4: a manifest written by the pre-fix code — curate sync keeps the app
     assert.equal(entry.sections.Input.hash, `sha256:${hashSection(trackedSections(content).Input)}`);
   }
 
-  // `Input` of both files is IN_SYNC; the one DRIFT is the reviewer's `Output` (CAF-SDD-03b2).
-  assert.deepEqual(nonInSyncCounts(dir), { DRIFT: 1 });
-  const drifted = [`${path.join(AGENT_DIR, reviewer.file)}#Output`];
+  // `Input` of both files is IN_SYNC; the DRIFTs are the reviewer's `Output` (CAF-SDD-03b2) and
+  // its `Working Pattern (PIV)` (CAF-SDD-03e).
+  assert.deepEqual(nonInSyncCounts(dir), { DRIFT: 2 });
+  const drifted = [`${path.join(AGENT_DIR, reviewer.file)}#Output`, `${path.join(AGENT_DIR, reviewer.file)}#Working Pattern (PIV)`];
 
   const dry = await silenced(() => agentsSync({ dir, agentDir: AGENT_DIR, dryRun: true }));
   assert.deepEqual(dry.drifted, drifted);

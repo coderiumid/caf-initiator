@@ -301,7 +301,7 @@ Only `DRIFT` is ever written, and `DRIFT` requires the file to match its baselin
 
 `Input` of the QA and Reviewer agents in a monorepo also names the apps assigned at generate time. `curate` reads that list back from the section itself, so a sync updates the wording around it and keeps the list. If the list cannot be read with certainty (the sentence was reworded), the section is never treated as `DRIFT`: it is left untouched and `curate --sync-only` lists it as not comparable.
 
-`Working Pattern (PIV)` of the PM and UX Designer agents is compared against their own Discovery wording, not the generic one.
+`Working Pattern (PIV)` of the PM and UX Designer agents is compared against their own Discovery wording, not the generic one. The Validator and the Reviewer have a pattern of their own too (see [Working Pattern per role](#working-pattern-per-role)); every other agent keeps the generic one.
 
 Both used to read as `DRIFT` right after `curate baseline` and a sync rewrote them (the app names were lost). A manifest written by an earlier version works unchanged; its format did not change.
 
@@ -412,7 +412,7 @@ The generated `caf-reviewer.md` reviews the change against the spec, on top of i
 
 What did not change: the reviewer's tools (`Read`, `Write`, `Bash`), its `## Input`, and `review-notes.md` with its `Verdict: APPROVE | CHANGES REQUESTED | DEFER` line. The findings go into the parts that report already has. The reviewer does not run the tests or the verification gate again, and it does not edit code, tests or the spec.
 
-A reviewer generated earlier gets the new text from `caf-init curate sync`, as a drift of its `Output` section; a section you edited is never overwritten. The `/caf-review` and `/caf-fix-review` commands follow the same spec (see [Spec-aware commands](#spec-aware-commands)); `/caf-review-ticket` is unchanged. Like every other instruction in a generated file, these are instructions to the agent: `caf-init` does not check that a review followed them.
+A reviewer generated earlier gets the new text from `caf-init curate sync`, as a drift of its `Output` section (and of its `Working Pattern (PIV)`, see [Working Pattern per role](#working-pattern-per-role)); a section you edited is never overwritten. The `/caf-review` and `/caf-fix-review` commands follow the same spec (see [Spec-aware commands](#spec-aware-commands)); `/caf-review-ticket` is unchanged. Like every other instruction in a generated file, these are instructions to the agent: `caf-init` does not check that a review followed them.
 
 ### Spec-aware commands
 
@@ -450,7 +450,8 @@ What is in place today:
 
 - **Detection.** A file named `caf-validator.md` is recognized by `curate` as kind `validator` and compared against the validator template, like any other kind.
 - **Tools.** `Read`, `Write`, `Bash`. No `Edit`: the validator changes no code, test, spec or `verify-report.md`. The only file it writes is `validate-report.md`.
-- **What it does.** It reads `requirements.md`, `tasks.md` and `verify-report.md`, runs the commands of its `## Verify Checklist` (the same commands the implementation agents get, for every detected app), and gives each acceptance criterion one status. It may run those commands and read-only `git diff`, `git log`, `git status`, `git show`; nothing else.
+- **What it does.** It reads `requirements.md`, `tasks.md` and `verify-report.md`, runs the commands of its `## Verify Checklist` (the same commands the implementation agents get, for every detected app), and gives each acceptance criterion one status. It may run those commands, read-only `git diff`, `git log`, `git status`, `git show`, and the `Verify: command:` lines of the spec under the rules below; nothing else.
+- **Proposed spec changes.** The validator never edits `requirements.md` or `tasks.md`. A change it would propose is one line under `### Notes` of `validate-report.md` that starts with `Proposed Spec Changes:`; it does not write `verify-report.md`.
 - **Skills.** The skills of `qa` plus `caf-traceability` (no pointer to the latter while it is a `DRAFT`).
 
 Per criterion:
@@ -460,6 +461,18 @@ Per criterion:
 | `PASS` | `automated-test` or `command` evidence that the validator ran itself and that matches the criterion |
 | `FAIL` | It was run and the result contradicts the criterion; the observed output is written down |
 | `UNVERIFIED` | Everything else: `manual` or `build-only` evidence, evidence that names no test, a test that does not import the production code, a command it may not run, or no evidence line at all (`no evidence reported`) |
+
+#### Commands from the spec
+
+An acceptance criterion can name its own check, `Verify: command: <command> | expect: <exit code or output>`. The rules are in the validator's `## Allowed Tools`, where its Bash limit is:
+
+- **Status.** The command is run only when `requirements.md` says `Status: APPROVED`. With any other status it is not run.
+- **Form.** One command, or commands chained with `&&`.
+- **Rejected.** Never run when the command itself (the part before ` | expect:`) contains `;`, `|`, a redirect (`>`, `>>`, `<`), `$()`, a backtick, `sudo`, `rm`, `curl`, `wget` or `git push`.
+- **Not run** (status or form): the criterion is `UNVERIFIED`, with the reason. It is never `FAIL`.
+- **Run:** the exit code or output is compared with `expect:`. `PASS` only on a match; otherwise `FAIL`, with the output observed.
+
+These are instructions to the agent, not an enforced allowlist: nothing in the runner blocks a command.
 
 `validate-report.md` (in `.caf/tasks/<TICKET-ID>/`):
 
@@ -482,6 +495,17 @@ Unverified: {count} — {AC ids, comma-separated, or "none"}
 ```
 
 `Status: PASS` means no criterion is `FAIL` and every gate command passed. `UNVERIFIED` criteria do not turn the report into `FAIL`, but their count and ids are always on the `Unverified:` line. `NEEDS_HUMAN` means the validation could not be done (a missing `requirements.md` or `verify-report.md`). How a pipeline reads this file is not decided yet; the `Status:` line has the same shape as the one in `qa-report.md`.
+
+### Working Pattern per role
+
+`## Working Pattern (PIV)` used to be the same Plan, Implement, Verify cycle for every agent. The Validator and the Reviewer read and report rather than plan and implement, so each has its own three steps (the heading keeps its name):
+
+- **Validator:** read the spec (its `Status:` line, every criterion and its `Verify:` line), `tasks.md`, `verify-report.md` and the change; run the Verify Checklist, then the `Verify: command:` lines it may run; write `validate-report.md` with one row per criterion and its evidence.
+- **Reviewer:** read the spec and the reports, then the diff; compare every criterion and the scope with the change; write `review-notes.md` with its `Verdict:` line.
+
+Every other agent keeps the generic cycle, and the PM and UX Designer agents their Discovery wording.
+
+Rollout to a repository scaffolded earlier: `caf-init curate sync` carries the changed sections as ordinary drift, the reviewer's `Working Pattern (PIV)`, and the validator's `Allowed Tools`, `Output` and `Working Pattern (PIV)`. A section you edited is reported and never overwritten. The frontmatter `tools:` did not change for either agent; if you ever need to change it, that is done by hand, since `curate sync` never writes frontmatter.
 
 ## Working with caf-orchestrator
 

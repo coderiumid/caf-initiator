@@ -268,11 +268,28 @@ const TOOLS_RATIONALE = {
   reviewer:
     'Read for code + artifacts, Bash to read diffs (`git diff`/`git log`), Write for ' +
     '`review-notes.md`. Does NOT change code — findings are written as notes, not fixed directly.',
-  validator:
-    'Read for the spec, the artifacts and the code. Bash only for the commands of the Verify ' +
-    'Checklist and read-only git inspection (`git diff`, `git log`, `git status`, `git show`). ' +
-    'Write only for `validate-report.md`. No Edit. Does NOT change code, tests, the spec or ' +
-    '`verify-report.md`.',
+  // CAF-SDD-03e: the commands of the spec's `Verify: command:` lines are stated here, where the
+  // Bash limit is. Q-1 (APPROVED only) and Q-2 (one command or an `&&` chain; the rejected list)
+  // of that ticket, word for word; `## Output` refers to this section and does not repeat it.
+  // Write stays `validate-report.md` only. No `TODO` word and no line starting with `## `.
+  validator: [
+    'Read for the spec, the artifacts and the code. Bash only for the commands of the Verify',
+    'Checklist, read-only git inspection (`git diff`, `git log`, `git status`, `git show`), and the',
+    '`Verify: command:` lines of `requirements.md` under the rules below. Write only for',
+    '`validate-report.md`. No Edit. Does NOT change code, tests, the spec or `verify-report.md`.',
+    '',
+    'Commands from the spec (`Verify: command: <command> | expect: <exit code or output>`):',
+    '- Run one only when `requirements.md` says `Status: APPROVED`. With any other status, do not',
+    '  run it.',
+    '- Accepted form: one command, or commands chained with `&&`.',
+    '- Rejected, never run: `;`, `|`, a redirect (`>`, `>>`, `<`), `$()`, a backtick, `sudo`, `rm`,',
+    '  `curl`, `wget`, `git push` anywhere in the command itself, the part before ` | expect:`.',
+    '- A command that is not run (the spec is not `APPROVED`, or the form is rejected): do not run',
+    '  it; the AC is `UNVERIFIED`, with the reason (the status, or what was rejected). It is never a',
+    '  `FAIL`.',
+    '- A command that is run: compare its exit code or output with `expect:`. The AC is `PASS` only',
+    '  when they match; when they do not, it is `FAIL`, with the output you observed.',
+  ].join('\n'),
   documentation: 'Read/Write/Edit limited to documentation (README, CHANGELOG, `docs/`). Does NOT touch code.',
   auditor:
     'READ-ONLY. Read for code, Bash only for inspection (`ls`, `grep`, `git blame`) — not ' +
@@ -522,7 +539,25 @@ ${buildReportFormatSection(kind)}
 // what discoveryAgentMd() renders, they don't replace it — test/false-drift.test.js and the
 // frozen-kinds goldens fail if the two ever differ. Every other kind, and no kind at all, gets
 // the generic text unchanged.
+// CAF-SDD-03e: the validator and the reviewer get a pattern of their own (they read and report,
+// they do not plan and implement). The header stays `## Working Pattern (PIV)`: a renamed header
+// would read as a missing section to `curate sync`. Each line refers to a section of the same
+// file instead of restating it: no command rule, no status or verdict value here.
+const VALIDATOR_WORKING_PATTERN = [
+  '1. READ — read the spec (`requirements.md`: its `Status:` line, every AC and its `Verify:` line), `tasks.md`, `verify-report.md` and the change',
+  '2. RUN — run the Verify Checklist below, then the `Verify: command:` lines the Allowed Tools section lets you run (an `APPROVED` spec, an accepted form); a command you do not run leaves its AC `UNVERIFIED`, with the reason',
+  '3. REPORT — write `validate-report.md`: one row per AC with its evidence, as the Report Format section below defines',
+].join('\n');
+
+const REVIEWER_WORKING_PATTERN = [
+  '1. READ — read the spec (`requirements.md`, `tasks.md`) and the reports (`verify-report.md`, and `validate-report.md` if present), then the diff',
+  '2. COMPARE — compare every AC and the scope of the spec with the change, as the Output section describes',
+  '3. VERDICT — write `review-notes.md` with its `Verdict:` line, as the Report Format section below defines',
+].join('\n');
+
 export function buildWorkingPatternSection(kind) {
+  if (kind === 'validator') return VALIDATOR_WORKING_PATTERN;
+  if (kind === 'reviewer') return REVIEWER_WORKING_PATTERN;
   if (DISCOVERY_FOCUS[kind]) {
     return [
       '1. PLAN — first determine what\'s still unknown and needs to be asked of a human',
@@ -814,8 +849,11 @@ const PLANNER_SPEC_WORKFLOW = [
 // - `PASS` only for `automated-test` or `command` evidence the validator ran itself. `manual`,
 //   `build-only`, a test that imports no production code and an AC with no evidence line are
 //   `UNVERIFIED`, never `PASS` and never `FAIL`.
-// - The commands it may run are the Verify Checklist of its own file and read-only git. Nothing
-//   else, and no edit of code, tests, the spec or `verify-report.md`.
+// - The commands it may run are the Verify Checklist of its own file, read-only git and, since
+//   CAF-SDD-03e, the `Verify: command:` lines of an APPROVED spec within the rules of
+//   `## Allowed Tools` (TOOLS_RATIONALE.validator), which this text refers to. Nothing else, and no
+//   edit of code, tests, the spec or `verify-report.md`: a proposed spec change is a
+//   `Proposed Spec Changes:` line under `### Notes` of `validate-report.md`.
 // - The five evidence kinds are the ones of the verify-report format (agent-handoff-md.js), of
 //   the `caf-traceability` skill and of REVIEWER_SPEC_WORKFLOW. A sixth kind goes in all four or
 //   in none.
@@ -827,7 +865,7 @@ const VALIDATOR_WORKFLOW = [
   'Run the three steps below in order.',
   '',
   '### 1. Read',
-  '- `requirements.md`: every AC (`AC-1:`, `AC-2:`, ...) and its `Verify:` line.',
+  '- `requirements.md`: its `Status:` line, every AC (`AC-1:`, `AC-2:`, ...) and its `Verify:` line.',
   '- `tasks.md`: which task serves which AC.',
   '- `verify-report.md`: the evidence line the implementation agent wrote for each AC.',
   '- The change itself (`git diff`, `git log`, `git show`) and the test files named as evidence.',
@@ -854,7 +892,7 @@ const VALIDATOR_WORKFLOW = [
   '  - evidence that names no test;',
   '  - a test that does not import the production code it claims to cover: it is not counted as',
   '    evidence;',
-  '  - a command outside the ones you may run: do not run it;',
+  '  - a command outside the ones you may run: do not run it, and give the reason;',
   '  - an AC with no line in `verify-report.md`: `UNVERIFIED`, evidence kind `none`, reason',
   '    `no evidence reported`. It is not a `FAIL`.',
   '- What `verify-report.md` claims is never a reason for `PASS` on its own: only what you ran is.',
@@ -862,12 +900,16 @@ const VALIDATOR_WORKFLOW = [
   '### Commands you may run',
   '- The commands of the Verify Checklist of this file.',
   '- Read-only git inspection: `git diff`, `git log`, `git status`, `git show`.',
+  '- The command of a `Verify: command:` line of `requirements.md`, only within the rules of the',
+  '  Allowed Tools section (an `APPROVED` spec, an accepted form).',
   '- Nothing else. No install, no script of your own, no command copied from `verify-report.md`',
   '  or from the spec that is not one of the above.',
   '',
   '### What the Validator never does',
   '- Edit code, tests, the spec (`requirements.md`, `tasks.md`) or `verify-report.md`. The only',
   '  file it writes is `validate-report.md`.',
+  '- Write a proposed change to the spec in the spec or in `verify-report.md`. A proposal is one',
+  '  line under `### Notes` of `validate-report.md` that starts with `Proposed Spec Changes:`.',
   '- Fix a failure, or run something again until it passes.',
   '- Turn a missing or weak piece of evidence into a `PASS`.',
 ].join('\n');
@@ -1166,7 +1208,7 @@ ${buildInputSection(kind, appNames)}
 ${buildOutputSection(kind)}
 ${buildSkillsSection(skills)}${buildBatasanSection(kind)}
 ## Working Pattern (PIV)
-${buildWorkingPatternSection()}
+${buildWorkingPatternSection(kind)}
 
 ## Verify Checklist
 ${verifyChecklist}

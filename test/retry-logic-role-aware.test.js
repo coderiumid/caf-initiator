@@ -178,16 +178,19 @@ test('Working Pattern (PIV): the Discovery builder output is exactly what the Di
   ]) {
     assert.equal(bodyOf(build({}), 'Working Pattern (PIV)'), SYNCABLE_SECTIONS['Working Pattern (PIV)'](kind));
   }
-  // Every other kind, and no kind, keeps the generic text.
+  // Every other kind, and no kind, keeps the generic text. CAF-SDD-03e took `reviewer` and
+  // `validator` out of this list: they have a pattern of their own (locked in
+  // test/sdd03e-validator-commands.test.js).
   const generic = [
     "1. PLAN — write a plan first, don't touch code yet",
     '2. IMPLEMENT — execute per the plan',
     '3. VERIFY — run the Verify Checklist below before declaring done',
   ].join('\n');
   assert.equal(SYNCABLE_SECTIONS['Working Pattern (PIV)'](undefined), generic);
-  for (const kind of ['planner', 'architect', 'frontend', 'backend', 'implementer', 'qa', 'reviewer', 'documentation', 'auditor', 'devops', 'implementation']) {
+  for (const kind of ['planner', 'architect', 'frontend', 'backend', 'implementer', 'qa', 'documentation', 'auditor', 'devops', 'implementation']) {
     assert.equal(SYNCABLE_SECTIONS['Working Pattern (PIV)'](kind), generic, kind);
   }
+  for (const kind of ['reviewer', 'validator']) assert.notEqual(SYNCABLE_SECTIONS['Working Pattern (PIV)'](kind), generic, kind);
 });
 
 test('curate audit: a freshly-renamed Discovery fixture with no prior baseline reads Working Pattern (PIV) as UNTRACKED, not IN_SYNC', () => {
