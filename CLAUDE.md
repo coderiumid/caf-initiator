@@ -244,7 +244,9 @@ Discovery branch (reusing a `discovery-commands.js` constant if the section alre
 there) rather than reintroducing a guard — a guard is a last resort for a section that hasn't
 been designed for Discovery yet, not the default. `## Working Pattern (PIV)` follows the same rule
 since CAF-SDD-03a2: `buildWorkingPatternSection(kind)` returns the Discovery wording (documents,
-not code) for `pm`/`ux-designer` and the generic text for everything else. The Discovery lines
+not code) for `pm`/`ux-designer`, a role pattern for `validator`/`reviewer` since CAF-SDD-03e (see
+"Commands from the spec and the role Working Pattern" below), and the generic text for everything
+else. The Discovery lines
 are repeated there, not imported — `discoveryAgentMd()` still holds its own copy — and
 `test/retry-logic-role-aware.test.js` plus the frozen-kinds goldens fail if the two differ. The
 content question that was left open is decided: the Discovery text stays as rendered.
@@ -275,7 +277,8 @@ what made `curate sync` drop the app list (CAF-SDD-03a2). The kind-only call is 
 The planner's spec workflow (Specify, Clarify, Plan, Tasks — CAF-SDD-02) is rendered inside its
 tracked `## Output`, after the one-line artifact contract (`PLANNER_SPEC_WORKFLOW` in
 `agent-md.js`). It is there, not in `## Working Pattern (PIV)` and not in a section of its own,
-because a CAF-SDD-03a2 test pins the Working Pattern of every non-Discovery kind to the generic
+because a CAF-SDD-03a2 test pins the Working Pattern of every non-Discovery kind (validator and
+reviewer excepted since CAF-SDD-03e) to the generic
 text and a new header would only reach existing planners through the interactive "add missing
 section" prompt. An existing planner therefore gets it from `curate sync` as an ordinary `DRIFT`
 of `Output`. Two things that text must keep: every artifact, path and stop token the planner had
@@ -491,7 +494,8 @@ connects it to the pipeline (03c/04):
   `test/helpers/mono-snapshot.js` renders, while `test/helpers/frozen-kinds.js` still renders
   every candidate, hidden ones included.
 - The one way to render it is `buildValidatorAgent(dir, stack, { skills })` in
-  `src/commands/agents.js`. No command calls it; only `test/sdd03b1-validator.test.js` does.
+  `src/commands/agents.js`. No command calls it; only tests do (`test/sdd03b1-validator.test.js`,
+  `test/sdd03e-validator-commands.test.js`).
 - Its `## Verify Checklist` is the repo's verification gate, built with `collectVerifyApps` (the
   derivation the implementation agents and `caf-verify` use) over every detected app. `qa`'s
   checklist is the two-line "not a single app" placeholder and stays that way (`qa` is frozen).
@@ -516,6 +520,35 @@ connects it to the pipeline (03c/04):
   that parse `NEEDS_HUMAN` reads as not-a-pass. What the orchestrator does with it is CAF-SDD-04.
 - Out of scope until their own tickets: renaming or removing `qa`, a `/caf-*` command for the
   validator, and removing the `caf-traceability` banner.
+
+### Commands from the spec and the role Working Pattern (CAF-SDD-03e)
+
+The validator runs the `Verify: command:` lines of the spec, and the validator and the reviewer
+have a `## Working Pattern (PIV)` of their own. `test/sdd03e-validator-commands.test.js` holds the
+text; `test/fixtures/pre-sdd03e/` is the pre-change render (validator, reviewer and planner per
+fixture, and the Working Pattern of every kind) — never regenerate it.
+- The command rules are in the validator's `## Allowed Tools` (`TOOLS_RATIONALE.validator`), where
+  its Bash limit is: run only when `requirements.md` says `Status: APPROVED`; one command or an
+  `&&` chain; rejected anywhere in the command itself (before ` | expect:`): `;`, `|`, a redirect
+  (`>`, `>>`, `<`), `$()`, a backtick, `sudo`, `rm`, `curl`, `wget`, `git push`; not run →
+  `UNVERIFIED` with the reason, never `FAIL`; run → compared with `expect:`, `PASS` on a match,
+  otherwise `FAIL` with the output. `VALIDATOR_WORKFLOW` (`## Output`) refers to that section and
+  does not repeat the rules. Text only: nothing in the runner enforces it.
+- The validator still writes `validate-report.md` only. A proposed spec change is one line under
+  `### Notes` of that file that starts with `Proposed Spec Changes:` — not the
+  `## Proposed Spec Changes` part of `verify-report.md`, which the validator never writes, and not
+  a new part of the `## Report Format` skeleton (unchanged).
+- `buildWorkingPatternSection(kind)` returns `VALIDATOR_WORKING_PATTERN`/`REVIEWER_WORKING_PATTERN`
+  for those two kinds; `buildAgentMd` passes the kind since this ticket (it passed none before).
+  Every other kind, and no kind, renders byte-identical to `pre-sdd03e/working-pattern-by-kind.json`.
+  The header keeps `(PIV)`: a renamed header reads as a missing section to `curate sync`. The
+  pattern states no command rule, report format or verdict value; it refers to the sections that
+  hold them (the validator's names `UNVERIFIED` once, as its Allowed Tools does).
+- Neither kind has a `frozen-kinds` golden; none changed. `mono-pnpm.json` was regenerated for
+  this, one entry changed (`caf-reviewer.md`, its Working Pattern only). Not a precedent.
+- Rollout: `curate sync` carries the reviewer's `Working Pattern (PIV)` and the validator's
+  `Allowed Tools`, `Output` and `Working Pattern (PIV)` as ordinary `DRIFT`; an edited section is
+  a `CONFLICT` and is left alone. `tools:` did not change.
 
 ## Commands and the spec (CAF-SDD-03b3)
 
