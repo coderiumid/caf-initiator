@@ -1,0 +1,46 @@
+{
+  "builder": {
+    "planner": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+    "architect": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+    "frontend": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+    "backend": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+    "implementer": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+    "qa": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+    "reviewer": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+    "documentation": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+    "auditor": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+    "pm": "1. PLAN — first determine what's still unknown and needs to be asked of a human\n2. IMPLEMENT — write the document\n3. VERIFY — run the Verify Checklist below before claiming completion",
+    "ux-designer": "1. PLAN — first determine what's still unknown and needs to be asked of a human\n2. IMPLEMENT — write the document\n3. VERIFY — run the Verify Checklist below before claiming completion",
+    "devops": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+    "validator": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+    "implementation": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+    "(none)": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done"
+  },
+  "rendered": {
+    "mono-pnpm": {
+      "planner": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+      "architect": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+      "frontend": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+      "backend": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+      "qa": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+      "reviewer": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+      "documentation": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+      "auditor": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+      "devops": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+      "pm": "1. PLAN — first determine what's still unknown and needs to be asked of a human\n2. IMPLEMENT — write the document\n3. VERIFY — run the Verify Checklist below before claiming completion",
+      "ux-designer": "1. PLAN — first determine what's still unknown and needs to be asked of a human\n2. IMPLEMENT — write the document\n3. VERIFY — run the Verify Checklist below before claiming completion"
+    },
+    "single-nuxt": {
+      "planner": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+      "architect": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+      "implementer": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+      "qa": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+      "reviewer": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+      "documentation": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+      "auditor": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+      "devops": "1. PLAN — write a plan first, don't touch code yet\n2. IMPLEMENT — execute per the plan\n3. VERIFY — run the Verify Checklist below before declaring done",
+      "pm": "1. PLAN — first determine what's still unknown and needs to be asked of a human\n2. IMPLEMENT — write the document\n3. VERIFY — run the Verify Checklist below before claiming completion",
+      "ux-designer": "1. PLAN — first determine what's still unknown and needs to be asked of a human\n2. IMPLEMENT — write the document\n3. VERIFY — run the Verify Checklist below before claiming completion"
+    }
+  }
+}
