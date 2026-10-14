@@ -257,7 +257,13 @@ for (const fixture of FIXTURE_NAMES) {
 test('AC-3: `## Allowed Tools` of every other kind is what it was before this ticket', () => {
   const kinds = [...KNOWN_KINDS, 'implementation'].filter((k) => k !== 'planner');
   assert.deepEqual([...kinds].sort(), Object.keys(ALLOWED_TOOLS_SHA256_BEFORE).sort());
-  for (const kind of kinds) assert.equal(sha256(buildToolsSection(kind)), ALLOWED_TOOLS_SHA256_BEFORE[kind], kind);
+  for (const kind of kinds) {
+    // CAF-SDD-03e put the validator's command rules in its `## Allowed Tools` (locked in
+    // test/sdd03e-validator-commands.test.js and test/fixtures/pre-sdd03e/); the hash above stays
+    // the one recorded before CAF-SDD-02c.
+    if (kind === 'validator') assert.notEqual(sha256(buildToolsSection(kind)), ALLOWED_TOOLS_SHA256_BEFORE[kind], kind);
+    else assert.equal(sha256(buildToolsSection(kind)), ALLOWED_TOOLS_SHA256_BEFORE[kind], kind);
+  }
 });
 
 // ---------------------------------------------------------------------------------------------

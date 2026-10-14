@@ -329,7 +329,7 @@ for (const fixture of FIXTURE_NAMES) {
 
     assert.deepEqual(
       result.needsAttention.map((n) => `${n.file}#${n.header}#${n.status}`).sort(),
-      files.map((f) => `${f.file}#${WP}#CONFLICT`).sort()
+      files.map((f) => `${path.join(AGENT_DIR, f.file)}#${WP}#CONFLICT`).sort()
     );
     for (const f of files) assert.equal(trackedSections(read(dir, f.file))[WP], '1. My own steps', f.file);
     // The reviewer had nothing else to carry: the file is byte for byte what the user had.

@@ -186,7 +186,9 @@ for (const fixture of FIXTURE_NAMES) {
     assert.ok(kinds.length >= 7);
     for (const kind of kinds) {
       const sections = trackedSections(rendered[fixture][kind].content);
-      assert.equal(sections['Working Pattern (PIV)'], kind === 'pm' || kind === 'ux-designer' ? discovery : generic, kind);
+      // CAF-SDD-03e: the reviewer has a Working Pattern of its own (test/sdd03e-validator-commands.test.js).
+      if (kind === 'reviewer') assert.notEqual(sections['Working Pattern (PIV)'], generic, kind);
+      else assert.equal(sections['Working Pattern (PIV)'], kind === 'pm' || kind === 'ux-designer' ? discovery : generic, kind);
       if (kind in OUTPUT) assert.equal(sections.Output, OUTPUT[kind], kind);
       // CAF-SDD-03b2: the reviewer's Output keeps its artifact line and now carries the spec checks
       // after it (locked in test/sdd03b2-reviewer-spec.test.js).
