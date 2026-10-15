@@ -554,7 +554,7 @@ fixture, and the Working Pattern of every kind) — never regenerate it.
 
 Slash commands are plain files written once through `writeIfAbsent`. They are **not** tracked:
 the manifest records agent sections only, `curate audit`/`curate sync` never read
-`.claude/commands/` (except the existence check of `caf-feature-catalog-sync.md`), and nothing
+`.claude/commands/` (the existence check of `caf-feature-catalog-sync.md` went in CAF-SDD-03f), and nothing
 propagates a template change to a command that already exists. A repo scaffolded earlier keeps
 its old command until the file is deleted and scaffolded again. Don't describe a command change
 as reaching existing repos through `curate sync`.
@@ -618,8 +618,9 @@ and eight commands (`caf-discovery-start`, `caf-discovery-to-ticket`, `caf-audit
   **written**, not where it is offered — three of the eight belong to kinds that are still
   scaffolded (architect, qa, reviewer). `scaffold feature-catalog-sync` still resolves
   (`HIDDEN_TARGETS` in `scaffold.js` only takes it out of the help) and returns before detection
-  and prompts, writing nothing. `curate audit` still reports the missing
-  `caf-feature-catalog-sync.md` as an optional gap: `curate` was left exactly as it was.
+  and prompts, writing nothing. Since CAF-SDD-03f `curate audit` no longer reports the missing
+  `caf-feature-catalog-sync.md` as an optional gap (nothing could close it), and a repo that has
+  the file is audited as before: the file was only ever checked for existing.
 - `implementer` is dropped by the design too but is **not** hidden: in SINGLE_REPO without
   `--role` it is the only implementation agent, and `/caf-run-pipeline` is only offered with one.
   It stays scaffolded until CAF-SDD-03c3 decides the default role. `architect` and `qa` stay
@@ -642,3 +643,39 @@ and eight commands (`caf-discovery-start`, `caf-discovery-to-ticket`, `caf-audit
   it is a later ticket (03c2), and so is every rename.
 - Do not publish a `caf-init` release with this change before caf-orchestrator handles a repo
   without `caf-documentation` (CAF-SDD-04).
+
+## The final roster, and stale text aligned (CAF-SDD-03f)
+
+The design ends with **five agents** — `caf-planner`, `caf-frontend`, `caf-backend`,
+`caf-validator`, `caf-reviewer` — and **five commands** — `/caf-plan`, `/caf-run`, `/caf-review`,
+`/caf-fix-review`, `/caf-complete-drafts`. Still scaffolded but transitional: `caf-architect`
+(folded into the planner once a `caf-design` skill exists), `caf-qa` (renamed `caf-validator`),
+`caf-implementer` (dropped), `/caf-run-pipeline` (becomes `/caf-run`) and `/caf-plan-ticket`
+(replaced by `/caf-plan`). `caf-validator` and `/caf-plan` are still hidden. Don't describe a
+transitional file as final, or a final one as written by a scaffold when it is hidden.
+
+Text that said something the code did not, now aligned. `test/sdd03f-stale-text.test.js` holds it,
+against `test/fixtures/pre-sdd03f/` (planner, `piv-workflow.md`, `/caf-run-pipeline` from before the
+ticket — never regenerate it):
+- **Reviewer token.** The Parser Contract of `piv-workflow.md` names the `Verdict:` values the
+  reviewer template writes (`APPROVE`, `CHANGES REQUESTED`, `DEFER`, with the space), which
+  caf-orchestrator's `report-reader.ts` accepts (`test/reviewer-report-format.test.js` holds a copy of
+  its regexes). `READY_FOR_HUMAN_REVIEW`/`NEEDS_CHANGES` were never written by any agent. Change the
+  values in the reviewer's `## Report Format` and in `piv-workflow-md.js` together.
+- **Roles not scaffolded.** `piv-workflow.md` lists Documentation, PM, UX Designer and Auditor as
+  "not scaffolded" (`NOT_SCAFFOLDED_SLUGS`), with no TODO line. Any other absent role keeps the
+  old "NOT present ... TODO: confirm" line.
+- **Two retries.** The 3x is the verify retry inside one agent; the QA and Reviewer gates are the
+  orchestrator's (default 1, `agents.qa.maxRetries`, `agents.reviewer.maxRetries`). `## Retry Logic`
+  of the agents, `/caf-run-pipeline` and AGENTS.md still say "max 3x" and are unchanged on purpose.
+- **Description of `/caf-run-pipeline`.** `Documentation →` appears only when `hasDocumentation`.
+  Nothing else in the command moved; a repo that has the file keeps it.
+- **Planner exception.** One rule in the planner `## Output`, right after the placement rule: on a
+  refactor or config ticket only, the `When ... then` sentence of an AC may name the path or symbol
+  that is the subject of the ticket. The `caf-spec` skill is unchanged (hash held); making it a
+  skill rule is `caf-spec` v4 and a manual rollout. `curate sync` carries the rule as an ordinary
+  `DRIFT` of `Output`.
+- `mono-pnpm.json` was regenerated for this, three entries changed (`caf-planner.md`,
+  `piv-workflow.md`, `caf-run-pipeline.md`). Not a precedent. `frozen-kinds` goldens did not change.
+- The comments that counted four evidence kinds now say five (the verify-report format,
+  `caf-traceability`, `VALIDATOR_WORKFLOW`, `REVIEWER_SPEC_WORKFLOW`, `IMPLEMENTATION_SPEC_WORKFLOW`).
