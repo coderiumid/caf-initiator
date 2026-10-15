@@ -104,6 +104,8 @@ export async function renderMonoSnapshot(detectOpts = {}) {
         hasArchitect: true,
         // As commands/agents.js derives it: from the agents that were picked.
         hasDocumentation: candidates.some((c) => c.kind === 'documentation'),
+        // CAF-SDD-03c2: the gate follows the roster (the validator replaced qa in the default one).
+        gate: candidates.some((c) => c.kind === 'validator') ? 'validator' : 'qa',
       }),
       '.caf/workflows/task-completion.md': buildTaskCompletionMd({
         scripts: matchVerifyScripts(dir, 'apps/api'),
