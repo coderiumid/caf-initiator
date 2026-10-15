@@ -125,7 +125,7 @@ const readAgent = (dir, file) => fs.readFileSync(agentPath(dir, file), 'utf8');
 const agentFiles = (dir) => fs.readdirSync(path.join(dir, AGENT_DIR)).filter((f) => f.endsWith('.md')).sort();
 const pointersIn = (md) => [...md.matchAll(/^- `([^`]+\/SKILL\.md)`$/gm)].map((m) => m[1]);
 
-// scripts: partial → caf-verify is a DRAFT (the common case); full → it is usable.
+// scripts: partial → caf-self-verify is a DRAFT (the common case); full → it is usable.
 function repo({ scripts = { lint: 'x' }, extra = {} } = {}) {
   return makeRepo({ 'package.json': { name: 'r', scripts }, 'pnpm-lock.yaml': '', ...oldVersionAgents(), ...extra }, 'caf-skills-ptr-');
 }
@@ -161,7 +161,7 @@ test('pointers: every mapped kind gets its section, only usable skills are liste
   const result = await scaffoldSkills(dir);
   const after = snapshotTree(dir);
 
-  assert.deepEqual(result.drafts, ['caf-verify', 'caf-traceability']);
+  assert.deepEqual(result.drafts, ['caf-self-verify', 'caf-traceability']);
   for (const file of agentFiles(dir)) {
     const rel = `${AGENT_DIR}/${file}`;
     const wanted = skillsForKind(detectKind(file)).filter((n) => !result.drafts.includes(n)).map(skillPath);
@@ -188,11 +188,11 @@ test('pointers: every mapped kind gets its section, only usable skills are liste
   assert.ok(changed.every((rel) => rel.startsWith('.claude/skills/') || rel.startsWith(`${AGENT_DIR}/`)), changed.join(', '));
 });
 
-test('pointers: a usable caf-verify is listed first for implementation and qa agents', async () => {
+test('pointers: a usable caf-self-verify is listed first for implementation and qa agents', async () => {
   const dir = repo({ scripts: FULL_SCRIPTS });
   const result = await scaffoldSkills(dir);
   assert.deepEqual(result.drafts, ['caf-traceability']);
-  assert.deepEqual(pointersIn(readAgent(dir, 'caf-qa.md')), ['caf-verify', 'caf-no-guess'].map(skillPath));
+  assert.deepEqual(pointersIn(readAgent(dir, 'caf-qa.md')), ['caf-self-verify', 'caf-no-guess'].map(skillPath));
   // caf-traceability (CAF-SDD-02) is mapped to frontend but born a DRAFT, so it is not pointed at
   assert.deepEqual(pointersIn(readAgent(dir, 'caf-frontend.md')), skillsForKind('frontend').filter((n) => !result.drafts.includes(n)).map(skillPath));
   // caf-spec is active since CAF-SDD-02c, so the planner is pointed at it too
@@ -234,7 +234,7 @@ test('pointers: declining leaves that file byte-identical', async () => {
 test('AC-11: after the banner is removed, a re-run points agents without a Skills section at the skill — and never edits one that has it', async () => {
   const dir = repo();
   await scaffoldSkills(dir, { answers: { 'caf-qa.md': false } });
-  const verify = path.join(dir, skillPath('caf-verify'));
+  const verify = path.join(dir, skillPath('caf-self-verify'));
   assert.ok(hasSkillDraftBanner(fs.readFileSync(verify, 'utf8')));
 
   // the human resolves the TODO lines and removes the banner
@@ -245,10 +245,10 @@ test('AC-11: after the banner is removed, a re-run points agents without a Skill
   const result = await scaffoldSkills(dir);
   assert.deepEqual(result.drafts, ['caf-traceability']);
   assert.deepEqual(result.pointers.added, [agentPath(dir, 'caf-qa.md')]);
-  assert.deepEqual(pointersIn(readAgent(dir, 'caf-qa.md')), ['caf-verify', 'caf-no-guess'].map(skillPath));
-  // already had the section → untouched, even though caf-verify is now usable and missing there
+  assert.deepEqual(pointersIn(readAgent(dir, 'caf-qa.md')), ['caf-self-verify', 'caf-no-guess'].map(skillPath));
+  // already had the section → untouched, even though caf-self-verify is now usable and missing there
   assert.equal(readAgent(dir, 'caf-frontend.md'), frontendBefore);
-  assert.ok(!frontendBefore.includes('caf-verify/SKILL.md'));
+  assert.ok(!frontendBefore.includes('caf-self-verify/SKILL.md'));
   assert.ok(result.pointers.untouched.includes(agentPath(dir, 'caf-frontend.md')));
 });
 
@@ -301,7 +301,7 @@ test('pointers: a skill that was not written (name collision) is never pointed a
     process.exitCode = saved;
   }
   assert.deepEqual(pointersIn(readAgent(dir, 'caf-planner.md')), ['caf-scope-discipline', 'caf-spec'].map(skillPath));
-  // qa maps to caf-verify (DRAFT) + caf-no-guess (collided) → nothing usable → not asked, not edited
+  // qa maps to caf-self-verify (DRAFT) + caf-no-guess (collided) → nothing usable → not asked, not edited
   assert.ok(!/^## Skills$/m.test(readAgent(dir, 'caf-qa.md')));
 });
 

@@ -10,6 +10,7 @@ import { matchVerifyScripts, readPackageName } from '../utils/package-scripts.js
 import {
   SKILLS_DIR,
   SKILL_NAMES,
+  RENAMED_SKILLS,
   SKILL_DRAFT_AGENT_NOTICE,
   buildSkillFiles,
   hasSkillDraftBanner,
@@ -24,7 +25,7 @@ import { assertNoUnresolvedPlaceholders } from '../utils/placeholder-check.js';
 /**
  * One entry per detected app, in the shape buildVerifyChecklist() takes — the same derivation
  * `scaffold agents` uses for an agent's `## Verify Checklist` (commands/agents.js), so the
- * caf-verify skill and the agent definitions name the same commands.
+ * caf-self-verify skill and the agent definitions name the same commands.
  */
 export function collectVerifyApps(dir, stack) {
   return stack.apps.map((app) => ({
@@ -48,6 +49,22 @@ export function usableSkillPaths(dir, kind) {
       const content = readFileSafe(path.join(dir, rel));
       return content != null && !hasSkillDraftBanner(content);
     });
+}
+
+// A skill folder with a name from before a rename is left exactly as it is; the skill under its new
+// name is written next to it (CAF-SDD-03c2d). One line per such folder, so the user knows the old
+// one is no longer maintained and when it can go.
+function reportRenamedSkills(dir, onDisk) {
+  for (const [oldName, newName] of Object.entries(RENAMED_SKILLS)) {
+    if (!onDisk.has(newName) || !exists(path.join(dir, SKILLS_DIR, oldName))) continue;
+    console.log('');
+    console.log(
+      kleur.yellow(
+        `⚠ ${SKILLS_DIR}/${oldName}/ is left as it is: the skill is now \`${newName}\`, written next to it. ` +
+          `Move the \`## Skills\` pointers of your agent definitions to ${skillPath(newName)} by hand, then delete the old folder.`
+      )
+    );
+  }
 }
 
 function reportSkillDirCollisions(collisions) {
@@ -133,7 +150,11 @@ async function addSkillPointers({ dir, agentDir, dryRun, onDisk }) {
       result.untouched.push(filePath);
       console.log(kleur.dim(`  skip  ${file} (already has "## Skills" — left untouched)`));
       if (missing.length > 0) {
-        console.log(kleur.yellow(`        not listed there: ${missing.join(', ')} — add the pointer yourself if you want it`));
+        const renamed = missing.flatMap((p) => {
+          const oldPath = Object.keys(RENAMED_SKILLS).map(skillPath).find((o) => skillPath(RENAMED_SKILLS[path.basename(path.dirname(o))]) === p);
+          return oldPath && current.includes(oldPath) ? [`${p} (renamed from ${oldPath}, which this agent still points at)`] : [p];
+        });
+        console.log(kleur.yellow(`        not listed there: ${renamed.join(', ')} — add the pointer yourself if you want it`));
       }
       continue;
     }
@@ -263,6 +284,7 @@ export async function skillsTarget({ dir, agentDir = '.claude/agents', dryRun = 
 
   reportCollisions(legacyCollisions);
   reportSkillDirCollisions(dirCollisions);
+  reportRenamedSkills(dir, onDisk);
 
   const pointers = await addSkillPointers({ dir, agentDir: agentDir || '.claude/agents', dryRun, onDisk });
 

@@ -189,7 +189,7 @@ in `TARGETS` but not in `CHAIN_ORDER`. No `--skill-dir` — `curate` has no matc
   `isPureInsertion` proves new content = old content + exactly one block. An agent that already
   has `## Skills` is never edited, and `--force` never reaches agent files. Don't add another
   rewrite path, and don't relax that check.
-- `caf-verify` is rendered by `buildVerifyChecklist` (exported from `agent-md.js`), the same
+- `caf-self-verify` is rendered by `buildVerifyChecklist` (exported from `agent-md.js`), the same
   function behind an agent's `## Verify Checklist` — keep it that way so the two can't disagree.
 
 ## Templates
@@ -497,7 +497,7 @@ below are still true unless that section says otherwise:
   `src/commands/agents.js`; `agents()` calls it for a validator candidate (the generic candidate
   path would give it no verification gate).
 - Its `## Verify Checklist` is the repo's verification gate, built with `collectVerifyApps` (the
-  derivation the implementation agents and `caf-verify` use) over every detected app. `qa`'s
+  derivation the implementation agents and `caf-self-verify` use) over every detected app. `qa`'s
   checklist is the two-line "not a single app" placeholder and stays that way (`qa` is frozen).
 - Its `## Input` is kind-only: no app list, so `validator` is not in `APP_LIST_INPUT_KINDS` and
   needs no `templateForExistingSection` context.
@@ -826,3 +826,30 @@ and `/caf-plan-ticket` builders, recorded before it — never regenerate it).
   rename it inline; the goldens are untouched. `mono-pnpm.json` was regenerated for this, one entry
   changed (`caf-run-pipeline.md` -> `caf-run.md`). Not a precedent.
 - Left for 03c2d: renaming `caf-verify` and the warning for a stale skill pointer.
+
+## The skill `caf-self-verify` (CAF-SDD-03c2d)
+
+`caf-verify` is `caf-self-verify` now: the name tells the implementation agents' own verification
+apart from the validator's check against the spec. Only the name changed (`name:` and every mention
+in `skill-md.js`, including the `caf-piv` text); `SKILLS_BY_KIND` keeps its order and the builders
+keep their names (`buildVerifySkill`). `test/sdd03c2d-skill-rename.test.js` holds the ticket against
+`test/fixtures/pre-sdd03c2d/` (what `scaffold skills` writes, agents with `## Skills`, and a repo
+holding the old skill with its `curate` reports, recorded by `test/helpers/skills-render.js` from
+before it — never regenerate it).
+- `RENAMED_SKILLS` (`skill-md.js`, old name → new name) is the only place the old name is spelled in
+  `src/`. It is never written; `scaffold skills` and `curate audit` use it to recognize a repo
+  scaffolded earlier.
+- **Folder `caf-verify/` in a repo.** Never touched. `scaffold skills` writes `caf-self-verify/`
+  next to it (no name collision: `caf-self-verify/` is compared with `self-verify/`) and prints one
+  note: move the agents' pointers by hand, then delete the old folder. `check-drafts` and
+  `complete-drafts` read skills by path (`.claude/skills/*/SKILL.md`), so the old folder is still
+  read.
+- **Agent that points at the old path.** `scaffold skills` never edits it; its "not listed there" line
+  says the new path replaces the old pointer. `curate audit` gives one `skill-renamed` warning per
+  agent (new path active, agent points at the old one, not at the new one) in place of the
+  `skill-pointer` warning for that path. Warning only: no gap, same exit code. An agent without any
+  pointer keeps `skill-pointer`, naming the new path. Neither `curate sync` nor `scaffold skills`
+  edits `## Skills`, and this ticket does not change that.
+- Older tests that named the skill were renamed; `sdd03d` reads `pre-sdd03d`'s `## Skills` through
+  the rename (the golden is untouched). `mono-pnpm.json` and `frozen-kinds` did not change.
+- Left out: removing the old folder in repos, the other skills, the function names.

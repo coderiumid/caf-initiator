@@ -486,7 +486,7 @@ It serves two purposes: (1) manual coding sessions driven by free-form prompts s
 quality gates, and scope rules even without invoking an agent; (2) agents can share conventions
 without bloating `CLAUDE.md`.
 
-CAF's built-in skills are **universal** and all start with `caf-`: `caf-verify` (the repo's actual
+CAF's built-in skills are **universal** and all start with `caf-`: `caf-self-verify` (the repo's actual
 verification commands), `caf-scope-discipline`, `caf-no-guess`, `caf-escalate`, and `caf-piv`
 (manual sessions only). CAF does **not** ship a library of framework conventions: those go stale
 quickly and are a guess about the target repo.
@@ -512,14 +512,14 @@ quickly and are a guess about the target repo.
 **Rules:**
 
 - A skill that still carries a `DRAFT` banner isn't ready: agents must ignore it, and no pointer to
-  it is written. `caf-verify` carries a `DRAFT` banner as long as any verification script
+  it is written. `caf-self-verify` carries a `DRAFT` banner as long as any verification script
   is undetected (written as a `TODO` line, not a guessed command).
 - `caf-piv` says to wait for the user's approval, so it is **never** pointed at by an agent: a
   headless run has nobody to answer.
 - A skill must not change a contract the orchestrator parses (report file names, status words).
   When a skill conflicts with the agent definition, the agent definition wins.
-- Built-in mapping: implementation agents get `caf-verify`, `caf-scope-discipline`,
-  `caf-no-guess`, `caf-escalate`; QA gets `caf-verify`, `caf-no-guess`; Planner, Architect,
+- Built-in mapping: implementation agents get `caf-self-verify`, `caf-scope-discipline`,
+  `caf-no-guess`, `caf-escalate`; QA gets `caf-self-verify`, `caf-no-guess`; Planner, Architect,
   Reviewer, Documentation get `caf-scope-discipline`, `caf-no-guess`; Auditor, DevOps, PM,
   UX Designer get no skills.
 - Must be tested with a real dispatch before relying on it: make sure the agent actually applies

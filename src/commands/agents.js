@@ -285,7 +285,7 @@ export function buildCandidates(roleApp, extraApps) {
  * `## Verify Checklist` is built from every detected app.
  *
  * Its `## Verify Checklist` is the repo's verification gate, so it is built from every detected
- * app with the derivation the implementation agents and the caf-verify skill already use
+ * app with the derivation the implementation agents and the caf-self-verify skill already use
  * (collectVerifyApps): real commands, and a gap line where a script is missing — never the
  * "not a single app" placeholder the other whole-repo roles get.
  */

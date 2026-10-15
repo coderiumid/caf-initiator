@@ -196,8 +196,11 @@ for (const { id } of IMPLEMENTATION_CASES) {
       const { lines, sections } = parseSections(md);
       return sectionBody(lines, sections.find((s) => s.header === 'Skills'));
     };
-    assert.equal(skillsOf(now.contentWithSkills), skillsOf(old.contentWithSkills));
-    assert.equal(now.contentWithSkills.replace(now.sections[CHANGED], old.sections[CHANGED]), old.contentWithSkills);
+    // CAF-SDD-03c2d renamed the skill the pointer names; the golden is not edited, so it is read
+    // through the rename (and nothing else).
+    const oldWithSkills = old.contentWithSkills.replaceAll('caf-verify', 'caf-self-verify');
+    assert.equal(skillsOf(now.contentWithSkills), skillsOf(oldWithSkills));
+    assert.equal(now.contentWithSkills.replace(now.sections[CHANGED], old.sections[CHANGED]), oldWithSkills);
   });
 
   test(`${id} — the new text splits no section, adds no TODO and no placeholder`, () => {

@@ -167,7 +167,7 @@ Writes seven universal skills into `.claude/skills/<name>/SKILL.md`.
 
 | Skill | What it tells the reader | Agents that point at it |
 |---|---|---|
-| `caf-verify` | The repo's real lint, typecheck, test and build commands | implementation agents, QA |
+| `caf-self-verify` | The repo's real lint, typecheck, test and build commands | implementation agents, QA |
 | `caf-scope-discipline` | Stay inside the task's scope; report what is outside it, don't fix it | implementation agents, Planner, Architect, Reviewer, Documentation |
 | `caf-no-guess` | Cite what you read; an unknown becomes an open item, never an invented fact | all of the above |
 | `caf-escalate` | When to stop and hand the task back to a human | implementation agents |
@@ -184,7 +184,7 @@ Auditor, PM and UX Designer agents get no skills.
 
 **DRAFT skills**
 
-`caf-verify` is built from the scripts detected in `package.json`. If one of the four slots has no script, that slot is written as a `TODO` line and the skill gets a `DRAFT` banner. While the banner is there:
+`caf-self-verify` is built from the scripts detected in `package.json`. If one of the four slots has no script, that slot is written as a `TODO` line and the skill gets a `DRAFT` banner. While the banner is there:
 
 - agents are told to ignore the skill, and
 - no agent gets a pointer to it.
@@ -247,7 +247,8 @@ No npm release carries this yet: a release of `caf-init` waits until caf-orchest
 **Other rules**
 
 - An existing `SKILL.md` is never overwritten, unless `--force` is passed.
-- A skill is not written if a folder with the same name minus the `caf-` prefix exists (`caf-verify/` vs `verify/`). Exit code 1.
+- A skill is not written if a folder with the same name minus the `caf-` prefix exists (`caf-self-verify/` vs `self-verify/`). Exit code 1.
+- A repo that already has `.claude/skills/caf-verify/` (the name before CAF-SDD-03c2d) keeps it untouched: `caf-self-verify` is written next to it and one note says to move the agents' pointers by hand and then delete the old folder. An agent that still points at the old path gets that said in its "not listed there" line.
 - `## Skills` is not tracked by `curate`: it is never reported as drift and never rewritten by a sync.
 
 Agents follow skills with high but not perfect reliability. Skills are guidance; enforcement stays with the Verify, QA and Reviewer stages.
@@ -316,10 +317,11 @@ Three parts of a template change never reach an agent file through `curate sync`
 |---|---|---|
 | `tools:` differs | The frontmatter `tools:` list of an agent is not the list the template gives its kind. The message names the file, the tools it has now and the tools of the template. The order of the list does not matter | Edit the frontmatter line by hand, or leave it if you changed it on purpose (an MCP tool you added, for example) |
 | Planner `## Constraints` differs | The `## Constraints` section of `caf-planner.md` is not the text of the template (CAF-SDD-03c2b). The section is not tracked, so `curate sync` does not carry it | Edit the section by hand to the current template text, or leave it if the difference is on purpose |
-| Skill pointer missing | A skill that is mapped to the agent's kind, exists in `.claude/skills/` and has no DRAFT banner is not listed in the agent's `## Skills`. The message names the agent and the skill | With a `## Skills` section: add the pointer line by hand. Without one: run `caf-init scaffold skills`, which offers to add the section |
+| Skill pointer missing / skill renamed | A skill that is mapped to the agent's kind, exists in `.claude/skills/` and has no DRAFT banner is not listed in the agent's `## Skills`. The message names the agent and the skill | With a `## Skills` section: add the pointer line by hand. Without one: run `caf-init scaffold skills`, which offers to add the section |
 
 - They are warnings only. They are counted on their own line in the summary and never change the exit code, also with `--audit-only`.
 - A skill that still has its DRAFT banner is never asked for.
+- A skill renamed `caf-verify` → `caf-self-verify` (CAF-SDD-03c2d): an agent that still points at the old path while `caf-self-verify` is active gets one `skill-renamed` warning, in place of the "pointer missing" one for the same path. Same remedy: change the pointer by hand.
 - Only agent files whose name is a known CAF kind are checked. A custom agent file is not compared.
 - The check is read-only and uses the same tables the generator renders from.
 
