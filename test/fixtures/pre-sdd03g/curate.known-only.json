@@ -1,0 +1,312 @@
+{
+  "files": [
+    "admin.md",
+    "caf-architect.md",
+    "caf-auditor.md",
+    "caf-backend.md",
+    "caf-documentation.md",
+    "caf-frontend.md",
+    "caf-planner.md",
+    "caf-pm.md",
+    "caf-qa.md",
+    "caf-reviewer.md",
+    "caf-ux-designer.md",
+    "caf-validator.md",
+    "devops.md"
+  ],
+  "audit": {
+    "layers": [
+      {
+        "name": "Layer 1 (Knowledge Base)",
+        "entries": [
+          {
+            "status": "ok",
+            "filePath": "CLAUDE.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          },
+          {
+            "status": "ok",
+            "filePath": "AGENTS.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          },
+          {
+            "status": "ok",
+            "filePath": ".caf/knowledge/INDEX.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          },
+          {
+            "status": "gap",
+            "filePath": "docs/product/prd.md",
+            "message": "missing (optional)",
+            "syncCommand": "caf-init docs",
+            "severity": "optional"
+          },
+          {
+            "status": "gap",
+            "filePath": "docs/architecture/system-overview.md",
+            "message": "missing (optional)",
+            "syncCommand": "caf-init docs",
+            "severity": "optional"
+          },
+          {
+            "status": "gap",
+            "filePath": "docs/schema/erd.md",
+            "message": "missing (optional)",
+            "syncCommand": "caf-init docs",
+            "severity": "optional"
+          },
+          {
+            "status": "gap",
+            "filePath": "docs/testing-strategy.md",
+            "message": "missing (optional)",
+            "syncCommand": "caf-init docs",
+            "severity": "optional"
+          },
+          {
+            "status": "gap",
+            "filePath": "docs/api-contract.md",
+            "message": "missing (optional)",
+            "syncCommand": "caf-init docs",
+            "severity": "optional"
+          }
+        ]
+      },
+      {
+        "name": "Layer 2 (Agent Definitions)",
+        "entries": [
+          {
+            "status": "gap",
+            "filePath": ".claude/agents/admin.md",
+            "message": "section `## Output` differs from the latest template (DRIFT — untouched since last generate/sync, safe to auto-sync)",
+            "syncCommand": "caf-init curate --sync-only",
+            "severity": "required"
+          },
+          {
+            "status": "ok",
+            "filePath": ".claude/agents/caf-architect.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          },
+          {
+            "status": "ok",
+            "filePath": ".claude/agents/caf-auditor.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          },
+          {
+            "status": "ok",
+            "filePath": ".claude/agents/caf-backend.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          },
+          {
+            "status": "ok",
+            "filePath": ".claude/agents/caf-documentation.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          },
+          {
+            "status": "ok",
+            "filePath": ".claude/agents/caf-frontend.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          },
+          {
+            "status": "ok",
+            "filePath": ".claude/agents/caf-planner.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          },
+          {
+            "status": "ok",
+            "filePath": ".claude/agents/caf-pm.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          },
+          {
+            "status": "ok",
+            "filePath": ".claude/agents/caf-qa.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          },
+          {
+            "status": "ok",
+            "filePath": ".claude/agents/caf-reviewer.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          },
+          {
+            "status": "ok",
+            "filePath": ".claude/agents/caf-ux-designer.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          },
+          {
+            "status": "ok",
+            "filePath": ".claude/agents/caf-validator.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          },
+          {
+            "status": "ok",
+            "filePath": ".claude/agents/devops.md",
+            "message": "already in sync",
+            "syncCommand": null,
+            "severity": "required"
+          }
+        ]
+      },
+      {
+        "name": "Layer 3 (Artifact Handoff)",
+        "entries": [
+          {
+            "status": "gap",
+            "filePath": ".caf/workflows/agent-handoff.md",
+            "message": "missing",
+            "syncCommand": "caf-init scaffold workflow",
+            "severity": "required"
+          }
+        ]
+      },
+      {
+        "name": "Layer 4 (Quality Gates)",
+        "entries": [
+          {
+            "status": "gap",
+            "filePath": ".caf/workflows/task-completion.md",
+            "message": "missing",
+            "syncCommand": "caf-init scaffold task-completion",
+            "severity": "required"
+          },
+          {
+            "status": "gap",
+            "filePath": ".caf/workflows/piv-workflow.md",
+            "message": "missing",
+            "syncCommand": "caf-init scaffold workflow",
+            "severity": "required"
+          }
+        ]
+      }
+    ],
+    "requiredGaps": 4,
+    "optionalGaps": 5,
+    "declined": 0,
+    "sectionCounts": {
+      "IN_SYNC": 69,
+      "DRIFT": 1,
+      "CUSTOMIZATION": 0,
+      "CONFLICT": 0,
+      "UNTRACKED": 0
+    },
+    "exit": 1
+  },
+  "syncDryRun": {
+    "updated": [],
+    "skipped": [],
+    "drifted": [
+      ".claude/agents/admin.md#Output"
+    ],
+    "needsAttention": [],
+    "unverifiable": []
+  },
+  "checkDrafts": {
+    "findings": [
+      {
+        "level": "INFO",
+        "file": "CLAUDE.md",
+        "message": "10 TODO(s) still open"
+      },
+      {
+        "level": "INFO",
+        "file": "AGENTS.md",
+        "message": "3 TODO(s) still open"
+      },
+      {
+        "level": "INFO",
+        "file": ".claude/agents/admin.md",
+        "message": "3 TODO(s) still open"
+      },
+      {
+        "level": "INFO",
+        "file": ".claude/agents/caf-architect.md",
+        "message": "5 TODO(s) still open"
+      },
+      {
+        "level": "INFO",
+        "file": ".claude/agents/caf-auditor.md",
+        "message": "7 TODO(s) still open"
+      },
+      {
+        "level": "INFO",
+        "file": ".claude/agents/caf-backend.md",
+        "message": "2 TODO(s) still open"
+      },
+      {
+        "level": "INFO",
+        "file": ".claude/agents/caf-documentation.md",
+        "message": "5 TODO(s) still open"
+      },
+      {
+        "level": "INFO",
+        "file": ".claude/agents/caf-frontend.md",
+        "message": "3 TODO(s) still open"
+      },
+      {
+        "level": "INFO",
+        "file": ".claude/agents/caf-planner.md",
+        "message": "5 TODO(s) still open"
+      },
+      {
+        "level": "INFO",
+        "file": ".claude/agents/caf-pm.md",
+        "message": "1 TODO(s) still open"
+      },
+      {
+        "level": "INFO",
+        "file": ".claude/agents/caf-qa.md",
+        "message": "5 TODO(s) still open"
+      },
+      {
+        "level": "INFO",
+        "file": ".claude/agents/caf-reviewer.md",
+        "message": "5 TODO(s) still open"
+      },
+      {
+        "level": "INFO",
+        "file": ".claude/agents/caf-ux-designer.md",
+        "message": "1 TODO(s) still open"
+      },
+      {
+        "level": "INFO",
+        "file": ".claude/agents/caf-validator.md",
+        "message": "5 TODO(s) still open"
+      },
+      {
+        "level": "INFO",
+        "file": ".claude/agents/devops.md",
+        "message": "8 TODO(s) still open"
+      }
+    ],
+    "fails": 0,
+    "warns": 0,
+    "exit": 0
+  },
+  "unchanged": true
+}
