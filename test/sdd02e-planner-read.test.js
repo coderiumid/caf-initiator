@@ -26,6 +26,7 @@ import { setSectionBaseline, writeManifest } from '../src/utils/generate-manifes
 import { hashSection, SECTION_STATUS } from '../src/utils/section-diff.js';
 import { copyFixture, snapshotTree } from './helpers/make-repo.js';
 import { silenced } from './helpers/mono-snapshot.js';
+import { withLiveInput } from './helpers/swap-input.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir, frontmatterTools, renderAgents, trackedSections } from './helpers/frozen-kinds.js';
 
 const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures');
@@ -35,11 +36,14 @@ const SPEC_FINAL_SHA256 = 'b8ba383c32579aaa413045b427421484006f36e0873e9ff19935f
 const NO_GUESS_SHA256 = '4c0f2c1fab4b181d6880ecd0973f313546057d74aa9b8c198257fd5b0e614dc1';
 
 // Recorded before this ticket touched src/ (T2): the planner as CAF-SDD-02d left it. Never regenerated.
-const OLD_PLANNER = Object.fromEntries(
+const RAW_PLANNER = Object.fromEntries(
   FIXTURE_NAMES.map((f) => [f, JSON.parse(fs.readFileSync(path.join(FIXTURES, 'pre-sdd02e', `planner.${f}.json`), 'utf8'))])
 );
 
 const rendered = Object.fromEntries(await Promise.all(FIXTURE_NAMES.map(async (f) => [f, await renderAgents(f)])));
+// CAF-SDD-03c2 changed the planner's `## Input` after this golden was recorded; this ticket is
+// about `## Output`, so the golden is compared with the live Input put in (test/helpers/swap-input.js).
+const OLD_PLANNER = Object.fromEntries(FIXTURE_NAMES.map((f) => [f, withLiveInput(RAW_PLANNER[f], rendered[f].planner.content)]));
 const plannerOf = (fixture) => rendered[fixture].planner.content;
 const outputOf = (fixture) => trackedSections(plannerOf(fixture)).Output;
 const inputOf = (fixture) => trackedSections(plannerOf(fixture)).Input;

@@ -122,13 +122,11 @@ for (const fixture of FIXTURE_NAMES) {
     for (const literal of [
       'Produces `requirements.md`, `tasks.md` in `.caf/tasks/{TICKET-ID}/` for the next agent to read.',
       'Write for artifacts in `.caf/tasks/{TICKET-ID}/`',
-      '`.caf/discovery/{TICKET-ID}/prd.md`',
-      // CAF-SDD-02d: the status of `requirements.md` is a `Status:` line in Input too — it was
-      // `## Status: PLAN` and `## Status: NEEDS_HUMAN` here. The stop token itself is the same.
-      '`requirements.md` as usual, with the `Status:` line described in Output',
-      '`requirements.md` directly with `Status: NEEDS_HUMAN`',
-      'and still create `tasks.md`',
-      '`## Open Questions`',
+      // CAF-SDD-03c2 removed the "Fallback — Discovery draft without a ticket" flow from Input, and
+      // with it five literals this list held: the `.caf/discovery/{TICKET-ID}/prd.md` path, the two
+      // `requirements.md` lines about it (`... as usual, with the `Status:` line` and `... directly
+      // with `Status: NEEDS_HUMAN``), `and still create `tasks.md``, and `## Open Questions`.
+      // The headless stop token below is still in `## Constraints`.
       '`## Frontend Tasks` / `## Backend Tasks`',
       '`[SYSTEM CONTEXT: Environment = headless...]`',
       '`Status: NEEDS_HUMAN` + `tasks.md` blocked',
@@ -182,7 +180,9 @@ for (const fixture of FIXTURE_NAMES) {
       documentation: line('update `docs/` (parallel, non-blocking)'),
       devops: 'TODO: which artifact is produced for the next agent',
     };
-    const kinds = Object.keys(rendered[fixture]).filter((k) => k !== 'planner');
+    // CAF-SDD-03c2: the validator is a candidate now; its Output and Working Pattern are locked in
+    // test/sdd03b1-validator.test.js and test/sdd03e-validator-commands.test.js.
+    const kinds = Object.keys(rendered[fixture]).filter((k) => k !== 'planner' && k !== 'validator');
     assert.ok(kinds.length >= 7);
     for (const kind of kinds) {
       const sections = trackedSections(rendered[fixture][kind].content);

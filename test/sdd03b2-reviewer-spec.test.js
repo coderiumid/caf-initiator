@@ -17,6 +17,7 @@ import { findUnresolvedPlaceholders } from '../src/utils/placeholder-check.js';
 import { hashSection, SECTION_STATUS } from '../src/utils/section-diff.js';
 import { copyFixture, snapshotTree } from './helpers/make-repo.js';
 import { silenced, renderMonoSnapshot } from './helpers/mono-snapshot.js';
+import { withLiveInput } from './helpers/swap-input.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir, frontmatterTools, renderAgents, trackedSections } from './helpers/frozen-kinds.js';
 
 const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures');
@@ -30,7 +31,7 @@ const WP = 'Working Pattern (PIV)';
 const SYNCED = [`${REVIEWER_REL}#${CHANGED}`, `${REVIEWER_REL}#${WP}`];
 
 // Recorded from main before this ticket touched src/ (T2). Never regenerated.
-const OLD_REVIEWER = Object.fromEntries(
+const RAW_REVIEWER = Object.fromEntries(
   FIXTURE_NAMES.map((f) => [f, JSON.parse(fs.readFileSync(path.join(FIXTURES, 'pre-sdd03b2', `reviewer.${f}.json`), 'utf8'))])
 );
 
@@ -76,6 +77,9 @@ const VERDICT_SKELETON = [
 ].join('\n');
 
 const rendered = Object.fromEntries(await Promise.all(FIXTURE_NAMES.map(async (f) => [f, await renderAgents(f)])));
+// CAF-SDD-03c2 changed the reviewer's `## Input` after this golden was recorded; this ticket is
+// about `## Output`, so the golden is compared with the live Input put in (test/helpers/swap-input.js).
+const OLD_REVIEWER = Object.fromEntries(FIXTURE_NAMES.map((f) => [f, withLiveInput(RAW_REVIEWER[f], rendered[f].reviewer.content)]));
 
 const reviewerOf = (fixture) => rendered[fixture].reviewer.content;
 const outputOf = (fixture) => trackedSections(reviewerOf(fixture))[CHANGED];

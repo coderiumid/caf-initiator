@@ -31,6 +31,7 @@ import { copyFixture, snapshotTree } from './helpers/make-repo.js';
 import { silenced } from './helpers/mono-snapshot.js';
 import { makeOldRepo } from './helpers/old-repo.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir, renderAgents, trackedSections } from './helpers/frozen-kinds.js';
+import { withLiveInput } from './helpers/swap-input.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const GOLDEN = path.join(ROOT, 'test', 'fixtures', 'pre-sdd03f');
@@ -45,9 +46,15 @@ const sha256 = (text) => crypto.createHash('sha256').update(text).digest('hex');
 const read = (dir, rel) => fs.readFileSync(path.join(dir, rel), 'utf8');
 
 const rendered = Object.fromEntries(await Promise.all(FIXTURE_NAMES.map(async (f) => [f, await renderAgents(f)])));
+// CAF-SDD-03c2 changed the planner's `## Input` after this golden was recorded; this ticket is about
+// `## Output`, so the golden is compared with the live Input put in (test/helpers/swap-input.js).
+for (const f of FIXTURE_NAMES) OLD_PLANNER[f] = withLiveInput(OLD_PLANNER[f], rendered[f].planner.content);
 
 const renderPiv = (name) => buildPivWorkflowMd({ agentDir: '.claude/agents', qaRetries: null, reviewerRetries: null, ...OLD_PIV[name].input });
-const renderPipeline = (name) => buildRunPipelineMd(OLD_PIPELINE[name].input);
+// CAF-SDD-03c2 added the spec status section to /caf-run-pipeline (held in
+// test/sdd03c2-validator-default.test.js); this ticket's relation to its golden is about the rest.
+const SPEC_STATUS_03C2 = /## Spec Status Check[\s\S]*?(?=## 3\. Implementation)/;
+const renderPipeline = (name) => buildRunPipelineMd(OLD_PIPELINE[name].input).replace(SPEC_STATUS_03C2, '');
 
 /** `## <header>` of a Markdown file, up to the next `## ` heading. */
 function mdSection(md, header) {

@@ -27,6 +27,7 @@ import {
 import { buildRunPipelineMd } from '../templates/run-pipeline-command.js';
 import { buildFixReviewMd } from '../templates/fix-review-command.js';
 import { buildReviewMd } from '../templates/review-command.js';
+import { buildPlanMd } from '../templates/plan-command.js';
 
 // Companion command preview manual per ticket-driven role. Deliberately only these four roles:
 // Frontend/Backend write production code (collides with the orchestrator running in parallel),
@@ -47,6 +48,17 @@ import { buildReviewMd } from '../templates/review-command.js';
 // but stays offered until CAF-SDD-03c3: in SINGLE_REPO without --role it is the only
 // implementation agent, and /caf-run-pipeline is only offered when there is one.
 export const HIDDEN_CANDIDATE_KINDS = ['devops', 'documentation', 'pm', 'ux-designer', 'auditor'];
+
+// CAF-SDD-03c2: `qa` is replaced by `validator` in the default roster. Replaced, not dropped like
+// the kinds above: `qa` stays a candidate (frozen-kinds renders it, tests pick it) and a known
+// kind, and a caf-qa.md already in a repo is never touched; it is only no longer offered. Kept
+// apart from HIDDEN_CANDIDATE_KINDS, which holds exactly the five kinds the design drops.
+export const SUPERSEDED_CANDIDATE_KINDS = ['qa'];
+
+/** Is this candidate offered by the agent picker (the one place an agent kind is chosen)? */
+export function isOfferedCandidate(candidate) {
+  return !HIDDEN_CANDIDATE_KINDS.includes(candidate.kind) && !SUPERSEDED_CANDIDATE_KINDS.includes(candidate.kind);
+}
 
 // The same for commands (CAF-SDD-03c1): files no scaffold run writes any more. Their builders and
 // templates stay, and a command file already in a repo is never touched. Checked where a command
@@ -69,10 +81,17 @@ export function isHiddenCommand(file) {
 
 const PREVIEW_COMMANDS = [
   { kind: 'planner', label: 'Planner', file: 'caf-plan-ticket.md', build: buildPlanTicketMd },
+  // CAF-SDD-03c2: no longer hidden. Unlike /caf-plan-ticket it spawns caf-planner.md and writes
+  // nothing itself (see templates/plan-command.js).
+  { kind: 'planner', label: 'Planner', file: 'caf-plan.md', build: buildPlanMd },
   { kind: 'architect', label: 'Architect', file: 'caf-design-ticket.md', build: buildDesignTicketMd },
   { kind: 'qa', label: 'QA', file: 'caf-qa-check.md', build: buildQaCheckMd },
   { kind: 'reviewer', label: 'Reviewer', file: 'caf-review-ticket.md', build: buildReviewTicketMd },
 ];
+
+const VALIDATOR_ROLE =
+  'Validates the implementation against every acceptance criterion of the spec and reports the evidence it could confirm.';
+const VALIDATOR_SCOPE = 'TODO: code/artifact area the Validator may read — decide manually.';
 
 const CAF_WARNING = [
   'CAF.md: "Do not create every agent at once — start with Planner + 1 implementation agent."',
@@ -204,6 +223,15 @@ export function buildCandidates(roleApp, extraApps) {
       appNames: implementationAppPaths,
     },
     {
+      // CAF-SDD-03c2: the offered gate agent. Rendered by buildValidatorAgent() (agents()), which
+      // derives the verification gate from every detected app, so no app is assigned here.
+      kind: 'validator',
+      name: 'Validator',
+      role: VALIDATOR_ROLE,
+      scope: VALIDATOR_SCOPE,
+      app: null,
+    },
+    {
       kind: 'reviewer',
       name: 'Reviewer',
       role: 'Reviews the implementation diff for quality, consistency, and risk before merge.',
@@ -263,10 +291,9 @@ export function buildCandidates(roleApp, extraApps) {
 /**
  * The Validator agent (CAF-SDD-03b1) for a detected repo: `{ file, content }`.
  *
- * Deliberately NOT an entry of buildCandidates(): until the ticket that connects it to the
- * pipeline, no scaffold run offers or writes caf-validator.md, and the frozen MONOREPO snapshot
- * (which renders every candidate, hidden ones included) does not gain a file. Nothing in this CLI
- * calls it yet — it is reached from the tests only.
+ * Since CAF-SDD-03c2 it is a buildCandidates() entry and offered by the picker, and agents()
+ * renders it through this function rather than the generic candidate path, because its
+ * `## Verify Checklist` is built from every detected app.
  *
  * Its `## Verify Checklist` is the repo's verification gate, so it is built from every detected
  * app with the derivation the implementation agents and the caf-verify skill already use
@@ -277,8 +304,8 @@ export function buildValidatorAgent(dir, stack, { skills = [] } = {}) {
   const slug = agentSlug('validator');
   const content = buildAgentMd({
     name: 'Validator',
-    role: 'Validates the implementation against every acceptance criterion of the spec and reports the evidence it could confirm.',
-    scope: 'TODO: code/artifact area the Validator may read — decide manually.',
+    role: VALIDATOR_ROLE,
+    scope: VALIDATOR_SCOPE,
     // Sorted: detection does not return the apps in a stable order, and the same repo must
     // always render the same file.
     verifyApps: collectVerifyApps(dir, stack).sort((x, y) => x.appPath.localeCompare(y.appPath)),
@@ -466,7 +493,7 @@ export async function agents({
     message: 'Pick the agents to generate:',
     instructions: false,
     choices: candidates
-      .filter((c) => !HIDDEN_CANDIDATE_KINDS.includes(c.kind))
+      .filter(isOfferedCandidate)
       .map((c) => ({ title: c.name, value: c })),
   });
 
@@ -519,6 +546,7 @@ export async function agents({
   const written = [];
   const skipped = [];
   const collisions = [];
+  let validatorWritten = false;
   for (const candidate of selected) {
     // CAF-MULTIAPP-01: frontend/backend candidates carry `apps` (array, possibly >1) instead of
     // a single `app` — everything else (implementation/extraApps, and the whole-repo roles that
@@ -555,32 +583,51 @@ export async function agents({
         ? buildPmAgentMd({ agentDir: relativeAgentDir, slug })
         : candidate.kind === 'ux-designer'
           ? buildUxDesignerAgentMd({ agentDir: relativeAgentDir, slug })
-          : buildAgentMd({
-              name: candidate.name,
-              role: candidate.role,
-              scope: candidate.scope,
-              scopeApps,
-              scripts,
-              packageManager,
-              packageName,
-              verifyApps,
-              kind: candidate.kind,
-              appNames: candidate.appNames,
-              slug,
-              // CAF-SKILLS-01: empty unless `caf-init scaffold skills` already wrote usable skills.
-              skills: usableSkillPaths(dir, candidate.kind),
+          : candidate.kind === 'validator'
+            ? buildValidatorAgent(dir, stack, { skills: usableSkillPaths(dir, 'validator') }).content
+            : buildAgentMd({
+                name: candidate.name,
+                role: candidate.role,
+                scope: candidate.scope,
+                scopeApps,
+                scripts,
+                packageManager,
+                packageName,
+                verifyApps,
+                kind: candidate.kind,
+                appNames: candidate.appNames,
+                slug,
+                // CAF-SKILLS-01: empty unless `caf-init scaffold skills` already wrote usable skills.
+                skills: usableSkillPaths(dir, candidate.kind),
             });
 
     const filePath = path.join(agentDirPath, `${slug}.md`);
     const result = writeIfAbsentGuarded(filePath, content, { dryRun, overwrite }, collisions);
     if (result === 'written') written.push(filePath);
     else if (result === 'skipped') skipped.push(filePath);
+    if (candidate.kind === 'validator' && result === 'written') validatorWritten = true;
   }
 
   console.log('');
   console.log(kleur.green(`generated ${written.length} agent definition draft(s) in ${agentDirPath}`));
   for (const filePath of written) {
     console.log(`  - ${filePath}`);
+  }
+
+  // CAF-SDD-03c2 (Q-1): caf-orchestrator picks the gate from the files in the workspace. A repo that
+  // still has caf-qa.md and now gets caf-validator.md changes gate without anything else telling
+  // the user, so say it once. caf-qa.md itself is never touched or removed.
+  if (validatorWritten && fs.existsSync(path.join(agentDirPath, 'caf-qa.md'))) {
+    console.log('');
+    console.log(
+      kleur.yellow(
+        `⚠ ${path.join(agentDirPath, 'caf-qa.md')} already exists, and caf-validator.md was just written next to it.\n` +
+          '  caf-orchestrator will use caf-validator as the quality gate (validate-report.md) instead of\n' +
+          '  caf-qa (qa-report.md) as long as caf-validator.md is present. caf-qa.md was not changed or\n' +
+          '  removed: delete it by hand when you no longer need it, or delete caf-validator.md to keep the\n' +
+          '  old gate.'
+      )
+    );
   }
 
   for (const preview of PREVIEW_COMMANDS) {
@@ -657,6 +704,9 @@ export async function agents({
         appPaths,
         hasArchitect: selected.some((c) => c.kind === 'architect'),
         hasDocumentation: selected.some((c) => c.kind === 'documentation'),
+        // CAF-SDD-03c2: the gate follows the roster, as caf-orchestrator's does (it picks
+        // caf-validator when that agent exists). A selection without the validator keeps `qa`.
+        gate: selected.some((c) => c.kind === 'validator') ? 'validator' : 'qa',
       });
       const filePath = path.join(commandDirPath, 'caf-run-pipeline.md');
       const result = writeIfAbsentGuarded(filePath, content, { dryRun, overwrite }, collisions);

@@ -1,8 +1,7 @@
-// CAF-SDD-03b3 — the `/caf-plan` command (hidden) and the spec-aware `/caf-review` and
-// `/caf-fix-review`.
+// CAF-SDD-03b3 — the `/caf-plan` command and the spec-aware `/caf-review` and `/caf-fix-review`.
 //
-// `/caf-plan` is a complete builder that no scaffold run writes: until the ticket that connects
-// it, `buildPlanMd()` is only reached from here. The two review commands change inside sections
+// `/caf-plan` was a complete builder that no scaffold run wrote (hidden); CAF-SDD-03c2 connected
+// it, so a scaffold writes it now and these tests state that. The two review commands change inside sections
 // they already had (T1(e)); every other command is the one recorded in
 // test/fixtures/pre-sdd03b3/ before this ticket touched `src/` (never regenerate it).
 // Every scaffold and `curate sync` below runs on a temp copy of a fixture.
@@ -56,7 +55,8 @@ const COMMAND_FILES = [
 const CHANGED_FILES = ['caf-fix-review.md', 'caf-review.md'];
 // CAF-SDD-03c1: eight of the 13 are no longer scaffolded. The golden still holds all 13; the
 // builders of the eight are compared against it in test/sdd03c1-stop-scaffold.test.js.
-const WRITTEN_FILES = ['caf-complete-drafts.md', 'caf-fix-review.md', 'caf-plan-ticket.md', 'caf-review.md', 'caf-run-pipeline.md'];
+// CAF-SDD-03c2 adds caf-plan.md (file-name order: '-' sorts before '.').
+const WRITTEN_FILES = ['caf-complete-drafts.md', 'caf-fix-review.md', 'caf-plan-ticket.md', 'caf-plan.md', 'caf-review.md', 'caf-run-pipeline.md'];
 
 // CAF-SDD-03c1: what the golden text of a still-scaffolded command becomes now that four of the
 // agents it was recorded with are no longer written. No template changed:
@@ -64,22 +64,33 @@ const WRITTEN_FILES = ['caf-complete-drafts.md', 'caf-fix-review.md', 'caf-plan-
 // - /caf-run-pipeline is rendered with `hasDocumentation: false`, the branch its template always
 //   had. The golden is first shown to be the `true` render of today's builder, then the scaffolded
 //   file must be the `false` render of the same call.
+// CAF-SDD-03c2 changes both again: the roster has the validator in place of qa (so the pipeline
+// gate and the agent list of /caf-complete-drafts follow), and /caf-run-pipeline gains the spec
+// status section. The golden relations moved to test/sdd03c2-validator-default.test.js, which
+// holds them against test/fixtures/pre-sdd03c2/; here the scaffolded file is the builder's render.
 const PIPELINE_ROLES = {
   'mono-pnpm': { implementationRoles: ['caf-frontend', 'caf-backend'], appPaths: { 'caf-frontend': ['apps/web'], 'caf-backend': ['apps/api'] } },
   'single-nuxt': { implementationRoles: ['caf-implementer'], appPaths: { 'caf-implementer': ['.'] } },
 };
 const SINCE_03C1 = {
   'caf-plan-ticket.md': (old) => old,
+  'caf-plan.md': () => buildPlanMd({ agentDir: AGENT_DIR }),
   'caf-complete-drafts.md': (old) => {
     const gone = ['caf-auditor', 'caf-documentation', 'caf-pm', 'caf-ux-designer'].map((slug) => `- \`${AGENT_DIR}/${slug}.md\``);
     const lines = old.split('\n');
     for (const line of gone) assert.equal(lines.filter((l) => l === line).length, 1, `the golden lists ${line} once`);
-    return lines.filter((l) => !gone.includes(l)).join('\n');
+    // CAF-SDD-03c2: caf-qa.md is replaced by caf-validator.md in the list (the list is sorted).
+    const qa = `- \`${AGENT_DIR}/caf-qa.md\``;
+    const validator = `- \`${AGENT_DIR}/caf-validator.md\``;
+    assert.equal(lines.filter((l) => l === qa).length, 1, 'the golden lists caf-qa.md once');
+    const kept = lines.filter((l) => !gone.includes(l) && l !== qa);
+    const lastAgent = kept.map((l, i) => (l.startsWith(`- \`${AGENT_DIR}/`) ? i : -1)).filter((i) => i >= 0).pop();
+    kept.splice(lastAgent + 1, 0, validator);
+    return kept.join('\n');
   },
   'caf-run-pipeline.md': (old, fixture) => {
-    const render = (hasDocumentation) => buildRunPipelineMd({ agentDir: AGENT_DIR, ...PIPELINE_ROLES[fixture], hasArchitect: true, hasDocumentation });
-    assert.equal(render(true), old, 'the /caf-run-pipeline template is the one recorded in the golden');
-    return render(false);
+    assert.match(old, /caf-qa/, 'the golden is the one recorded with the qa gate');
+    return buildRunPipelineMd({ agentDir: AGENT_DIR, ...PIPELINE_ROLES[fixture], hasArchitect: true, hasDocumentation: false, gate: 'validator' });
   },
 };
 
@@ -91,6 +102,19 @@ const REVIEW_CHANGED = [
   '5. Summary to the User',
 ];
 const FIX_REVIEW_CHANGED = ['4. Spawn `caf-reviewer` (`.claude/agents/caf-reviewer.md`)', '6. Summary to User', 'Constraints'];
+
+// CAF-SDD-03c2: the one sentence of each opening paragraph that named /caf-review-ticket, and what
+// replaced it. [golden text, text now].
+const REVIEW_TICKET_REFERENCE = {
+  'caf-review.md': [
+    "timeline. This isn't a\nread-only preview like `/caf-review-ticket` — only run it when you actually intend to review\nthis PR right now.",
+    "timeline. This isn't a\nread-only command — only run it when you actually intend to review this PR right now.",
+  ],
+  'caf-fix-review.md': [
+    'This is not a read-only preview like\n`/caf-review-ticket` — run it only when you actually intend to respond to review comments now.',
+    'This is not a read-only command — run it\nonly when you actually intend to respond to review comments now.',
+  ],
+};
 
 const REVIEW_HEADERS = [
   '0. Permission Check (REQUIRED, before any step below)',
@@ -258,15 +282,16 @@ test('AC-2: /caf-plan stops after tasks.md and starts no implementation', () => 
 });
 
 // ---------------------------------------------------------------------------------------------
-// AC-3 — hidden
+// AC-3 — was hidden; CAF-SDD-03c2 connected it
 // ---------------------------------------------------------------------------------------------
 
 for (const [fixture, role] of [['mono-pnpm'], ['single-nuxt'], ['single-nuxt', 'frontend'], ['single-nuxt', 'backend']]) {
-  test(`AC-3: a full scaffold on ${fixture}${role ? ` (--role ${role})` : ''} — every agent picked, every opt-in command accepted — writes no caf-plan.md`, async () => {
+  test(`AC-3: a full scaffold on ${fixture}${role ? ` (--role ${role})` : ''} — every agent picked, every opt-in command accepted — writes caf-plan.md`, async () => {
     const { dir, files } = role ? await renderCommands(fixture, { role }) : now[fixture];
     assert.deepEqual(Object.keys(files), WRITTEN_FILES, 'precondition: the run did write the commands');
     const everything = Object.keys(snapshotTree(dir));
-    assert.deepEqual(everything.filter((rel) => /caf-plan(?!-ticket|ner)/.test(rel)), []);
+    assert.deepEqual(everything.filter((rel) => /caf-plan(?!-ticket|ner)/.test(rel)), [path.join(COMMAND_DIR, 'caf-plan.md')]);
+    assert.equal(files['caf-plan.md'], buildPlanMd({ agentDir: AGENT_DIR }));
   });
 }
 
@@ -278,7 +303,7 @@ test('AC-3: the frozen MONOREPO render and its snapshot have no /caf-plan entry'
   assert.deepEqual(recorded.filter((f) => /caf-plan\.md$/.test(f)), []);
 });
 
-test('AC-3: no command of the CLI imports the /caf-plan builder', () => {
+test('AC-3: only scaffold agents imports the /caf-plan builder', () => {
   const importers = [];
   const walk = (dir) => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -288,7 +313,7 @@ test('AC-3: no command of the CLI imports the /caf-plan builder', () => {
     }
   };
   walk(SRC);
-  assert.deepEqual(importers, []);
+  assert.deepEqual(importers, [path.join('commands', 'agents.js')]);
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -420,9 +445,13 @@ for (const fixture of FIXTURE_NAMES) {
       const allHeaders = (c) => c.split('\n').filter((l) => /^\s*#{1,6} /.test(l));
       assert.deepEqual(allHeaders(now[fixture].files[file]), allHeaders(OLD[fixture][file]));
 
+      // CAF-SDD-03c2 took the reference to /caf-review-ticket (no longer scaffolded) out of the
+      // opening paragraph; that is the one change outside the sections recorded by T1.
+      const [before, after] = REVIEW_TICKET_REFERENCE[file];
+      assert.equal(oldSections[0].body.split(before).length, 2, 'the golden has the reference once');
+      assert.equal(newSections[0].body, oldSections[0].body.replace(before, after), 'frontmatter, banner, title and purpose are untouched but for the reference');
       const differing = newSections.filter((s, i) => s.body !== oldSections[i].body).map((s) => s.header);
-      assert.deepEqual(differing, changed);
-      assert.equal(newSections[0].body, oldSections[0].body, 'frontmatter, banner, title and purpose are untouched');
+      assert.deepEqual(differing, [null, ...changed]);
     });
 
     test(`${file} on ${fixture} — the new text adds no TODO, no placeholder and no fence`, () => {

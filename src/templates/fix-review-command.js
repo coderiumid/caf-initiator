@@ -280,8 +280,8 @@ ${DRAFT_BANNER}
 # Fix Review (Post-PR, Interactive)
 
 **This command REPLIES TO SOMEONE ELSE'S PR ON GITHUB.** Its side effects are real and public —
-replies to review comments plus a new summary comment. This is not a read-only preview like
-\`/caf-review-ticket\` — run it only when you actually intend to respond to review comments now.
+replies to review comments plus a new summary comment. This is not a read-only command — run it
+only when you actually intend to respond to review comments now.
 
 Purpose: the interactive path for the Reviewer Agent's post-PR mode — reactive to human
 reviewer comments on an already-opened PR, different from ${roleLine('caf-reviewer', agentDir)}

@@ -482,20 +482,19 @@ inside a fence). A `## `-style heading used as example content in a new template
 wrapped in a fenced code block for this reason — an unfenced example heading is still misread as
 a real section boundary and will corrupt `curate sync` output.
 
-## The `validator` kind (hidden — CAF-SDD-03b1)
+## The `validator` kind (CAF-SDD-03b1; offered by default since CAF-SDD-03c2)
 
 `validator` (`caf-validator.md`, tools `Read`/`Write`/`Bash`, no `Edit`) is a complete kind — it is
 in `KNOWN_KINDS`, `CAF_PREFIXED_KINDS`, `TOOLS_BY_KIND`, `ARTIFACT_BY_ROLE` and `SKILLS_BY_KIND`,
-and every tracked builder has a real branch for it — but it is hidden until the ticket that
-connects it to the pipeline (03c/04):
+and every tracked builder has a real branch for it. It was hidden until CAF-SDD-03c2 connected it
+(see "The validator and /caf-plan in the default scaffold" at the end of this file); the bullets
+below are still true unless that section says otherwise:
 
-- It is **not** an entry of `buildCandidates()`, and must not become one before that ticket.
-  `HIDDEN_CANDIDATE_KINDS` is not involved: it filters the picker and, since CAF-SDD-03c1, what
-  `test/helpers/mono-snapshot.js` renders, while `test/helpers/frozen-kinds.js` still renders
-  every candidate, hidden ones included.
+- Since CAF-SDD-03c2 it **is** an entry of `buildCandidates()`, offered by the picker
+  (`isOfferedCandidate`); `HIDDEN_CANDIDATE_KINDS` is still only the five dropped kinds.
 - The one way to render it is `buildValidatorAgent(dir, stack, { skills })` in
-  `src/commands/agents.js`. No command calls it; only tests do (`test/sdd03b1-validator.test.js`,
-  `test/sdd03e-validator-commands.test.js`).
+  `src/commands/agents.js`; `agents()` calls it for a validator candidate (the generic candidate
+  path would give it no verification gate).
 - Its `## Verify Checklist` is the repo's verification gate, built with `collectVerifyApps` (the
   derivation the implementation agents and `caf-verify` use) over every detected app. `qa`'s
   checklist is the two-line "not a single app" placeholder and stays that way (`qa` is frozen).
@@ -586,10 +585,9 @@ its own test and says so; it does not re-record the golden.
   `SKIPPED` with `Notes:` starting `Needs a human decision:`. The text must not contain the word
   the orchestrator greps `verify-report.md` for (a test holds that), and it tells the agent not
   to create `verify-report.md` when it is missing.
-- `/caf-plan` (`src/templates/plan-command.js`, `buildPlanMd`) is **hidden**: no file under
-  `src/` imports it (a test walks `src/` for that), so no scaffold run writes `caf-plan.md` and
-  the snapshot has no entry. The `caf-spec` banner is gone (02c); the command stays hidden until
-  the ticket that connects it; don't add it to `PREVIEW_COMMANDS` or to a prompt before that. It
+- `/caf-plan` (`src/templates/plan-command.js`, `buildPlanMd`) was **hidden** until CAF-SDD-03c2:
+  nothing under `src/` imported it. It is now a `PREVIEW_COMMANDS` entry (written when the planner
+  is picked) and the snapshot still has no entry for it. The `caf-spec` banner is gone (02c). It
   spawns `caf-planner` through the Task tool and carries none of the planner's rules — a test
   rejects planner rule text in it. `/caf-plan-ticket` is still generated, byte-identical, until
   03c replaces it.
@@ -639,8 +637,9 @@ and eight commands (`caf-discovery-start`, `caf-discovery-to-ticket`, `caf-audit
   (`test/helpers/old-repo.js`), both from before the change — never regenerate it.
 - Generated text that still names a dropped agent or command (the planner's Discovery fallback,
   the `.gitignore` lines for `.caf/discovery/` and `.caf/audits/`, `/caf-review-ticket` in the
-  review commands, the note about the PM agent in `.caf/knowledge/INDEX.md`) is unchanged on purpose; fixing
-  it is a later ticket (03c2), and so is every rename.
+  review commands, the note about the PM agent in `.caf/knowledge/INDEX.md`) was unchanged on purpose
+  here. CAF-SDD-03c2 fixed all of them except the `.gitignore` lines (kept on purpose); every rename
+  is 03c2b.
 - Do not publish a `caf-init` release with this change before caf-orchestrator handles a repo
   without `caf-documentation` (CAF-SDD-04).
 
@@ -651,8 +650,9 @@ The design ends with **five agents** — `caf-planner`, `caf-frontend`, `caf-bac
 `/caf-fix-review`, `/caf-complete-drafts`. Still scaffolded but transitional: `caf-architect`
 (folded into the planner once a `caf-design` skill exists), `caf-qa` (renamed `caf-validator`),
 `caf-implementer` (dropped), `/caf-run-pipeline` (becomes `/caf-run`) and `/caf-plan-ticket`
-(replaced by `/caf-plan`). `caf-validator` and `/caf-plan` are still hidden. Don't describe a
-transitional file as final, or a final one as written by a scaffold when it is hidden.
+(replaced by `/caf-plan`). `caf-validator` and `/caf-plan` were still hidden when 03f was written;
+CAF-SDD-03c2 put both in the default scaffold. Don't describe a transitional file as final, or a
+final one as written by a scaffold when it is hidden.
 
 Text that said something the code did not, now aligned. `test/sdd03f-stale-text.test.js` holds it,
 against `test/fixtures/pre-sdd03f/` (planner, `piv-workflow.md`, `/caf-run-pipeline` from before the
@@ -679,3 +679,48 @@ ticket — never regenerate it):
   `piv-workflow.md`, `caf-run-pipeline.md`). Not a precedent. `frozen-kinds` goldens did not change.
 - The comments that counted four evidence kinds now say five (the verify-report format,
   `caf-traceability`, `VALIDATOR_WORKFLOW`, `REVIEWER_SPEC_WORKFLOW`, `IMPLEMENTATION_SPEC_WORKFLOW`).
+
+## The validator and /caf-plan in the default scaffold (CAF-SDD-03c2)
+
+A new repo gets `caf-validator.md` and `caf-plan.md`, and no `caf-qa.md`. Still transitional (not
+final): `qa`, `plan-ticket`, `run-pipeline`, `architect` and `implementer`; their kinds, builders
+and any file already in a repo are untouched. `test/sdd03c2-validator-default.test.js` holds the
+ticket against `test/fixtures/pre-sdd03c2/` (default file sets, five commands, INDEX.md, planner,
+reviewer, `/caf-run-pipeline`, from before it — never regenerate it).
+- **Roster.** `qa` stays a `buildCandidates()` entry (frozen-kinds renders it, tests pick it) but
+  is in `SUPERSEDED_CANDIDATE_KINDS`, not `HIDDEN_CANDIDATE_KINDS`, which still holds exactly the
+  five dropped kinds (a test pins that). The picker filter is `isOfferedCandidate`, and the test
+  helpers that mimic the picker use it too. `readAgentRoster` lists `caf-validator` only when its
+  file exists and drops the QA line when `caf-validator.md` is there and `caf-qa.md` is not; a repo
+  with `caf-qa.md` only reads exactly as before.
+- **A repo that has `caf-qa.md`.** `caf-qa.md` is never touched (the picker cannot select `qa`, and
+  `writeIfAbsent` would not overwrite it anyway). When `caf-validator.md` is written next to it,
+  `agents()` prints one note: caf-orchestrator picks `caf-validator` when that file exists, so this
+  switches the gate to `validate-report.md`.
+- **`/caf-run-pipeline`** takes `gate: 'qa' | 'validator'` (default `qa`, which renders what it
+  always did); `agents()` derives it from the picked candidates. The spec status section (`## Spec
+  Status Check ...`, `SPEC_STATUS_SECTION`) is the only text a `qa` render adds to the pre-ticket
+  golden; the test strips it by structure. It uses the vocabulary of the planner and the
+  implementation agents (`Status:` values, `BLOCKING`, `Answer:`, `## Proposed Spec Changes`) and
+  never writes `requirements.md` or `tasks.md`.
+- **`/caf-plan`** reports `NEEDS_CLARIFICATION`/`NEEDS_HUMAN` to the human and runs no other agent;
+  an `APPROVED` spec is reported as ready to be implemented. Planner rules stay in the planner.
+- **`## Input`.** The reviewer's names `validate-report.md` and, for a repo still on `caf-qa`,
+  `qa-report.md`, and keeps the phrase `from the implementation agent` that `parseInputAppNames`
+  reads. The planner's lost the "Fallback — Discovery draft without a ticket" flow. Both reach a
+  repo scaffolded earlier through `curate sync` as ordinary `DRIFT` (an edited `## Input` is a
+  `CONFLICT` and is left alone). Commands and `piv-workflow.md` do not: delete the file and
+  scaffold again. **Known gap:** the planner's `## Constraints` (not touched here) still says "see
+  Fallback — Discovery draft in the Input section"; fix it with the Constraints ticket (03c2b).
+- **Derived output moved without a template change:** `/caf-complete-drafts` lists `caf-validator.md`
+  in place of `caf-qa.md` (so the "byte-identical" check of it is on the file minus that one line),
+  and `piv-workflow.md`/`agent-handoff.md` list the roster as it is.
+- **Older tests.** Tests of earlier tickets that compare a whole planner or reviewer with its
+  pre-ticket golden put the live `## Input` into the golden first (`test/helpers/swap-input.js`);
+  the Input change itself is held here, against the untouched golden. `makeOldRepo` leaves the
+  validator out: a repo scaffolded earlier never had it.
+- `mono-pnpm.json` was regenerated for this, seven entries: `caf-qa.md` gone, `caf-validator.md`
+  added, `caf-planner.md`, `caf-reviewer.md`, `caf-run-pipeline.md`, `piv-workflow.md` and
+  `agent-handoff.md` changed. Not a precedent. The `frozen-kinds` goldens did not change.
+- Left for 03c2b: the rename of `/caf-run-pipeline` and `caf-verify`, removing `/caf-plan-ticket`,
+  and the planner's `## Constraints`.

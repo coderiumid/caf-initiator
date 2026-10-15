@@ -316,8 +316,7 @@ ${DRAFT_BANNER}
 
 **THIS COMMAND CREATES A NEW PR REVIEW ON GITHUB.** Its side effect is real and public — a PR
 Review (APPROVE/REQUEST_CHANGES/COMMENT) appears on someone else's PR timeline. This isn't a
-read-only preview like \`/caf-review-ticket\` — only run it when you actually intend to review
-this PR right now.
+read-only command — only run it when you actually intend to review this PR right now.
 
 Purpose: the interactive path for the Reviewer Agent's INITIAL mode — reviewing from scratch a
 PR that has never been reviewed by anyone (human or bot), distinct from \`/caf-fix-review\`

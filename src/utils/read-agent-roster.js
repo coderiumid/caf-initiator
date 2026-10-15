@@ -18,6 +18,9 @@ export const KNOWN_ROLES = [
   // roster must not gain an "Implementer — NOT present" line it never had.
   { slug: 'caf-implementer', label: 'Implementer', singleRepoOnly: true },
   { slug: 'caf-qa', label: 'QA' },
+  // CAF-SDD-03c2: replaces caf-qa in a new scaffold. `validatorOnly`: listed only when its file is
+  // present, so the roster of a repo that still has caf-qa.md is exactly the one it always had.
+  { slug: 'caf-validator', label: 'Validator', validatorOnly: true },
   { slug: 'caf-reviewer', label: 'Reviewer' },
   { slug: 'caf-documentation', label: 'Documentation' },
   { slug: 'caf-pm', label: 'PM' },
@@ -50,7 +53,12 @@ export function readAgentRoster(agentDirPath) {
   // present, an absent caf-frontend/caf-backend is by design, not a gap worth a TODO line; when it
   // is absent, the roster is exactly the pre-SINGLE_REPO one.
   const hasImplementer = slugs.has('caf-implementer');
+  // The QA line goes the other way: a repo with caf-validator.md and no caf-qa.md has replaced the
+  // gate, and "QA — NOT present" would read as a gap that is not one.
+  const hasValidator = slugs.has('caf-validator');
   const known = KNOWN_ROLES.filter((role) => {
+    if (role.validatorOnly) return hasValidator;
+    if (role.slug === 'caf-qa' && hasValidator) return slugs.has('caf-qa');
     if (role.singleRepoOnly) return hasImplementer;
     if (hasImplementer && SPLIT_ROLE_SLUGS.includes(role.slug)) return slugs.has(role.slug);
     return true;

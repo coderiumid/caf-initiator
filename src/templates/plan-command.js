@@ -2,12 +2,10 @@
 // for a ticket ID or a free-text request (CAF-SDD-03b3). It will replace `/caf-plan-ticket`
 // (ticket-preview-commands.js) in CAF-SDD-03c; until then the two live side by side.
 //
-// HIDDEN: no command of the CLI imports this file, so no scaffold run writes `caf-plan.md` and
-// the frozen MONOREPO snapshot has no entry for it. The reason is the `caf-spec` skill: it is
-// born a DRAFT in every repo, and a command users can run must not depend on it before its
-// banner is removed (CAF-SDD-02c). Until the ticket that connects it, `buildPlanMd()` is only
-// reached from test/sdd03b3-commands.test.js — don't add it to PREVIEW_COMMANDS or to a prompt
-// in commands/agents.js before that.
+// It was hidden until CAF-SDD-03c2 (no command imported this file, because `caf-spec` was still a
+// DRAFT in every repo and a command users can run must not depend on it, CAF-SDD-02c). Since
+// 03c2 `scaffold agents` writes it whenever the Planner is picked (PREVIEW_COMMANDS in
+// commands/agents.js), and the frozen MONOREPO snapshot still has no entry for it.
 //
 // Unlike `/caf-plan-ticket` (a main-thread wrapper that impersonates the Planner), this command
 // spawns `caf-planner.md` through the Task tool, the pattern of review-command.js. And it carries
@@ -105,14 +103,18 @@ Wait for the spawn to finish before proceeding to step 5.`;
 function stopSection() {
   return `## 5. Stop
 
-Read what the planner left in \`.caf/tasks/<ID-or-slug>/\`:
+Read what the planner left in \`.caf/tasks/<ID-or-slug>/\`, starting with the \`Status:\` line of
+\`requirements.md\`:
 
-- **\`tasks.md\` is written** → show the user a brief summary: the folder, the status of
-  \`requirements.md\`, how many acceptance criteria and tasks, and the assumptions or open
-  questions the planner recorded. Then **STOP**.
-- **The planner stopped on questions** (\`Status: NEEDS_CLARIFICATION\`, no task breakdown) → show
-  the questions, tell the user to answer them and run this command again with the same
-  argument. Then **STOP**.
+- **\`Status: NEEDS_CLARIFICATION\` or \`Status: NEEDS_HUMAN\`** → the planner stopped on something
+  only a human can settle. Show the user the questions, or the reason the planner recorded, and
+  tell them to answer or decide and then run this command again with the same argument. Then
+  **STOP**. Do not run any other agent: a \`tasks.md\` written next to such a status is not ready
+  to be worked from.
+- **\`tasks.md\` is written** (any other status) → show the user a brief summary: the folder, the
+  status of \`requirements.md\`, how many acceptance criteria and tasks, and the assumptions or
+  open questions the planner recorded. When the status is \`Status: APPROVED\`, say that the spec is
+  approved and ready to be implemented. Then **STOP**.
 - **Neither** → report exactly what is in the folder and what is missing. Don't write the
   missing file yourself.
 
@@ -121,7 +123,7 @@ Do not start implementation, do not spawn another agent, and do not approve the 
 }
 
 /**
- * caf-plan.md — CAF-SDD-03b3. Hidden: see the note at the top of this file.
+ * caf-plan.md — CAF-SDD-03b3, written by a default scaffold since CAF-SDD-03c2.
  *
  * @param {object} opts
  * @param {string} opts.agentDir  relative path to the agent folder (e.g. `.claude/agents`)
