@@ -1,4 +1,4 @@
-// `/caf-run-pipeline` — runs the entire Cluster 2 pipeline in a single interactive Claude Code
+// `/caf-run` — runs the entire Cluster 2 pipeline in a single interactive Claude Code
 // session, as an alternative for projects that haven't set up (or don't want) caf-orchestrator
 // (webhook + VPS).
 //
@@ -146,18 +146,7 @@ const PUSH_PR_PROHIBITION =
   'Do not `git push`, do not open a PR, do not change the ticket status in the tracker — that is ' +
   "the main thread's job in section 7, not yours.";
 
-/**
- * List of implementation agents actually generated in this project. If empty, this command
- * has no use — the caller (commands/agents.js) is responsible for not invoking this builder in
- * that condition.
- */
-function implementationSection(implementationRoles, agentDir) {
-  const list = implementationRoles.map((r) => `- ${roleLine(r, agentDir)}`).join('\n');
-  return `Implementation agents available in this project:
-
-${list}
-
-**How to choose which agent to spawn** (this decision must NOT be guessed):
+const SCOPE_ROUTING = `**How to choose which agent to spawn** (this decision must NOT be guessed):
 
 1. Read the app/module column of each task in \`tasks.md\`.
 2. Match it against each agent's scope above — read \`## Scope\` in the agent's file, don't
@@ -168,7 +157,50 @@ ${list}
    Misrouting means an agent writes code outside its scope — a silent failure only caught at
    review time.
 5. An agent with no tasks at all: DO NOT spawn it. Not a failure — there's simply no work for
-   it on this ticket.
+   it on this ticket.`;
+
+// CAF-SDD-03c2c: SINGLE_REPO's default roster is caf-frontend + caf-backend, both with the whole
+// repository (`.`) as their scope, so matching a task against each agent's scope matches both every
+// time and the command would ask on every task. That roster routes by the `tasks.md` section instead,
+// as caf-orchestrator's task-router does. A roster scoped by `--scope` or by app keeps SCOPE_ROUTING.
+// Decided from the data the builder already receives (roles and appPaths), no flag.
+const SECTION_ROUTING = `**How to choose which agent to spawn** (this decision must NOT be guessed):
+
+Both agents cover the whole repository, so their scope cannot tell them apart. Route by the
+section of \`tasks.md\` the task is under:
+
+1. Read \`tasks.md\`.
+2. A task under \`## Frontend Tasks\` → \`caf-frontend\` handles it. A task under
+   \`## Backend Tasks\` → \`caf-backend\` handles it.
+3. If a task is outside both of those sections, **ask the user** which agent should handle it and
+   STOP until answered.
+   Misrouting means an agent writes code outside its scope — a silent failure only caught at
+   review time.
+4. An agent with no tasks at all: DO NOT spawn it. Not a failure — there's simply no work for
+   it on this ticket.`;
+
+function isWholeRepoFrontendBackend(implementationRoles, appPaths) {
+  const roles = [...implementationRoles].sort();
+  if (roles.length !== 2 || roles[0] !== 'caf-backend' || roles[1] !== 'caf-frontend') return false;
+  return roles.every((r) => {
+    const paths = appPaths[r] || [];
+    return paths.length === 1 && paths[0] === '.';
+  });
+}
+
+/**
+ * List of implementation agents actually generated in this project. If empty, this command
+ * has no use — the caller (commands/agents.js) is responsible for not invoking this builder in
+ * that condition.
+ */
+function implementationSection(implementationRoles, agentDir, appPaths = {}) {
+  const list = implementationRoles.map((r) => `- ${roleLine(r, agentDir)}`).join('\n');
+  const routing = isWholeRepoFrontendBackend(implementationRoles, appPaths) ? SECTION_ROUTING : SCOPE_ROUTING;
+  return `Implementation agents available in this project:
+
+${list}
+
+${routing}
 
 If multiple agents have tasks, run them **sequentially, not in parallel** — both write to the
 same working tree. Order follows the task dependencies in \`tasks.md\`.`;
@@ -243,7 +275,7 @@ function gateSection({
 **Gate — \`${counterName}\`, \`${maxConst} = 1\`.**
 
 Set \`${counterName} = 0\` at the start of this run. This counter is **fresh every time
-\`/caf-run-pipeline\` runs** and **independent** of other gate counters — budget exhausted on
+\`/caf-run\` runs** and **independent** of other gate counters — budget exhausted on
 one gate does NOT reduce another gate's budget. Don't treat it as a shared budget.
 
 Flow:
@@ -394,7 +426,7 @@ STOP because of this, and don't treat the remote check as passed either.
 
 - **Not present in either** → proceed to 0.3.
 - **Present in either/both** → **STOP**. This is a strong signal this ticket is already/currently
-  being handled by the orchestrator or a previous \`/caf-run-pipeline\` run. Show the user:
+  being handled by the orchestrator or a previous \`/caf-run\` run. Show the user:
   - \`git log --oneline\` for that branch (whatever commits already exist there),
   - the contents of \`.caf/tasks/{TICKET-ID}/verify-report.md\` if it exists,
   - whether it was local, remote, or both.
@@ -447,7 +479,7 @@ ${architectSection(hasArchitect, agentDir)}
 
 ${SPEC_STATUS_SECTION}## 3. Implementation
 
-${implementationSection(implementationRoles, agentDir)}
+${implementationSection(implementationRoles, agentDir, appPaths)}
 
 Input for each agent: \`requirements.md\`, \`tasks.md\`, and \`design.md\` if stage 2 ran.
 
@@ -556,7 +588,7 @@ failure — proceed treating it as "remote doesn't exist yet" (next step).
   succeeds (exit 0) → the remote SHA is an ancestor of local HEAD, safe, proceed to 7.4.
 - **Remote exists**, and \`git merge-base --is-ancestor\` fails (exit != 0) → the remote SHA is
   NOT an ancestor of local HEAD. **STOP before pushing.** This signals the remote branch has been
-  changed by another party (the orchestrator, or another \`/caf-run-pipeline\` run) since guard
+  changed by another party (the orchestrator, or another \`/caf-run\` run) since guard
   0.2 ran at the start of this command. Show the user: the remote SHA, \`git log --oneline\` of
   that remote branch, and the local commit just created in 7.2 (still in the working tree, not
   yet pushed). **DO NOT force-push, DO NOT auto merge/rebase** — that's a human decision.
@@ -703,7 +735,7 @@ Close with, depending on the final status:
 **NEEDS_HUMAN**:
 
 > Code is on branch \`ai-agent/{TICKET-ID}\`, not committed/pushed. Continue or fix it manually,
-> then re-run \`/caf-run-pipeline {TICKET-ID}\` when ready — guard 0.2/0.3 above will detect the
+> then re-run \`/caf-run {TICKET-ID}\` when ready — guard 0.2/0.3 above will detect the
 > existing branch/artifact and offer to continue from there.
 `;
 }

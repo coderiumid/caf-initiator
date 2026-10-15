@@ -20,7 +20,7 @@ import { buildPlanMd } from '../templates/plan-command.js';
 // Companion command preview manual per ticket-driven role. Deliberately only these four roles:
 // Frontend/Backend write production code (collides with the orchestrator running in parallel),
 // Documentation is non-blocking in the CAF design — see note in ticket-preview-commands.js.
-// A manual path for Frontend/Backend exists, but via /caf-run-pipeline (opt-in + collision guard),
+// A manual path for Frontend/Backend exists, but via /caf-run (opt-in + collision guard),
 // not as a per-role preview command here.
 // Candidate kinds hidden from the interactive multiselect (CAF-DEVOPS-KIND-01): 'devops' has no
 // finalized role/artifact contract yet (see TOOLS_RATIONALE.devops in templates/agent-md.js), so
@@ -63,6 +63,8 @@ export const HIDDEN_COMMAND_FILES = [
   'caf-feature-catalog-sync.md',
   'caf-qa-check.md',
   'caf-review-ticket.md',
+  // CAF-SDD-03c2c: replaced by /caf-plan. Builder kept; a file already in a repo is never touched.
+  'caf-plan-ticket.md',
 ];
 
 export function isHiddenCommand(file) {
@@ -620,7 +622,7 @@ export async function agents({
     console.log(kleur.green(`generated command draft(s) in ${commandDirPath}`));
   }
 
-  // /caf-run-pipeline deliberately does NOT follow the PREVIEW_COMMANDS pattern (auto-generate
+  // /caf-run deliberately does NOT follow the PREVIEW_COMMANDS pattern (auto-generate
   // as soon as its role is selected). This command checks out a branch and writes production
   // code, and its biggest risk — colliding with a caf-orchestrator handling the same ticket —
   // cannot be detected from repo contents alone. So the generate decision is left to the human
@@ -629,7 +631,7 @@ export async function agents({
   const plannerPicked = selected.some((c) => c.kind === 'planner');
   const implementationCandidates = selected.filter((c) => IMPLEMENTATION_KINDS.includes(c.kind));
   const implementationRoles = implementationCandidates.map((c) => agentSlug(c.kind, c.app));
-  // role -> app path(s), for explicit commit scoping in /caf-run-pipeline (see plan.md
+  // role -> app path(s), for explicit commit scoping in /caf-run (see plan.md
   // CAF-RUNPIPELINE-AUTOPR-01 section 3). Always an array now (CAF-MULTIAPP-01): frontend/backend
   // candidates carry `apps` (possibly >1), implementation/extraApps candidates carry a single
   // `app` — c.app.path is already '.' for a single-app non-monorepo repo (see 02-detect-stack.js).
@@ -643,11 +645,11 @@ export async function agents({
 
   if (plannerPicked && implementationRoles.length > 0) {
     console.log('');
-    section('Planner + implementation agent(s) selected — offer the /caf-run-pipeline command (optional)');
+    section('Planner + implementation agent(s) selected — offer the /caf-run command (optional)');
 
     console.log(
       kleur.yellow(
-        '⚠ /caf-run-pipeline runs the entire Cluster 2 pipeline in a single Claude Code session:\n' +
+        '⚠ /caf-run runs the entire Cluster 2 pipeline in a single Claude Code session:\n' +
           '  checks out branch `ai-agent/{TICKET-ID}` and WRITES APPLICATION CODE via the\n' +
           '  implementation agent. This is the only command from caf-initiator that does both.\n' +
           '\n' +
@@ -666,7 +668,7 @@ export async function agents({
     const { generateRunPipeline } = await prompts({
       type: 'confirm',
       name: 'generateRunPipeline',
-      message: 'Generate /caf-run-pipeline?',
+      message: 'Generate /caf-run?',
       initial: false,
     });
 
@@ -681,19 +683,33 @@ export async function agents({
         // caf-validator when that agent exists). A selection without the validator keeps `qa`.
         gate: selected.some((c) => c.kind === 'validator') ? 'validator' : 'qa',
       });
-      const filePath = path.join(commandDirPath, 'caf-run-pipeline.md');
+      const filePath = path.join(commandDirPath, 'caf-run.md');
       const result = writeIfAbsentGuarded(filePath, content, { dryRun, overwrite }, collisions);
       if (result === 'written') written.push(filePath);
       else if (result === 'skipped') skipped.push(filePath);
 
+      // CAF-SDD-03c2c (Q-1): /caf-run was /caf-run-pipeline. A repo scaffolded earlier keeps that
+      // file untouched and gets caf-run.md next to it; say once that the old one can go.
+      const oldRunPath = path.join(commandDirPath, 'caf-run-pipeline.md');
+      if (fs.existsSync(oldRunPath)) {
+        console.log('');
+        console.log(
+          kleur.yellow(
+            `⚠ ${oldRunPath} already exists, and caf-run.md was generated next to it.\n` +
+              '  /caf-run is the same command under its new name. The old file was not changed or removed:\n' +
+              '  delete the old file by hand when you no longer need it.'
+          )
+        );
+      }
+
       console.log('');
       console.log(kleur.green(`generated command draft(s) in ${commandDirPath}`));
     } else {
-      console.log(kleur.dim('/caf-run-pipeline not generated'));
+      console.log(kleur.dim('/caf-run not generated'));
     }
   }
 
-  // CAF-PRREVIEW-01 Checkpoint A: same pattern as /caf-run-pipeline (explicit opt-in, not
+  // CAF-PRREVIEW-01 Checkpoint A: same pattern as /caf-run (explicit opt-in, not
   // auto-generated as soon as Reviewer is selected) — its side effects are real on GitHub
   // (public reply to someone else's PR), not just writing a local file.
   const reviewerPicked = selected.some((c) => c.kind === 'reviewer');

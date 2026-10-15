@@ -7,7 +7,7 @@
 //
 // This command does NOT follow the PREVIEW_COMMANDS pattern in agents.js (auto-generate once
 // Reviewer is selected) — its side effect on GitHub (public reply to someone's PR) is too
-// significant to auto-generate silently. It follows the `/caf-run-pipeline` pattern instead:
+// significant to auto-generate silently. It follows the `/caf-run` pattern instead:
 // generate only via a separate, explicit confirmation. See commands/agents.js.
 
 const DRAFT_BANNER =
@@ -92,7 +92,7 @@ git branch --show-current
   \`\`\`
   gh pr list --head ai-agent/{TICKET-ID} --json number,url
   \`\`\`
-  (exactly the same pattern as the PR idempotency check in \`/caf-run-pipeline\` — reuse its
+  (exactly the same pattern as the PR idempotency check in \`/caf-run\` — reuse its
   \`gh\` command, don't rewrite the logic yourself.)
   - Exactly one PR found → use its number, proceed.
   - No PR found for that branch → ask the user for the PR number directly, **STOP** until
@@ -110,7 +110,7 @@ gh pr view {number} --json headRefName
 Parse the pattern \`ai-agent/{TICKET-ID}\` from the resulting \`headRefName\`.
 
 - Matches → that's the TICKET-ID.
-- The PR is NOT from that branch pattern (a manual PR, not from \`/caf-run-pipeline\` or
+- The PR is NOT from that branch pattern (a manual PR, not from \`/caf-run\` or
   caf-orchestrator) → ask the user for the TICKET-ID manually, **STOP** until answered. Don't
   make up a TICKET-ID from a branch name with an unclear pattern.
 

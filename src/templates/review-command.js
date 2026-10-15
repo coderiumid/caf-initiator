@@ -19,7 +19,7 @@ const DRAFT_BANNER =
 // patterns actually called: `gh api user` (fetch username), `gh api repos/*/collaborators/*/
 // permission` (permission check), `gh api repos/*/pulls/*/reviews` (GET existing + POST a new
 // review — same endpoint, different method, so one pattern is enough). There is NO `Bash(git ...)`
-// at all — this command never checks out/commits code, unlike `/caf-run-pipeline`.
+// at all — this command never checks out/commits code, unlike `/caf-run`.
 const ALLOWED_TOOLS = [
   'Read',
   'Grep',
@@ -113,7 +113,7 @@ as the one used by \`caf-orchestrator\` (\`AI_AGENT_BRANCH_PATTERN\` in \`run-pr
 keep them in sync if either side changes.
 
 - Matches → that's the TICKET-ID.
-- The PR isn't from that branch pattern (a manual PR, not the result of \`/caf-run-pipeline\` or
+- The PR isn't from that branch pattern (a manual PR, not the result of \`/caf-run\` or
   caf-orchestrator) → ask the user for the TICKET-ID manually, **STOP** until answered. Don't make
   up a TICKET-ID from a branch name with an unclear pattern.
 

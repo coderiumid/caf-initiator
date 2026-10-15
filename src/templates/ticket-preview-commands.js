@@ -16,8 +16,8 @@
 // here because in the CAF design it's parallel/non-blocking by nature. Don't add a builder for
 // these three roles to this file.
 //
-// The manual path for code-writing roles lives in templates/caf-run-pipeline-command.js
-// (`/caf-run-pipeline`) — and precisely because of the collision risk above, that command is NOT
+// The manual path for code-writing roles lives in templates/run-pipeline-command.js
+// (`/caf-run`) — and precisely because of the collision risk above, that command is NOT
 // a per-role preview: it's opt-in via explicit confirmation and opens a run with local+remote
 // branch guards before touching anything. That difference is deliberate; don't "simplify" it by
 // moving Frontend/Backend into this file's preview pattern.
