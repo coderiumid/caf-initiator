@@ -704,6 +704,9 @@ export async function agents({
         appPaths,
         hasArchitect: selected.some((c) => c.kind === 'architect'),
         hasDocumentation: selected.some((c) => c.kind === 'documentation'),
+        // CAF-SDD-03c2: the gate follows the roster, as caf-orchestrator's does (it picks
+        // caf-validator when that agent exists). A selection without the validator keeps `qa`.
+        gate: selected.some((c) => c.kind === 'validator') ? 'validator' : 'qa',
       });
       const filePath = path.join(commandDirPath, 'caf-run-pipeline.md');
       const result = writeIfAbsentGuarded(filePath, content, { dryRun, overwrite }, collisions);

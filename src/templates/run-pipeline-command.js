@@ -53,6 +53,84 @@ const ALLOWED_TOOLS = [
   'Bash(ls:*)',
 ].join(', ');
 
+// The quality gate of stage 5 (CAF-SDD-03c2). `qa` is what the template always rendered and is the
+// default, so a call that does not name a gate renders what it did before. `validator` is the gate
+// of a roster that has caf-validator.md: caf-orchestrator picks it from that file, and this
+// command follows the same roster. Every name below is rendered into the text, so a roster with
+// one gate never reads the other's.
+const GATES = {
+  qa: {
+    stage: 'QA',
+    agent: 'caf-qa',
+    report: 'qa-report.md',
+    counter: 'qaRetryCount',
+    max: 'MAX_QA_RETRIES',
+    prLabel: 'QA',
+  },
+  validator: {
+    stage: 'Validator',
+    agent: 'caf-validator',
+    report: 'validate-report.md',
+    counter: 'validatorRetryCount',
+    max: 'MAX_VALIDATOR_RETRIES',
+    prLabel: 'Validate',
+  },
+};
+
+// What `qa` says about severities: its report has a CRITICAL / NON-CRITICAL split. Unchanged text.
+function qaSeverityNote(g) {
+  return `
+A \`NON-CRITICAL\` issue found by QA does NOT fail the gate — that's intentional, not an
+overlooked gap. If QA closes with \`## Status: PASS\` while the \`### NON-CRITICAL\` section in
+\`${g.report}\` is non-empty, treat it as "Result OK" and proceed to the next stage. Those
+findings stay recorded in \`${g.report}\` to be addressed separately — outside this retry loop.
+Only \`## Status: NEEDS_HUMAN\` or content in the \`### CRITICAL\` section triggers the retry
+gate.
+`;
+}
+
+// What the validator's report (buildValidateReportFormat in agent-md.js) means for the gate. The
+// words are that report's: `Status: PASS | FAIL | NEEDS_HUMAN`, the `Unverified:` line.
+function validatorSeverityNote(g) {
+  return `
+\`UNVERIFIED\` rows do NOT fail the gate — that's intentional, not an overlooked gap. If
+\`${g.report}\` closes with \`Status: PASS\`, treat it as "Result OK" and proceed to the next
+stage, and copy its \`Unverified:\` line into the Final Summary so a human sees which criteria
+were not confirmed. Only \`Status: FAIL\` triggers the retry gate.
+
+\`Status: NEEDS_HUMAN\` means the validation could not be done at all (nothing to fix in the code):
+**STOP here** and report NEEDS_HUMAN without using the retry budget.
+`;
+}
+
+// The spec gate (CAF-SDD-03c2). Rendered for both gates; it lists no gate, report or role name.
+// The words are the ones of the planner and the implementation agents (`Status:` values,
+// `BLOCKING`, `Answer:`, `## Proposed Spec Changes`), not new vocabulary.
+const SPEC_STATUS_SECTION = `## Spec Status Check (before any implementation agent)
+
+Before stage 3 spawns an implementation agent, read \`.caf/tasks/{TICKET-ID}/requirements.md\` and
+look at its \`Status:\` line and at its questions.
+
+- \`Status: NEEDS_CLARIFICATION\`, or any question tagged \`BLOCKING\` that has no \`Answer:\` →
+  **STOP the entire pipeline** and go straight to the Final Summary with \`Status: NEEDS_HUMAN\`.
+  Show the user those questions, word for word, so they can answer them in \`requirements.md\`.
+  Spawn no implementation agent: code written on an unanswered question is the guess the spec was
+  meant to prevent.
+- \`Status: DRAFT\` or \`Status: APPROVED\` → go on. Only an unanswered question stops the run,
+  not the draft state of the spec.
+
+This command NEVER writes or edits \`requirements.md\` or \`tasks.md\`, whatever the status: the
+planner writes them and a human decides them.
+
+**A proposed change to the spec is shown, never applied.** Whenever a stage proposes one — under
+\`## Proposed Spec Changes\` in \`verify-report.md\`, in a line of the gate report that starts with
+\`Proposed Spec Changes:\`, or in what the Reviewer copied into \`### For Developer\` of
+\`review-notes.md\` — copy it as written into the Final Summary for a human to decide. Do not accept
+it, do not reject it, and do not apply it: not to \`requirements.md\`, not to \`tasks.md\`, not to
+the code.
+
+`;
+
 function roleLine(role, agentDir) {
   return `\`${role}\` (\`${agentDir}/${role}.md\`)`;
 }
@@ -121,7 +199,7 @@ Output: \`.caf/tasks/{TICKET-ID}/design.md\`. If skipped, note in the final summ
 stage was skipped along with the reason — don't let it silently disappear from the report.`;
 }
 
-function documentationSection(hasDocumentation, agentDir) {
+function documentationSection(hasDocumentation, agentDir, g) {
   if (!hasDocumentation) {
     return `This project has no Documentation Agent (\`${agentDir}/caf-documentation.md\` was not
 generated) — skip this stage, note "not available" in the final summary. This is not a
@@ -136,7 +214,7 @@ The spawn prompt MUST include, verbatim:
 
 **This stage is NON-BLOCKING.** By CAF design, Documentation is not a gate: if this agent
 fails, declines, or concludes there's no documentation to change — **do not stop the
-pipeline**. Record the outcome as one line in the final summary and continue to the QA stage.
+pipeline**. Record the outcome as one line in the final summary and continue to the ${g.stage} stage.
 
 Do not retry this stage. There is no retry budget for a non-blocking stage.`;
 }
@@ -235,6 +313,7 @@ function commitScopeList(implementationRoles, appPaths, hasDocumentation) {
  *   CAF-RUNPIPELINE-AUTOPR-01 section 3 and CAF-MULTIAPP-01.
  * @param {boolean} opts.hasArchitect
  * @param {boolean} opts.hasDocumentation
+ * @param {'qa'|'validator'} [opts.gate]  which quality gate the roster has (default `qa`)
  */
 export function buildRunPipelineMd({
   agentDir = '.claude/agents',
@@ -242,10 +321,13 @@ export function buildRunPipelineMd({
   appPaths = {},
   hasArchitect = false,
   hasDocumentation = false,
+  gate = 'qa',
 } = {}) {
+  const g = GATES[gate];
+  if (!g) throw new Error(`unknown gate "${gate}" (choices: ${Object.keys(GATES).join(', ')})`);
   return `---
 allowed-tools: ${ALLOWED_TOOLS}
-description: Run the entire Cluster 2 pipeline (Planner → Architect → implementation → ${hasDocumentation ? 'Documentation → ' : ''}QA → Reviewer) for one ticket in a single session, without caf-orchestrator — auto-commit/push/PR on SUCCESS, no commit on NEEDS_HUMAN
+description: Run the entire Cluster 2 pipeline (Planner → Architect → implementation → ${hasDocumentation ? 'Documentation → ' : ''}${g.stage} → Reviewer) for one ticket in a single session, without caf-orchestrator — auto-commit/push/PR on SUCCESS, no commit on NEEDS_HUMAN
 argument-hint: [TICKET-ID, e.g. "GAN-44"]
 ---
 
@@ -261,7 +343,7 @@ Purpose: a manual alternative for projects that haven't set up (or don't want) \
 auto \`gh pr create\`** after Reviewer APPROVE — see section 7. No ticket status is changed in the
 tracker (that stays manual); only git + PR are automated.
 
-**If it stops at NEEDS_HUMAN** (implementation, QA gate, or Reviewer gate): there is NO commit,
+**If it stops at NEEDS_HUMAN** (implementation, ${g.stage} gate, or Reviewer gate): there is NO commit,
 push, or PR at all — the working tree is left as-is on branch \`ai-agent/{TICKET-ID}\` for a human.
 See "Controlled Stop" below.
 
@@ -363,7 +445,7 @@ Planner itself says it isn't confident about.
 
 ${architectSection(hasArchitect, agentDir)}
 
-## 3. Implementation
+${SPEC_STATUS_SECTION}## 3. Implementation
 
 ${implementationSection(implementationRoles, agentDir)}
 
@@ -380,31 +462,24 @@ an implementation agent just because its verify failed — that would effectivel
 budget. The only respawn path is the gate retries in stages 5 and 6.
 
 If an agent finishes with \`verify-report.md\` \`Status: NEEDS_HUMAN\`:
-**STOP the entire pipeline here.** Don't proceed to Documentation/QA/Reviewer with code whose
+**STOP the entire pipeline here.** Don't proceed to Documentation/${g.stage}/Reviewer with code whose
 verify hasn't passed — every subsequent stage would produce a report about code already known to
 be broken, and that's wasted cost.
 
 ## 4. Documentation (non-blocking)
 
-${documentationSection(hasDocumentation, agentDir)}
+${documentationSection(hasDocumentation, agentDir, g)}
 
-## 5. QA (gate)
+## 5. ${g.stage} (gate)
 
 ${gateSection({
-  counterName: 'qaRetryCount',
-  maxConst: 'MAX_QA_RETRIES',
-  agentLabel: `QA (\`${agentDir}/caf-qa.md\`)`,
-  failStatus: 'NEEDS_HUMAN / has a CRITICAL issue',
-  artifact: 'qa-report.md',
-  fixInput: '`qa-report.md`',
-  severityNote: `
-A \`NON-CRITICAL\` issue found by QA does NOT fail the gate — that's intentional, not an
-overlooked gap. If QA closes with \`## Status: PASS\` while the \`### NON-CRITICAL\` section in
-\`qa-report.md\` is non-empty, treat it as "Result OK" and proceed to the next stage. Those
-findings stay recorded in \`qa-report.md\` to be addressed separately — outside this retry loop.
-Only \`## Status: NEEDS_HUMAN\` or content in the \`### CRITICAL\` section triggers the retry
-gate.
-`,
+  counterName: g.counter,
+  maxConst: g.max,
+  agentLabel: `${g.stage} (\`${agentDir}/${g.agent}.md\`)`,
+  failStatus: gate === 'qa' ? 'NEEDS_HUMAN / has a CRITICAL issue' : 'FAIL',
+  artifact: g.report,
+  fixInput: `\`${g.report}\``,
+  severityNote: gate === 'qa' ? qaSeverityNote(g) : validatorSeverityNote(g),
 })}
 
 ## 6. Reviewer (gate)
@@ -418,13 +493,13 @@ ${gateSection({
   fixInput: '`review-notes.md` (BLOCKING findings only)',
 })}
 
-To be explicit: \`reviewerRetryCount\` is **not affected** by what happens in the QA stage. A
-ticket whose QA passed after a retry still enters this stage with a full budget of 1.
+To be explicit: \`reviewerRetryCount\` is **not affected** by what happens in the ${g.stage} stage. A
+ticket whose ${g.stage} passed after a retry still enters this stage with a full budget of 1.
 
 ## 7. Commit, Push, PR (SUCCESS)
 
 **This stage runs ONLY if Reviewer APPROVEs.** If the pipeline stopped at any stage before this
-(implementation NEEDS_HUMAN, QA/Reviewer gate exhausted), **skip this entire section** and go
+(implementation NEEDS_HUMAN, ${g.stage}/Reviewer gate exhausted), **skip this entire section** and go
 straight to "Controlled Stop" below — don't commit anything.
 
 Run these seven steps **in order**. Any step with a STOP condition must halt there, not proceed
@@ -537,19 +612,19 @@ Ticket: {TICKET-ID}
 ## Reports
 - Requirements: \`.caf/tasks/{TICKET-ID}/requirements.md\`
 - Verify: \`.caf/tasks/{TICKET-ID}/verify-report.md\`
-- QA: \`.caf/tasks/{TICKET-ID}/qa-report.md\`
+- ${g.prLabel}: \`.caf/tasks/{TICKET-ID}/${g.report}\`
 - Review: \`.caf/tasks/{TICKET-ID}/review-notes.md\`
 
 {docsNote — Documentation status from stage 4: SUCCESS / FAILED (non-blocking) / NOT AVAILABLE,
 the equivalent wording already used in the Final Summary}
 
-{raw contents of qa-report.md}
+{raw contents of ${g.report}}
 
 {raw contents of review-notes.md}
 \`\`\`
 
 No skip-gate warning block (\`qualityGateWarning\` in the orchestrator) — this command has no
-skip-QA/Reviewer feature, so it's not applicable.
+skip-${g.stage}/Reviewer feature, so it's not applicable.
 
 Base: \`{BASE-BRANCH}\` from 7.5. Save the URL returned by \`gh pr create\` for the Final Summary.
 
@@ -605,18 +680,18 @@ Show a status table for every stage:
 | Architect      | SUCCESS / SKIP (reason)         | design.md |
 | Implementation | SUCCESS / NEEDS_HUMAN           | verify-report.md |
 | Documentation  | SUCCESS / FAILED (non-blocking) / NOT AVAILABLE | - |
-| QA             | PASS (retry: n/1) / NEEDS_HUMAN / NOT RUN (a prior stage stopped) | qa-report.md |
+| ${g.stage.padEnd(14)} | PASS (retry: n/1) / NEEDS_HUMAN / NOT RUN (a prior stage stopped) | ${g.report} |
 | Reviewer       | APPROVE (retry: n/1) / NEEDS_HUMAN / NOT RUN (a prior stage stopped) | review-notes.md |
 | Commit/Push/PR | SUCCESS (new/existing PR) / ABORTED (scope drift) / NOT RUN (a prior stage stopped) | commit + PR URL |
 \`\`\`
 
 A stage that was **never invoked** because the pipeline already stopped before reaching it (e.g.
-QA exhausted → Reviewer never spawned) is filled in as \`NOT RUN (a prior stage stopped)\`.
+${g.stage} exhausted → Reviewer never spawned) is filled in as \`NOT RUN (a prior stage stopped)\`.
 **Never** fill in \`NEEDS_HUMAN\` for a stage that was never executed — that implies the stage
 ran and found a problem, when it didn't. Its artifact doesn't exist either, so write \`-\` in the
 Artifact column.
 
-State the final \`qaRetryCount\` and \`reviewerRetryCount\` as-is — that tells the user how
+State the final \`${g.counter}\` and \`reviewerRetryCount\` as-is — that tells the user how
 smoothly this run went.
 
 Close with, depending on the final status:

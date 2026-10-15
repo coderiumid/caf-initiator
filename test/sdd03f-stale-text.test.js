@@ -47,7 +47,10 @@ const read = (dir, rel) => fs.readFileSync(path.join(dir, rel), 'utf8');
 const rendered = Object.fromEntries(await Promise.all(FIXTURE_NAMES.map(async (f) => [f, await renderAgents(f)])));
 
 const renderPiv = (name) => buildPivWorkflowMd({ agentDir: '.claude/agents', qaRetries: null, reviewerRetries: null, ...OLD_PIV[name].input });
-const renderPipeline = (name) => buildRunPipelineMd(OLD_PIPELINE[name].input);
+// CAF-SDD-03c2 added the spec status section to /caf-run-pipeline (held in
+// test/sdd03c2-validator-default.test.js); this ticket's relation to its golden is about the rest.
+const SPEC_STATUS_03C2 = /## Spec Status Check[\s\S]*?(?=## 3\. Implementation)/;
+const renderPipeline = (name) => buildRunPipelineMd(OLD_PIPELINE[name].input).replace(SPEC_STATUS_03C2, '');
 
 /** `## <header>` of a Markdown file, up to the next `## ` heading. */
 function mdSection(md, header) {
