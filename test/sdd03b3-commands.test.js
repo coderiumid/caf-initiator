@@ -70,7 +70,8 @@ const WRITTEN_FILES = ['caf-complete-drafts.md', 'caf-fix-review.md', 'caf-plan-
 // holds them against test/fixtures/pre-sdd03c2/; here the scaffolded file is the builder's render.
 const PIPELINE_ROLES = {
   'mono-pnpm': { implementationRoles: ['caf-frontend', 'caf-backend'], appPaths: { 'caf-frontend': ['apps/web'], 'caf-backend': ['apps/api'] } },
-  'single-nuxt': { implementationRoles: ['caf-implementer'], appPaths: { 'caf-implementer': ['.'] } },
+  // CAF-SDD-03c3: SINGLE_REPO has caf-frontend + caf-backend in place of caf-implementer.
+  'single-nuxt': { implementationRoles: ['caf-frontend', 'caf-backend'], appPaths: { 'caf-frontend': ['.'], 'caf-backend': ['.'] } },
 };
 const SINCE_03C1 = {
   'caf-plan-ticket.md': (old) => old,
@@ -86,6 +87,17 @@ const SINCE_03C1 = {
     const kept = lines.filter((l) => !gone.includes(l) && l !== qa);
     const lastAgent = kept.map((l, i) => (l.startsWith(`- \`${AGENT_DIR}/`) ? i : -1)).filter((i) => i >= 0).pop();
     kept.splice(lastAgent + 1, 0, validator);
+    // CAF-SDD-03c3: caf-implementer.md is replaced by caf-frontend.md and caf-backend.md (the list
+    // is sorted, so the three lines are put back in their sorted place).
+    const implementer = `- \`${AGENT_DIR}/caf-implementer.md\``;
+    if (kept.includes(implementer)) {
+      const prefix = `- \`${AGENT_DIR}/`;
+      const first = kept.findIndex((l) => l.startsWith(prefix));
+      const last = kept.map((l, i) => (l.startsWith(prefix) ? i : -1)).filter((i) => i >= 0).pop();
+      const block = kept.slice(first, last + 1).filter((l) => l !== implementer);
+      block.push(`- \`${AGENT_DIR}/caf-frontend.md\``, `- \`${AGENT_DIR}/caf-backend.md\``);
+      kept.splice(first, last - first + 1, ...block.sort());
+    }
     return kept.join('\n');
   },
   'caf-run-pipeline.md': (old, fixture) => {

@@ -178,7 +178,7 @@ async function scaffoldAgents(fixture, { role } = {}) {
     // frontend apps, backend apps, agent multiselect, /caf-run-pipeline, /caf-fix-review, /caf-review
     answers = [[web], [api], buildCandidates({ frontend: [web], backend: [api] }, []).filter(NO_TRACKER_PROMPT), false, false, false];
   } else {
-    answers = [buildSingleRepoCandidates(stack.apps[0], [], role || 'implementer').filter(NO_TRACKER_PROMPT), false, false, false];
+    answers = [buildSingleRepoCandidates(stack.apps[0], [], role).filter(NO_TRACKER_PROMPT), false, false, false];
   }
   prompts.inject(answers);
   const result = await silenced(() => agents({ dir, dryRun: false, role }));

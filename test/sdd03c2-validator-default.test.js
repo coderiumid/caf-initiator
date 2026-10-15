@@ -68,18 +68,23 @@ const sectionOf = (md, pattern) => mdSections(md).find((s) => s.header && patter
 // AC-1, AC-2 — the default scaffold
 // ---------------------------------------------------------------------------------------------
 
+// CAF-SDD-03c3: SINGLE_REPO has caf-frontend + caf-backend in place of caf-implementer (held in
+// test/sdd03c3-single-repo-roster.test.js); the 03c2 relation below is read through this.
+const IMPLEMENTER_KIND = (kinds) => kinds.flatMap((k) => (k === 'implementer' ? ['frontend', 'backend'] : [k]));
+const IMPLEMENTER_FILE = (files) =>
+  files.flatMap((f) => (f.endsWith('/caf-implementer.md') || f === 'caf-implementer.md' ? [f.replace('caf-implementer', 'caf-frontend'), f.replace('caf-implementer', 'caf-backend')] : [f]));
+
 for (const fixture of FIXTURE_NAMES) {
   test(`AC-1/AC-2: ${fixture} — the default scaffold has caf-validator in place of caf-qa and gains caf-plan, nothing else`, async () => {
     const old = golden(`file-set.${fixture}.json`);
     const now = await renderDefaultFileSet({ fixture });
 
-    assert.deepEqual(now.offered, old.offered.map((k) => (k === 'qa' ? 'validator' : k)));
-    assert.deepEqual(now.agents, old.agents.map((f) => (f === 'caf-qa.md' ? 'caf-validator.md' : f)).sort());
+    assert.deepEqual(now.offered, IMPLEMENTER_KIND(old.offered.map((k) => (k === 'qa' ? 'validator' : k))));
+    assert.deepEqual(now.agents, IMPLEMENTER_FILE(old.agents.map((f) => (f === 'caf-qa.md' ? 'caf-validator.md' : f))).sort());
     assert.deepEqual(now.commands, [...old.commands, 'caf-plan.md'].sort());
     assert.deepEqual(
       now.files,
-      old.files
-        .map((f) => (f === '.claude/agents/caf-qa.md' ? '.claude/agents/caf-validator.md' : f))
+      IMPLEMENTER_FILE(old.files.map((f) => (f === '.claude/agents/caf-qa.md' ? '.claude/agents/caf-validator.md' : f)))
         .concat('.claude/commands/caf-plan.md')
         .sort()
     );
@@ -91,7 +96,7 @@ test('AC-1: the roster named by the ticket, per stack', async () => {
   const mono = (await renderDefaultFileSet({ fixture: 'mono-pnpm' })).agents;
   assert.deepEqual(mono, ['caf-architect.md', 'caf-backend.md', 'caf-frontend.md', 'caf-planner.md', 'caf-reviewer.md', 'caf-validator.md']);
   const single = (await renderDefaultFileSet({ fixture: 'single-nuxt' })).agents;
-  assert.deepEqual(single, ['caf-architect.md', 'caf-implementer.md', 'caf-planner.md', 'caf-reviewer.md', 'caf-validator.md']);
+  assert.deepEqual(single, ['caf-architect.md', 'caf-backend.md', 'caf-frontend.md', 'caf-planner.md', 'caf-reviewer.md', 'caf-validator.md']);
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -156,9 +161,11 @@ test('AC-4: validator and /caf-plan are not hidden; the five hidden kinds still 
   // qa is replaced, not removed: the kind and its candidate stay, it is just no longer offered
   assert.equal(isOfferedCandidate({ kind: 'qa' }), false);
   assert.ok(AGENTS.buildCandidates({}, []).some((c) => c.kind === 'qa'));
-  for (const kind of ['planner', 'architect', 'frontend', 'backend', 'implementer', 'reviewer']) {
+  for (const kind of ['planner', 'architect', 'frontend', 'backend', 'reviewer']) {
     assert.equal(isOfferedCandidate({ kind }), true, kind);
   }
+  // CAF-SDD-03c3: implementer is replaced too (caf-frontend + caf-backend in SINGLE_REPO).
+  assert.equal(isOfferedCandidate({ kind: 'implementer' }), false);
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -182,6 +189,15 @@ for (const fixture of FIXTURE_NAMES) {
     lines.splice(at, 1);
     const last = lines.map((l, i) => (l.startsWith('- `.claude/agents/') ? i : -1)).filter((i) => i >= 0).pop();
     lines.splice(last + 1, 0, validator);
+    // CAF-SDD-03c3: caf-implementer.md is replaced by caf-frontend.md and caf-backend.md.
+    const implementer = '- `.claude/agents/caf-implementer.md`';
+    if (lines.includes(implementer)) {
+      const first = lines.findIndex((l) => l.startsWith('- `.claude/agents/'));
+      const end = lines.map((l, i) => (l.startsWith('- `.claude/agents/') ? i : -1)).filter((i) => i >= 0).pop();
+      const block = lines.slice(first, end + 1).filter((l) => l !== implementer);
+      block.push('- `.claude/agents/caf-frontend.md`', '- `.claude/agents/caf-backend.md`');
+      lines.splice(first, end - first + 1, ...block.sort());
+    }
     assert.equal(files['caf-complete-drafts.md'], lines.join('\n'));
     assert.ok(!files['caf-complete-drafts.md'].includes('caf-qa.md'));
   });

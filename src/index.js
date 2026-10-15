@@ -10,7 +10,7 @@ import { checkDrafts } from './commands/check-drafts.js';
 import { referenceDocs } from './commands/reference-docs.js';
 import { runScaffold, runScaffoldTarget, OFFERED_TARGETS } from './commands/scaffold.js';
 import { MODE_FLAG_CHOICES } from './utils/repo-context.js';
-import { SINGLE_REPO_ROLES } from './commands/agents.js';
+import { SINGLE_REPO_OFFERED_ROLES } from './commands/agents.js';
 
 // `--mode single|mono` (CAF-INIT-SINGLE-REPO): overrides the auto-detected repo mode. Declared on
 // every command that runs stack detection. commander rejects any other value with a clear error
@@ -66,17 +66,16 @@ program
   .addOption(modeOption())
   .option(
     '--scope <dirs...>',
-    'SINGLE_REPO only, agents target: limit the implementer agent\'s scope to these repo-relative directories ' +
+    'SINGLE_REPO only, agents target: limit the implementation agents\' scope to these repo-relative directories ' +
       '(space- or comma-separated, e.g. --scope domain,application). Default: one scope, the whole repo. ' +
       'Put the target before this flag (`scaffold agents --scope ...`) or use the comma form'
   )
   .addOption(
     new Option(
       '--role <role>',
-      'SINGLE_REPO only, agents target: which role the one implementation agent is generated as. ' +
-        '"implementer" = caf-implementer.md (not routed by caf-orchestrator yet); "frontend"/"backend" = ' +
-        'caf-frontend.md/caf-backend.md, the filenames caf-orchestrator routes. Omit for "implementer"'
-    ).choices(SINGLE_REPO_ROLES)
+      'SINGLE_REPO only, agents target: generate only one implementation agent, as caf-frontend.md or ' +
+        'caf-backend.md (the filenames caf-orchestrator routes). Omit to generate both'
+    ).choices(SINGLE_REPO_OFFERED_ROLES)
   )
   .action(async (target, cmdOpts) => {
     const dir = path.resolve(cmdOpts.dir);
