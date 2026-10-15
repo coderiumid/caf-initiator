@@ -546,6 +546,7 @@ export async function agents({
   const written = [];
   const skipped = [];
   const collisions = [];
+  let validatorWritten = false;
   for (const candidate of selected) {
     // CAF-MULTIAPP-01: frontend/backend candidates carry `apps` (array, possibly >1) instead of
     // a single `app` — everything else (implementation/extraApps, and the whole-repo roles that
@@ -604,12 +605,29 @@ export async function agents({
     const result = writeIfAbsentGuarded(filePath, content, { dryRun, overwrite }, collisions);
     if (result === 'written') written.push(filePath);
     else if (result === 'skipped') skipped.push(filePath);
+    if (candidate.kind === 'validator' && result === 'written') validatorWritten = true;
   }
 
   console.log('');
   console.log(kleur.green(`generated ${written.length} agent definition draft(s) in ${agentDirPath}`));
   for (const filePath of written) {
     console.log(`  - ${filePath}`);
+  }
+
+  // CAF-SDD-03c2 (Q-1): caf-orchestrator picks the gate from the files in the workspace. A repo that
+  // still has caf-qa.md and now gets caf-validator.md changes gate without anything else telling
+  // the user, so say it once. caf-qa.md itself is never touched or removed.
+  if (validatorWritten && fs.existsSync(path.join(agentDirPath, 'caf-qa.md'))) {
+    console.log('');
+    console.log(
+      kleur.yellow(
+        `⚠ ${path.join(agentDirPath, 'caf-qa.md')} already exists, and caf-validator.md was just written next to it.\n` +
+          '  caf-orchestrator will use caf-validator as the quality gate (validate-report.md) instead of\n' +
+          '  caf-qa (qa-report.md) as long as caf-validator.md is present. caf-qa.md was not changed or\n' +
+          '  removed: delete it by hand when you no longer need it, or delete caf-validator.md to keep the\n' +
+          '  old gate.'
+      )
+    );
   }
 
   for (const preview of PREVIEW_COMMANDS) {
