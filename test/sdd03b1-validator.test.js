@@ -175,7 +175,7 @@ async function scaffoldAgents(fixture, { role } = {}) {
   if (stack.isMonorepo) {
     const web = stack.apps.find((a) => a.path === 'apps/web');
     const api = stack.apps.find((a) => a.path === 'apps/api');
-    // frontend apps, backend apps, agent multiselect, /caf-run-pipeline, /caf-fix-review, /caf-review
+    // frontend apps, backend apps, agent multiselect, /caf-run, /caf-fix-review, /caf-review
     answers = [[web], [api], buildCandidates({ frontend: [web], backend: [api] }, []).filter(NO_TRACKER_PROMPT), false, false, false];
   } else {
     answers = [buildSingleRepoCandidates(stack.apps[0], [], role).filter(NO_TRACKER_PROMPT), false, false, false];

@@ -165,7 +165,7 @@ const SINGLE_APP = { name: 'website-cms-v2', path: '.', framework: 'Nuxt', packa
 const KINDS = ['planner', 'implementer', 'qa', 'reviewer'];
 const pointersIn = (md) => [...md.matchAll(/^- `([^`]+\/SKILL\.md)`$/gm)].map((m) => m[1]);
 
-// prompts.inject() answers, in order: agent multiselect, /caf-run-pipeline, /caf-fix-review, /caf-review.
+// prompts.inject() answers, in order: agent multiselect, /caf-run, /caf-fix-review, /caf-review.
 async function scaffoldAgents(dir) {
   const candidates = buildSingleRepoCandidates(SINGLE_APP, [], 'implementer');
   prompts.inject([KINDS.map((k) => candidates.find((c) => c.kind === k)), false, false, false]);

@@ -58,8 +58,8 @@ const pick = (candidates, kinds) => kinds.map((kind) => candidates.find((c) => c
 const SINGLE_APP = { name: 'website-cms-v2', path: '.', framework: 'Nuxt', packageManager: 'pnpm' };
 
 // Runs the whole non-interactive-able chain against a copy of the Nuxt fixture: Setup, Agents
-// (planner + implementer + qa + reviewer, plus /caf-run-pipeline), Task Completion, Workflow.
-// prompts.inject() answers, in order: agent multiselect, /caf-run-pipeline, /caf-fix-review,
+// (planner + implementer + qa + reviewer, plus /caf-run), Task Completion, Workflow.
+// prompts.inject() answers, in order: agent multiselect, /caf-run, /caf-fix-review,
 // /caf-review.
 async function scaffoldSingleRepo({ scope, role } = {}) {
   const dir = copyFixture(SINGLE_FIXTURE);
@@ -95,7 +95,7 @@ test('SINGLE_REPO scaffold on a Nuxt single package is complete and leaves no un
     '.claude/agents/caf-backend.md',
     '.claude/agents/caf-qa.md',
     '.claude/agents/caf-reviewer.md',
-    '.claude/commands/caf-run-pipeline.md',
+    '.claude/commands/caf-run.md',
     '.caf/workflows/task-completion.md',
   ]) {
     assert.ok(generated.includes(expected), `${expected} should be generated — got: ${generated.join(', ')}`);
@@ -140,7 +140,7 @@ test('SINGLE_REPO implementer (superseded kind): default scope is the whole repo
   assert.match(checklist, /TODO: no test script detected/);
   assert.doesNotMatch(checklist, /--filter/);
 
-  const pipeline = fs.readFileSync(path.join(dir, '.claude', 'commands', 'caf-run-pipeline.md'), 'utf8');
+  const pipeline = fs.readFileSync(path.join(dir, '.claude', 'commands', 'caf-run.md'), 'utf8');
   assert.match(pipeline, /`caf-implementer` \(`\.claude\/agents\/caf-implementer\.md`\)/);
   assert.match(pipeline, /^- `caf-implementer`: the whole repository/m);
   assert.doesNotMatch(pipeline, /`\.\/`/);
@@ -162,7 +162,7 @@ test('--scope writes the implementer scope and the commit whitelist per director
   assert.match(scope, /^- `composables\/\*\*`$/m);
   assert.doesNotMatch(scope, /Whole repository/);
 
-  const pipeline = fs.readFileSync(path.join(dir, '.claude', 'commands', 'caf-run-pipeline.md'), 'utf8');
+  const pipeline = fs.readFileSync(path.join(dir, '.claude', 'commands', 'caf-run.md'), 'utf8');
   assert.match(pipeline, /^- `caf-implementer`: `components\/`$/m);
   assert.match(pipeline, /^- `caf-implementer`: `composables\/`$/m);
   assert.doesNotMatch(pipeline, /the whole repository/);
@@ -211,7 +211,7 @@ test('--role frontend generates the single implementation agent as caf-frontend.
   assert.doesNotMatch(frontend, /--filter|`\.\/\*\*`/);
   assert.deepEqual(findUnresolvedPlaceholders(frontend), []);
 
-  const pipeline = fs.readFileSync(path.join(dir, '.claude', 'commands', 'caf-run-pipeline.md'), 'utf8');
+  const pipeline = fs.readFileSync(path.join(dir, '.claude', 'commands', 'caf-run.md'), 'utf8');
   assert.match(pipeline, /^- `caf-frontend`: `components\/`$/m);
 });
 

@@ -142,7 +142,7 @@ Notes:
 
 - `scaffold workflow` needs an agent roster; run `scaffold agents` first.
 - Agents on offer: Planner, Architect, Frontend and Backend (per assigned app; in `SINGLE_REPO` one Implementer instead), extra per-app implementation agents, Validator, Reviewer. CAF recommends starting with Planner plus one implementation agent. QA is no longer offered: the Validator replaces it (see [The default roster](#the-default-roster-validator-and-caf-plan)).
-- Commands written: `/caf-plan` and `/caf-plan-ticket` with the Planner, `/caf-run-pipeline` (Planner plus an implementation agent), `/caf-fix-review` and `/caf-review` (Reviewer) after a confirmation each, and `/caf-complete-drafts` from its own step.
+- Commands written: `/caf-plan` with the Planner, `/caf-run` (Planner plus an implementation agent; it was `/caf-run-pipeline` before CAF-SDD-03c2c), `/caf-fix-review` and `/caf-review` (Reviewer) after a confirmation each, and `/caf-complete-drafts` from its own step.
 - Five agents and eight commands are no longer scaffolded. See [No longer scaffolded](#no-longer-scaffolded).
 - The `validator` kind (`caf-validator.md`) is on offer and written by a default scaffold, in place of QA. See [The validator kind](#the-validator-kind).
 - The tracker is detected from `.linear/`, `atlassian.yml` or a README mention. Otherwise you are asked (Linear, Jira, GitHub Issues); it is never silently defaulted.
@@ -427,7 +427,7 @@ Two generated commands take the spec into account. Their names, their argument (
 
 Commands are not tracked by `caf-init curate`: `curate sync` does not update them, and an existing command file is never overwritten. To get the new text in a repository scaffolded earlier, delete `.claude/commands/caf-review.md` or `caf-fix-review.md` and run `caf-init scaffold agents` again (or use `--force`, which also overwrites your edits).
 
-A third command, **`/caf-plan`**, is written by a default scaffold whenever the Planner is picked. It takes a ticket ID or free text (which gets a kebab-case slug of at most five words), uses `.caf/tasks/<ID-or-slug>/` as the artifact folder, spawns `caf-planner` for the Specify, Clarify, Plan, Tasks workflow without repeating the planner's rules, and stops once the planner has finished: on `Status: NEEDS_CLARIFICATION` or `Status: NEEDS_HUMAN` it shows the questions or the reason and runs no other agent, and an `Status: APPROVED` spec is reported as ready to be implemented. `/caf-plan-ticket` is still generated next to it until its removal ticket.
+A third command, **`/caf-plan`**, is written by a default scaffold whenever the Planner is picked. It takes a ticket ID or free text (which gets a kebab-case slug of at most five words), uses `.caf/tasks/<ID-or-slug>/` as the artifact folder, spawns `caf-planner` for the Specify, Clarify, Plan, Tasks workflow without repeating the planner's rules, and stops once the planner has finished: on `Status: NEEDS_CLARIFICATION` or `Status: NEEDS_HUMAN` it shows the questions or the reason and runs no other agent, and an `Status: APPROVED` spec is reported as ready to be implemented. `/caf-plan-ticket`, the command it replaces, is no longer written (CAF-SDD-03c2c); its builder is kept and a file already in a repo is left alone.
 
 ### No longer scaffolded
 
@@ -442,7 +442,7 @@ The spec-driven design dropped five agents and eight commands. A new repo does n
 - **They cannot be selected.** The agent picker does not list them and there is no flag for it. `caf-init scaffold feature-catalog-sync` still resolves, says the command is no longer scaffolded and writes nothing; `curate audit` no longer reports the missing command file (CAF-SDD-03f); a repo that has the file is audited as before.
 - **Implementer is replaced.** Since CAF-SDD-03c3 `SINGLE_REPO` gets `caf-frontend` and `caf-backend` instead (see [SINGLE_REPO](#repo-mode-monorepo-vs-single_repo)). `implementer` is filtered out of the picker like `qa` (a superseded kind, not a hidden one); its kind is still known, so `caf-init curate` reads a `caf-implementer.md` already in a repo as before.
 - **Architect stays** until what replaces it is connected. QA is no longer offered (see [The default roster](#the-default-roster-validator-and-caf-plan)); its kind and any `caf-qa.md` already in a repo are untouched.
-- **A new repo has no Documentation agent**, so `/caf-run-pipeline` is written with its "no Documentation Agent" stage, and `piv-workflow.md` lists the role as not scaffolded.
+- **A new repo has no Documentation agent**, so `/caf-run` is written with its "no Documentation Agent" stage, and `piv-workflow.md` lists the role as not scaffolded.
 - **Some generated text still mentions them**: the `.gitignore` lines for `.caf/discovery/` and `.caf/audits/` (kept on purpose). The planner's `## Input` and, since CAF-SDD-03c2b, its `## Constraints` no longer point at the Discovery fallback, the review commands no longer name `/caf-review-ticket`, and `.caf/knowledge/INDEX.md` names neither the PM agent (CAF-SDD-03c2) nor `.caf/discovery/` (CAF-SDD-03c2b).
 - **No npm release yet.** caf-orchestrator still expects `caf-documentation`; a release of `caf-init` with this change waits until the orchestrator handles a repo without it (CAF-SDD-04).
 
@@ -453,18 +453,26 @@ The spec-driven design ends with five agents and five commands. Some of what a s
 | | Final | Still scaffolded, transitional |
 |---|---|---|
 | Agents | `caf-planner`, `caf-frontend`, `caf-backend`, `caf-validator`, `caf-reviewer` | `caf-architect` (folded into the planner; the `caf-design` skill does not exist yet), `caf-qa` (becomes `caf-validator`), `caf-implementer` (dropped) |
-| Commands | `/caf-plan`, `/caf-run`, `/caf-review`, `/caf-fix-review`, `/caf-complete-drafts` | `/caf-run-pipeline` (becomes `/caf-run`), `/caf-plan-ticket` (replaced by `/caf-plan`) |
+| Commands | `/caf-plan`, `/caf-run`, `/caf-review`, `/caf-fix-review`, `/caf-complete-drafts` | none written by a new scaffold: `/caf-run-pipeline` is `/caf-run` and `/caf-plan-ticket` is not written (CAF-SDD-03c2c) |
 
-`caf-validator` and `/caf-plan` are in the default scaffold since CAF-SDD-03c2. The transitional files (`caf-qa`, `caf-architect`, `caf-implementer`, `/caf-run-pipeline`, `/caf-plan-ticket`) go away in the tickets that connect their replacements (CAF-SDD-03c2b). `caf-implementer` is no longer scaffolded since CAF-SDD-03c3.
+`caf-validator` and `/caf-plan` are in the default scaffold since CAF-SDD-03c2. The transitional files (`caf-qa`, `caf-architect`, `caf-implementer`) go away in the tickets that connect their replacements (CAF-SDD-03c2b). `caf-implementer` is no longer scaffolded since CAF-SDD-03c3.
 
 ### The default roster: validator and /caf-plan
 
 A new repo gets `caf-validator.md` and `/caf-plan` (`caf-plan.md`). `caf-qa.md` is no longer written; the `qa` kind is unchanged and still known, and it stays a transitional agent. Roster by stack: `mono-pnpm` — planner, architect, frontend, backend, validator, reviewer; `single-nuxt` — planner, architect, frontend, backend, validator, reviewer.
 
 - **A repo that already has `caf-qa.md`.** `caf-init scaffold agents` adds `caf-validator.md` next to it, never touches or removes `caf-qa.md` (a customized one included) and prints one note. caf-orchestrator picks the gate from the files in the workspace: with `caf-validator.md` present it runs the validator and reads `validate-report.md`; without it, `caf-qa` and `qa-report.md`. So adding `caf-validator.md` to a repo that has `caf-qa.md` switches the gate to the validator. To keep the old gate, delete `caf-validator.md` again.
-- **`/caf-run-pipeline`** follows the roster it is generated with: a roster with the validator gets a Validator gate (`caf-validator`, `validate-report.md`), a roster with `qa` the QA gate as before. It also reads `requirements.md` before any implementation agent and stops with `Status: NEEDS_HUMAN` on `Status: NEEDS_CLARIFICATION` or a `BLOCKING` question without an `Answer:`; `DRAFT` and `APPROVED` go on. It never writes `requirements.md` or `tasks.md`, and shows proposed spec changes (from `verify-report.md`, the gate report and `review-notes.md`) to the human without applying them.
+- **`/caf-run`** (formerly `/caf-run-pipeline`) follows the roster it is generated with: a roster with the validator gets a Validator gate (`caf-validator`, `validate-report.md`), a roster with `qa` the QA gate as before. It also reads `requirements.md` before any implementation agent and stops with `Status: NEEDS_HUMAN` on `Status: NEEDS_CLARIFICATION` or a `BLOCKING` question without an `Answer:`; `DRAFT` and `APPROVED` go on. It never writes `requirements.md` or `tasks.md`, and shows proposed spec changes (from `verify-report.md`, the gate report and `review-notes.md`) to the human without applying them.
 - **The reviewer's `## Input`** names `validate-report.md` as the gate report, and `qa-report.md` for a repo that still uses `caf-qa`. The planner's `## Input` lost its Discovery fallback.
 - **Rollout to a repo scaffolded earlier.** The `## Input` of the reviewer and the planner move through `caf-init curate sync`, as ordinary drift (an edited `## Input` is a conflict and is left alone). Commands and `piv-workflow.md` do not: delete the file and scaffold again (`caf-init scaffold agents`, `caf-init scaffold workflow`). `agent-handoff.md` and the roster in `piv-workflow.md` list `caf-validator` when its file exists.
+
+### /caf-run and /caf-plan-ticket (CAF-SDD-03c2c)
+
+The default roster has five commands: `/caf-plan`, `/caf-run`, `/caf-review`, `/caf-fix-review`, `/caf-complete-drafts`. `/caf-run` is `/caf-run-pipeline` under its final name: same text, the name changed everywhere it appears (the file, the title, the prompt `Generate /caf-run?`, and the review commands that mention it). `/caf-plan-ticket` is no longer written.
+
+- **A repo scaffolded earlier keeps `caf-run-pipeline.md` and `caf-plan-ticket.md`.** Neither is deleted, overwritten or changed, a customized one included. Commands are not tracked by `curate`: to get the new text, delete the file by hand and scaffold again.
+- **Migration.** `caf-init scaffold agents` in a repo that has `caf-run-pipeline.md` writes `caf-run.md` next to it, leaves the old file as it is and prints one note that the old file can be deleted. Without the old file the note is not printed.
+- **`SINGLE_REPO` routing.** With the default two agents (`caf-frontend`, `caf-backend`, both scoped to the whole repo) `/caf-run` picks the agent by the section of `tasks.md`: `## Frontend Tasks` goes to `caf-frontend`, `## Backend Tasks` to `caf-backend`, and it asks you only for a task outside both sections; an agent with no tasks is not spawned. Any other roster (a monorepo, `--scope`, `--role`) still matches a task against each agent's `## Scope`. No flag: it is decided from the roster.
 
 ### The validator kind
 
@@ -535,7 +543,7 @@ Rollout to a repository scaffolded earlier: `caf-init curate sync` carries the c
 
 [caf-orchestrator](https://github.com/coderiumid/caf-orchestrator) is a separate service. When a ticket becomes ready (a Linear state or a GitHub Issue label), it clones the repo, runs the agents headlessly in sequence, opens a pull request and reports back on the ticket.
 
-You do not need the orchestrator to use what `caf-init` generates. The agents also run directly in Claude Code, or through the generated `/caf-run-pipeline` command.
+You do not need the orchestrator to use what `caf-init` generates. The agents also run directly in Claude Code, or through the generated `/caf-run` command.
 
 If you do use it, three things in this repo matter:
 
@@ -561,7 +569,7 @@ What changes in `SINGLE_REPO`:
 - `--scope domain,application` limits both agents to those directories. Every directory must exist.
 - `--role frontend` or `--role backend` generates only that one agent, with the same content it has in the default. The role is your choice; it is never inferred from the framework. `--role implementer` is refused.
 - `implementer` is replaced, not removed: it is not offered, but its kind is still known and a `caf-implementer.md` already in a repo is read by `curate` as before.
-- **Migrating a repo that has `caf-implementer.md`.** Run `caf-init scaffold agents` again. It adds `caf-frontend.md` and `caf-backend.md` next to it (a file that already exists is not overwritten), never changes or deletes `caf-implementer.md`, and prints one note. Delete `caf-implementer.md` by hand when you no longer need it. `/caf-run-pipeline` and the other commands are written once: delete the file and scaffold again to have them list the new agents.
+- **Migrating a repo that has `caf-implementer.md`.** Run `caf-init scaffold agents` again. It adds `caf-frontend.md` and `caf-backend.md` next to it (a file that already exists is not overwritten), never changes or deletes `caf-implementer.md`, and prints one note. Delete `caf-implementer.md` by hand when you no longer need it. `/caf-run` and the other commands are written once: delete the file and scaffold again to have them list the new agents.
 
 `--scope` and `--role` are refused in `MONOREPO`. With bare `scaffold`, use the comma form for `--scope` so the directories are not read as the target argument.
 

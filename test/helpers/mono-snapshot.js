@@ -97,7 +97,7 @@ export async function renderMonoSnapshot(detectOpts = {}) {
       'CLAUDE.md': buildClaudeMd({ ...legacyStack, tracker: 'Linear' }),
       'AGENTS.md': buildAgentsMd({ tracker: 'Linear' }),
       '.caf/tasks/README.md': buildTasksReadme({ tracker: 'Linear' }),
-      '.claude/commands/caf-run-pipeline.md': buildRunPipelineMd({
+      '.claude/commands/caf-run.md': buildRunPipelineMd({
         agentDir: '.claude/agents',
         implementationRoles: ['caf-frontend', 'caf-backend'],
         appPaths: { 'caf-frontend': ['apps/web'], 'caf-backend': ['apps/api'] },

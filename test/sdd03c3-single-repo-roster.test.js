@@ -31,6 +31,7 @@ import { detectStack } from '../src/steps/02-detect-stack.js';
 import { buildRunPipelineMd } from '../src/templates/run-pipeline-command.js';
 import { readAgentRoster } from '../src/utils/read-agent-roster.js';
 import { renderDefaultFileSet } from './helpers/default-file-set.js';
+import { sinceSdd03c2c } from './helpers/since-03c2c.js';
 import { copyFixture, snapshotTree } from './helpers/make-repo.js';
 import { silenced } from './helpers/mono-snapshot.js';
 import { CONTENT_VARIANTS, renderScaffoldContents } from './helpers/scaffold-contents.js';
@@ -38,13 +39,19 @@ import { AGENT_DIR, fixtureDir } from './helpers/frozen-kinds.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const GOLDEN = path.join(ROOT, 'test', 'fixtures', 'pre-sdd03c3');
-const golden = (id) => JSON.parse(fs.readFileSync(path.join(GOLDEN, `${id}.json`), 'utf8'));
+// CAF-SDD-03c2c: the golden read through the ticket (no /caf-plan-ticket, /caf-run for /caf-run-pipeline);
+// the file itself is not touched.
+const golden = (id) => {
+  const raw = JSON.parse(fs.readFileSync(path.join(GOLDEN, `${id}.json`), 'utf8'));
+  const rename = (f) => f.replace('caf-run-pipeline.md', 'caf-run.md');
+  return { ...raw, commands: raw.commands.filter((f) => f !== 'caf-plan-ticket.md').map(rename).sort(), files: sinceSdd03c2c(raw.files) };
+};
 const ANSI = /\u001b\[[0-9;]*m/g;
 
 const IMPLEMENTER = '.claude/agents/caf-implementer.md';
 const FRONTEND = '.claude/agents/caf-frontend.md';
 const BACKEND = '.claude/agents/caf-backend.md';
-const RUN_PIPELINE = '.claude/commands/caf-run-pipeline.md';
+const RUN_PIPELINE = '.claude/commands/caf-run.md';
 const COMPLETE_DRAFTS = '.claude/commands/caf-complete-drafts.md';
 const HANDOFF = '.caf/workflows/agent-handoff.md';
 const PIV = '.caf/workflows/piv-workflow.md';
@@ -224,17 +231,17 @@ test('AC-5: a repo without caf-implementer.md gets no note', async () => {
 });
 
 // ---------------------------------------------------------------------------------------------
-// AC-6 — /caf-run-pipeline follows the roster
+// AC-6 — /caf-run (was /caf-run-pipeline) follows the roster
 // ---------------------------------------------------------------------------------------------
 
-test('AC-6: /caf-run-pipeline of the default roster names caf-frontend and caf-backend, not caf-implementer', async () => {
+test('AC-6: /caf-run of the default roster names caf-frontend and caf-backend, not caf-implementer', async () => {
   const current = (await now('single-nuxt.default')).files[RUN_PIPELINE];
   assert.match(current, /caf-frontend/);
   assert.match(current, /caf-backend/);
   assert.doesNotMatch(current, /caf-implementer/);
 });
 
-test('AC-6: /caf-run-pipeline rendered for a roster with implementer is byte-for-byte the golden', () => {
+test('AC-6: /caf-run rendered for a roster with implementer is byte-for-byte the golden', () => {
   const old = golden('single-nuxt.default').files[RUN_PIPELINE];
   const content = buildRunPipelineMd({
     agentDir: AGENT_DIR,
@@ -352,7 +359,7 @@ test('AC-10: no dead builder name is left in src/', () => {
 });
 
 test('AC-10: the eight commands are still hidden, and their CLI target still says so', async () => {
-  assert.equal(HIDDEN_COMMAND_FILES.length, 8);
+  assert.equal(HIDDEN_COMMAND_FILES.length, 9); // the eight and, since CAF-SDD-03c2c, caf-plan-ticket.md
   const dir = copyFixture(fixtureDir('single-nuxt'), 'caf-sdd03c3-catalog-');
   const before = snapshotTree(dir);
   let result;
@@ -369,7 +376,7 @@ test('AC-10: a selection that holds the auditor, PM and UX Designer still writes
   const picked = all.filter((c) => ['planner', 'architect', 'frontend', 'backend', 'reviewer', 'auditor', 'pm', 'ux-designer'].includes(c.kind));
   await injected([picked, true, true, true], () => silenced(() => agents({ dir, dryRun: false })));
   const written = fs.readdirSync(path.join(dir, '.claude', 'commands'));
-  assert.ok(written.includes('caf-plan-ticket.md'), 'precondition: the run did write commands');
+  assert.ok(written.includes('caf-plan.md'), 'precondition: the run did write commands');
   assert.deepEqual(written.filter((f) => HIDDEN_COMMAND_FILES.includes(f)), []);
 });
 

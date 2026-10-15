@@ -97,7 +97,7 @@ detection and must be threaded to every `detectStack` call a command makes.
   framework. `implementer` is in `SUPERSEDED_CANDIDATE_KINDS` and `--role implementer` is refused
   (`SINGLE_REPO_OFFERED_ROLES`), but `buildSingleRepoCandidates(.., 'implementer')` still builds the
   kind (tests and goldens use it). `--scope <dirs...>` writes their `## Scope` (and the
-  `/caf-run-pipeline` commit whitelist) per directory; directories are validated, never inferred.
+  `/caf-run` commit whitelist) per directory; directories are validated, never inferred.
 - `writeIfAbsent` runs `assertNoUnresolvedPlaceholders` (`src/utils/placeholder-check.js`) on
   everything it writes or dry-runs: a leftover generate-time `{{...}}` throws. `RUNTIME_TOKENS`
   (`{{TICKET-ID}}`, `{{feature-name}}`, ...) are the per-ticket tokens generated files keep on
@@ -797,3 +797,32 @@ holds the ticket against `test/fixtures/pre-sdd03c3/` (single-nuxt default, `--r
   agent builders and texts (`buildPmAgentMd`, `buildUxDesignerAgentMd`, auditor, documentation,
   devops), `HIDDEN_COMMAND_FILES`, `HIDDEN_CANDIDATE_KINDS` and the CLI message "no longer
   scaffolded" stay. `src/utils/architecture-signatures.js` was unused and left on purpose (removed at CAF-SDD-03c2b).
+
+## /caf-run, /caf-plan-ticket and SINGLE_REPO routing (CAF-SDD-03c2c)
+
+The default roster has the five final commands: `/caf-plan`, `/caf-run`, `/caf-review`,
+`/caf-fix-review`, `/caf-complete-drafts`. `/caf-run` is `/caf-run-pipeline` renamed (file written by
+`agents()`, title, interactive prompt and messages, mentions in `/caf-review` and `/caf-fix-review`);
+`/caf-plan-ticket` is no longer written. The older sections above describe the state at their own
+ticket and are not rewritten. `test/sdd03c2c-run-command.test.js` holds the ticket against
+`test/fixtures/pre-sdd03c2c/` (default file sets, the real command scaffold, the `/caf-run-pipeline`
+and `/caf-plan-ticket` builders, recorded before it — never regenerate it).
+- The builder keeps its name and file (`buildRunPipelineMd`, `src/templates/run-pipeline-command.js`);
+  only the command is renamed. The text of `/caf-run` is the old text with `/caf-run-pipeline` -> `/caf-run`
+  and, for one roster, another "how to choose which agent" step. Nothing else of it, and nothing of
+  the retry sentences, changed (`AGENTS.md` "max 3x" is the verify retry inside one agent).
+- `caf-plan-ticket.md` is the ninth entry of `HIDDEN_COMMAND_FILES` (checked where a command is
+  written). Its builder stays (`buildPlanTicketMd`); a file already in a repo is never touched.
+- Repo that has `caf-run-pipeline.md`: it is never touched; `caf-run.md` is written next to it and
+  `agents()` prints one note (Q-1). No note without the old file. Command changes still do not reach
+  old repos through `curate sync`.
+- **Routing.** `isWholeRepoFrontendBackend` (in `run-pipeline-command.js`) is true when the roster is
+  exactly `caf-frontend` + `caf-backend` and both `appPaths` are `['.']`. Then the step routes by the
+  `## Frontend Tasks` / `## Backend Tasks` header of `tasks.md` (as caf-orchestrator's task-router
+  does) and asks only outside both; otherwise the old scope match stays (monorepo, `--scope`,
+  `--role`, an `implementer` roster). Decided from the data the builder gets, no flag. This closes
+  the "known gap" of CAF-SDD-03c3.
+- Old tests that held the old names read their golden through `test/helpers/since-03c2c.js` or
+  rename it inline; the goldens are untouched. `mono-pnpm.json` was regenerated for this, one entry
+  changed (`caf-run-pipeline.md` -> `caf-run.md`). Not a precedent.
+- Left for 03c2d: renaming `caf-verify` and the warning for a stale skill pointer.

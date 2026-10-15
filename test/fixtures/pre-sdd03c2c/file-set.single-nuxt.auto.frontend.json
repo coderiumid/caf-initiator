@@ -1,0 +1,52 @@
+{
+  "variant": "single-nuxt.auto.frontend",
+  "offered": [
+    "planner",
+    "architect",
+    "frontend",
+    "validator",
+    "reviewer"
+  ],
+  "agents": [
+    "caf-architect.md",
+    "caf-frontend.md",
+    "caf-planner.md",
+    "caf-reviewer.md",
+    "caf-validator.md"
+  ],
+  "commands": [
+    "caf-complete-drafts.md",
+    "caf-fix-review.md",
+    "caf-plan-ticket.md",
+    "caf-plan.md",
+    "caf-review.md",
+    "caf-run-pipeline.md"
+  ],
+  "files": [
+    ".caf/knowledge/INDEX.md",
+    ".caf/tasks/README.md",
+    ".caf/workflows/agent-handoff.md",
+    ".caf/workflows/piv-workflow.md",
+    ".claude/agents/caf-architect.md",
+    ".claude/agents/caf-frontend.md",
+    ".claude/agents/caf-planner.md",
+    ".claude/agents/caf-reviewer.md",
+    ".claude/agents/caf-validator.md",
+    ".claude/commands/caf-complete-drafts.md",
+    ".claude/commands/caf-fix-review.md",
+    ".claude/commands/caf-plan-ticket.md",
+    ".claude/commands/caf-plan.md",
+    ".claude/commands/caf-review.md",
+    ".claude/commands/caf-run-pipeline.md",
+    ".gitignore",
+    "AGENTS.md",
+    "CLAUDE.md"
+  ],
+  "cafDirs": [
+    "knowledge",
+    "knowledge/decisions",
+    "knowledge/golden-examples",
+    "tasks",
+    "workflows"
+  ]
+}

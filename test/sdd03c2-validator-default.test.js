@@ -82,10 +82,14 @@ for (const fixture of FIXTURE_NAMES) {
 
     assert.deepEqual(now.offered, IMPLEMENTER_KIND(old.offered.map((k) => (k === 'qa' ? 'validator' : k))));
     assert.deepEqual(now.agents, IMPLEMENTER_FILE(old.agents.map((f) => (f === 'caf-qa.md' ? 'caf-validator.md' : f))).sort());
-    assert.deepEqual(now.commands, [...old.commands, 'caf-plan.md'].sort());
+    // CAF-SDD-03c2c: caf-plan-ticket.md is not written and caf-run-pipeline.md is caf-run.md.
+    const since03c2c = (f) => f.replace('caf-run-pipeline.md', 'caf-run.md');
+    assert.deepEqual(now.commands, [...old.commands.filter((f) => f !== 'caf-plan-ticket.md').map(since03c2c), 'caf-plan.md'].sort());
     assert.deepEqual(
       now.files,
       IMPLEMENTER_FILE(old.files.map((f) => (f === '.claude/agents/caf-qa.md' ? '.claude/agents/caf-validator.md' : f)))
+        .filter((f) => f !== '.claude/commands/caf-plan-ticket.md')
+        .map(since03c2c)
         .concat('.claude/commands/caf-plan.md')
         .sort()
     );
@@ -174,10 +178,10 @@ test('AC-4: validator and /caf-plan are not hidden; the five hidden kinds still 
 // ---------------------------------------------------------------------------------------------
 
 for (const fixture of FIXTURE_NAMES) {
-  test(`AC-5: ${fixture} — /caf-plan-ticket is byte-identical, /caf-complete-drafts too but for the agent file it lists`, async () => {
+  test(`AC-5: ${fixture} — /caf-plan-ticket is no longer written (CAF-SDD-03c2c), /caf-complete-drafts is the golden but for the agent file it lists`, async () => {
     const old = golden(`commands.${fixture}.json`).files;
     const { files } = await renderCommands(fixture);
-    assert.equal(files['caf-plan-ticket.md'], old['caf-plan-ticket.md']);
+    assert.ok(!('caf-plan-ticket.md' in files));
 
     // /caf-complete-drafts lists the agent files that exist (listDraftFiles), so the one line for
     // caf-qa.md becomes the one for caf-validator.md (AC-1 puts the validator in place of qa) and
@@ -207,7 +211,8 @@ for (const fixture of FIXTURE_NAMES) {
     const old = golden(`commands.${fixture}.json`).files;
     const { files } = await renderCommands(fixture);
     for (const name of ['caf-review.md', 'caf-fix-review.md']) {
-      const before = old[name].split('\n');
+      // CAF-SDD-03c2c renamed /caf-run-pipeline to /caf-run in both; this test is about the other change.
+      const before = old[name].replaceAll('/caf-run-pipeline', '/caf-run').split('\n');
       const after = files[name].split('\n');
       let head = 0;
       while (head < before.length && head < after.length && before[head] === after[head]) head++;
@@ -254,17 +259,18 @@ for (const [name, { input, content }] of Object.entries(PIPELINE)) {
 
   test(`AC-6: ${name} — roster with qa: the golden plus the spec status section only`, () => {
     for (const md of [buildRunPipelineMd(input), buildRunPipelineMd({ ...input, gate: 'qa' })]) {
-      assert.equal(withoutSpecSection(md), content);
+      // CAF-SDD-03c2c: the command is /caf-run now; the golden is read with that one name changed.
+      assert.equal(withoutSpecSection(md), content.replaceAll('/caf-run-pipeline', '/caf-run'));
       assert.match(md, /caf-qa/);
       assert.match(md, /qa-report\.md/);
     }
   });
 }
 
-test('AC-6: a scaffold with the default roster writes /caf-run-pipeline with the validator gate', async () => {
+test('AC-6: a scaffold with the default roster writes /caf-run with the validator gate', async () => {
   for (const fixture of FIXTURE_NAMES) {
     const { files } = await renderCommands(fixture);
-    const md = files['caf-run-pipeline.md'];
+    const md = files['caf-run.md'];
     assert.match(md, /caf-validator/, fixture);
     assert.ok(!/caf-qa|qa-report/.test(md), fixture);
   }
