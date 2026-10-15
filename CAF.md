@@ -457,6 +457,8 @@ the two {{APP_1}}/{{APP_2}} rows are replaced by a single `caf-implementer` agen
 | Documentation | Parallel | update `docs/` |
 | DevOps | Post-merge (next phase) | deployment |
 
+**Recognizing an agent file (`caf-init curate`, `scaffold skills`):** A `.claude/agents/*.md` file is recognized by its name: a known kind (`caf-<kind>.md`, or `<kind>.md`), or `<app-slug>.md` for an app that `caf-init` detected (the per-app `implementation` agent). Any other name is skipped and reported with a warning — never compared with a template, synced, baselined or offered a `## Skills` section. Known limit: an agent you wrote by hand under a name equal to an app slug is treated as that app's `implementation` agent.
+
 **Model Routing (token-efficient):**
 - Small/cheap model → simple tasks (rename, format, lookup)
 - Standard model → standard implementation, debugging, review
