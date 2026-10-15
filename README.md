@@ -173,7 +173,7 @@ Writes seven universal skills into `.claude/skills/<name>/SKILL.md`.
 | `caf-escalate` | When to stop and hand the task back to a human | implementation agents |
 | `caf-piv` | Plan, wait for the go-ahead, implement, verify | none (manual sessions only) |
 | `caf-spec` | The `requirements.md` (spec) format: scope, findings, open questions, acceptance criteria with a `Verify:` line (`automated test`, `command:` or `manual:`) | Planner |
-| `caf-traceability` | Link every acceptance criterion to tasks, code and a named test; one evidence line per criterion in `verify-report.md` (`automated-test`, `command`, `build-only`, `manual` or `none`) | Planner, Frontend, Backend — always written as a `DRAFT`, so no pointer yet |
+| `caf-traceability` | Link every acceptance criterion to tasks, code and a named test; one evidence line per criterion in `verify-report.md` (`automated-test`, `command`, `build-only`, `manual` or `none`) | Planner, Frontend, Backend, Validator — always written as a `DRAFT`, so no pointer yet |
 
 Auditor, PM and UX Designer agents get no skills.
 
@@ -201,7 +201,7 @@ The generated Planner:
 
 - has the tools `Read`, `Write`, `Glob` and `Grep`. `Glob` and `Grep` are read-only and let it look up facts about the repo by itself. It has no `Edit` and no `Bash`;
 - reads the files that already exist in the task folder (`requirements.md`, `tasks.md`, `verify-report.md`) before it writes anything;
-- does not write a `requirements.md` that says `Status: APPROVED` when it is asked to change it. It writes the proposed change in `verify-report.md` under `## Proposed Spec Changes` and stops. The status of that refusal is the first line of `verify-report.md`, `Status: NEEDS_HUMAN`; it is never written in `requirements.md`;
+- does not write a `requirements.md` that says `Status: APPROVED` when it is asked to change it. It writes the proposed change in `verify-report.md` under `## Proposed Spec Changes` and stops with `Status: NEEDS_HUMAN`, which is the first line of that same `verify-report.md`; it is never written in `requirements.md`;
 - reads what it claims. A fact that `Read`, `Glob` or `Grep` can answer is read before any artifact is written. A `Finding:` or an acceptance criterion about how a file or a module behaves comes from a file it opened in that run: a summary in `CLAUDE.md`, an ADR or a file name from `Glob` only shows where to look. The ADRs in `.caf/knowledge/decisions/` whose name relates to the ticket are read and named in a `Finding:`, and a `Glob` result that is mostly `node_modules` or hidden tool directories is narrowed;
 - does not put a reading off. No artifact says that something is still to be read, compared, checked or found out, in whatever words, and no task in `tasks.md` asks the implementer to find out a fact the spec needs (a task may tell the implementer to read the file it is about to change). What reading can answer is read; what a human must decide is an open question;
 - does not guess. A claim that comes neither from a file it read nor from the ticket is written `Assumption A-n:` with what it rests on, never as a `Finding:` or as a fact in an acceptance criterion. A `Finding:` holds only what was observed; a conclusion or a prediction is an assumption. A word of doubt ("maybe", "it seems") is written on an assumption line only;
@@ -435,12 +435,23 @@ The spec-driven design dropped five agents and eight commands. A new repo does n
 | Commands | `/caf-discovery-start`, `/caf-discovery-to-ticket`, `/caf-audit-scan`, `/caf-audit-to-ticket`, `/caf-design-ticket`, `/caf-qa-check`, `/caf-review-ticket`, `/caf-feature-catalog-sync` |
 
 - **A repo scaffolded earlier keeps them.** No file is deleted or changed. The kinds are still known, so `caf-init curate` audits and syncs those agent files exactly as before.
-- **They cannot be selected.** The agent picker does not list them and there is no flag for it. `caf-init scaffold feature-catalog-sync` still resolves, says the command is no longer scaffolded and writes nothing; `curate` still reports the missing command file as an optional gap.
+- **They cannot be selected.** The agent picker does not list them and there is no flag for it. `caf-init scaffold feature-catalog-sync` still resolves, says the command is no longer scaffolded and writes nothing; `curate audit` no longer reports the missing command file (CAF-SDD-03f); a repo that has the file is audited as before.
 - **Implementer stays for now.** The design drops it too, but in `SINGLE_REPO` without `--role` it is the only implementation agent and `/caf-run-pipeline` needs one. It stays scaffolded until the ticket that settles the default role (CAF-SDD-03c3).
 - **Architect and QA stay** until what replaces them is connected.
-- **A new repo has no Documentation agent**, so `/caf-run-pipeline` is written with its "no Documentation Agent" stage, and `piv-workflow.md` lists the role as not present.
+- **A new repo has no Documentation agent**, so `/caf-run-pipeline` is written with its "no Documentation Agent" stage, and `piv-workflow.md` lists the role as not scaffolded.
 - **Some generated text still mentions them** (the planner's Discovery fallback, `.gitignore` lines for `.caf/discovery/` and `.caf/audits/`, a reference to `/caf-review-ticket` in the review commands). That text is unchanged on purpose and is cleaned up in a later ticket.
 - **No npm release yet.** caf-orchestrator still expects `caf-documentation`; a release of `caf-init` with this change waits until the orchestrator handles a repo without it (CAF-SDD-04).
+
+### The agents and commands the design ends with
+
+The spec-driven design ends with five agents and five commands. Some of what a scaffold still writes is on the way out:
+
+| | Final | Still scaffolded, transitional |
+|---|---|---|
+| Agents | `caf-planner`, `caf-frontend`, `caf-backend`, `caf-validator`, `caf-reviewer` | `caf-architect` (folded into the planner; the `caf-design` skill does not exist yet), `caf-qa` (becomes `caf-validator`), `caf-implementer` (dropped) |
+| Commands | `/caf-plan`, `/caf-run`, `/caf-review`, `/caf-fix-review`, `/caf-complete-drafts` | `/caf-run-pipeline` (becomes `/caf-run`), `/caf-plan-ticket` (replaced by `/caf-plan`) |
+
+`caf-validator` and `/caf-plan` exist in the code but are hidden (see below). The transitional files go away in the tickets that connect their replacements (CAF-SDD-03c2, CAF-SDD-03c3).
 
 ### The validator kind (hidden)
 

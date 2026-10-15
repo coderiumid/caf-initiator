@@ -784,6 +784,9 @@ const PLANNER_SPEC_WORKFLOW = [
   '- A file path or a symbol name may be written in a `Finding:`, on an assumption line and on a',
   '  `Verify:` line. It is never written in the outcome, the scope, the decisions or the',
   '  `When ... then` sentence of an AC.',
+  '- Exception, on a refactor or config ticket only: the `When ... then` sentence of an AC may name',
+  '  the file path or the symbol name that is the subject of the ticket. It may name no other path',
+  '  or symbol, and the outcome, the scope and the decisions keep the rule above.',
   '',
   '### 2. Clarify',
   '- First check the ticket, the code, the ADRs and `CLAUDE.md`. Whatever you can answer by reading',
@@ -855,7 +858,7 @@ const PLANNER_SPEC_WORKFLOW = [
 //   edit of code, tests, the spec or `verify-report.md`: a proposed spec change is a
 //   `Proposed Spec Changes:` line under `### Notes` of `validate-report.md`.
 // - The five evidence kinds are the ones of the verify-report format (agent-handoff-md.js), of
-//   the `caf-traceability` skill and of REVIEWER_SPEC_WORKFLOW. A sixth kind goes in all four or
+//   the `caf-traceability` skill and of REVIEWER_SPEC_WORKFLOW. A sixth kind goes in all five or
 //   in none.
 // - The report format and its status words live in `## Report Format`, not here.
 // - `###` sub-headings only, no `TODO` word, no generate-time placeholder (same as the planner).
@@ -929,7 +932,7 @@ const VALIDATOR_WORKFLOW = [
 // - The Reviewer reads evidence. It never runs the tests or the verification gate again (the
 //   Validator's work) and never edits code, tests or the spec.
 // - The five evidence kinds are the ones of the verify-report format (agent-handoff-md.js), of the
-//   `caf-traceability` skill and of VALIDATOR_WORKFLOW. A sixth kind goes in all four or in none.
+//   `caf-traceability` skill and of VALIDATOR_WORKFLOW. A sixth kind goes in all five or in none.
 // - `design.md` and `validate-report.md` are read "if present": the validator is not connected
 //   to the pipeline yet.
 // - `###` sub-headings only, no `TODO` word, no generate-time placeholder (same as the planner).

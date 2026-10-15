@@ -245,7 +245,7 @@ export function buildRunPipelineMd({
 } = {}) {
   return `---
 allowed-tools: ${ALLOWED_TOOLS}
-description: Run the entire Cluster 2 pipeline (Planner → Architect → implementation → Documentation → QA → Reviewer) for one ticket in a single session, without caf-orchestrator — auto-commit/push/PR on SUCCESS, no commit on NEEDS_HUMAN
+description: Run the entire Cluster 2 pipeline (Planner → Architect → implementation → ${hasDocumentation ? 'Documentation → ' : ''}QA → Reviewer) for one ticket in a single session, without caf-orchestrator — auto-commit/push/PR on SUCCESS, no commit on NEEDS_HUMAN
 argument-hint: [TICKET-ID, e.g. "GAN-44"]
 ---
 
