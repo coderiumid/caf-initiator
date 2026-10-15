@@ -5,7 +5,7 @@
 // - `curate audit` warns (never a gap) when the planner's `## Constraints` is not the template's:
 //   `curate sync` does not carry that section.
 // - `INDEX.md` has no `.caf/discovery/` reference; `readAgentRoster` is locked for qa-only,
-//   validator-only and both; `architecture-signatures.js` is gone.
+//   validator-only and both; the unused architecture signatures util is gone.
 //
 // `test/fixtures/pre-sdd03c2b/` is the default scaffold of each variant from before this ticket
 // (every file, with content) — never regenerate it. Every scaffold, `curate audit` and
@@ -189,7 +189,7 @@ for (const fixture of FIXTURE_NAMES) {
     }
     const after = agentTree(dir);
     for (const rel of Object.keys(before)) {
-      if (rel !== PLANNER) assert.equal(after[rel], before[rel], `${rel} must stay byte-identical`);
+      if (rel !== path.basename(PLANNER)) assert.equal(after[rel], before[rel], `${rel} must stay byte-identical`);
     }
 
     const again = await sync(dir, false);
@@ -348,13 +348,13 @@ for (const [label, gate] of ROSTER_CASES) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// AC-9 — architecture-signatures is gone
+// AC-9 — the architecture signatures util is gone
 // ---------------------------------------------------------------------------------------------
 
-test('AC-9: nothing in src or test mentions architecture-signatures, and the file is gone', () => {
-  assert.ok(!fs.existsSync(path.join(ROOT, 'src', 'utils', 'architecture-signatures.js')));
-  // this file names it once, in the pattern of its own search: build the pattern so it cannot match itself
+test('AC-9: nothing in src or test mentions the removed architecture signatures util, and the file is gone', () => {
+  // built from parts so that this file does not match its own search
   const needle = ['architecture', 'signatures'].join('-');
+  assert.ok(!fs.existsSync(path.join(ROOT, 'src', 'utils', `${needle}.js`)));
   let hits = '';
   try {
     hits = execFileSync('git', ['grep', '-n', needle, '--', 'src', 'test'], { cwd: ROOT, encoding: 'utf8' });

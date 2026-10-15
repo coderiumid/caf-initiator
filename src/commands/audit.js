@@ -10,7 +10,7 @@ import { canonicalHeaders } from '../utils/canonical-sections.js';
 import { extractHeaders } from '../utils/section-headers.js';
 import { hashSection, compareSection, SECTION_STATUS } from '../utils/section-diff.js';
 import { readManifest, getBaselineHash } from '../utils/generate-manifest.js';
-import { templateToolsForKind } from '../templates/agent-md.js';
+import { buildBatasanSection, templateToolsForKind } from '../templates/agent-md.js';
 import { usableSkillPaths } from './skills.js';
 
 const SYMBOL = { ok: '✓', gap: '✗', declined: '⊘', warn: '!' };
@@ -161,11 +161,12 @@ function frontmatterTools(raw) {
 
 const toolList = (tools) => `\`[${tools.join(', ')}]\``;
 
-// The two parts of a template change that `curate sync` does not carry to an agent generated
+// The parts of a template change that `curate sync` does not carry to an agent generated
 // earlier (CAF-SDD-02d): the frontmatter `tools:` line (sync writes sections, never frontmatter)
 // and a pointer to a skill that became active later (`## Skills` is not tracked, and
 // `scaffold skills` never edits an agent that already has the section). Before this, such an
-// agent read as "already in sync".
+// agent read as "already in sync". Since CAF-SDD-03c2b a third: the planner's `## Constraints`,
+// which is not tracked either.
 // Warnings on purpose, never gaps: a `tools:` line may differ because a human added an MCP tool
 // or took one away, and a pointer may have been left out by choice. They must not change the
 // exit code. Read-only and deterministic: the same tables the generator renders from.
@@ -187,6 +188,21 @@ function rolloutWarnings(dir, relPath, raw, kind, lines, sections) {
       `frontmatter \`tools:\` is ${toolList(current)}, the template for kind \`${kind}\` has ${toolList(template)} ` +
         '(warning — `curate sync` does not write frontmatter: edit the line by hand, or leave it if the difference is on purpose)'
     );
+  }
+
+  // The planner's `## Constraints` is not tracked (not in SYNCABLE_SECTIONS), so `curate sync`
+  // never carries a change of it (CAF-SDD-03c2b). Only the planner has the section in its template.
+  if (kind === 'planner') {
+    const own = sections.find((s) => s.header === 'Constraints');
+    const { lines: templateLines, sections: templateSections } = parseSections(buildBatasanSection('planner'));
+    const templateBody = sectionBody(templateLines, templateSections.find((s) => s.header === 'Constraints'));
+    if (own && hashSection(sectionBody(lines, own)) !== hashSection(templateBody)) {
+      warn(
+        'planner-constraints',
+        '`## Constraints` differs from the template for kind `planner` ' +
+          '(warning — `curate sync` does not carry that section: edit it by hand to the current template text, or leave it if the difference is on purpose)'
+      );
+    }
   }
 
   const skillsSection = sections.find((s) => s.header === 'Skills');

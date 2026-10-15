@@ -87,17 +87,18 @@ export function buildVerifyChecklist(verifyApps) {
 // never a gate, so the language here must stay explicit that missing docs are fine.
 // The Planner's Input used to hold a "Fallback — Discovery draft without a ticket" flow (a PRD
 // draft read as the requirement). CAF-SDD-03c2 removed it: the Discovery flow and its command are
-// no longer scaffolded. The planner's `## Constraints` still says the headless run escalates to a
-// file and not to chat (see buildBatasanSection).
+// no longer scaffolded. The planner's `## Constraints` says the headless run escalates to a file
+// and not to chat (see buildBatasanSection).
 // The escalation MECHANISM branches on environment: interactive (default) still STOPs and waits
 // for chat confirmation, unchanged from before. Headless runs (caf-orchestrator prepends a
 // "[SYSTEM CONTEXT: Environment = headless...]" marker to the prompt) have no chat to wait on —
 // STOPping there means the run silently exits 0 with no tasks.md, which caf-orchestrator can't
 // distinguish from success. So headless redirects escalation to a file artifact instead of chat:
 // requirements.md still carries every unanswered Open Question verbatim (same no-assume
-// guarantee), just tagged `Status: NEEDS_HUMAN` for a human to resolve later, and tasks.md is
-// still written (minimal/blocked) so downstream file-existence checks don't except. This is a
-// different delivery channel for the same contract, not a weaker one.
+// guarantee), just tagged `Status: NEEDS_CLARIFICATION` (CAF-SDD-03c2b; it was `NEEDS_HUMAN` plus
+// a blocked tasks.md before) with no tasks.md: caf-orchestrator (SDD-04c) stops on that status
+// before it needs tasks.md, pushes the draft and asks on the ticket. This is a different delivery
+// channel for the same contract, not a weaker one.
 // TODO project-specific: the headless marker is only consumed by the Planner branch below for
 // now. Other roles (frontend/backend/qa/reviewer/documentation) may hit similar interactive-STOP
 // situations under headless runs but are intentionally left untouched here — needs its own
@@ -614,18 +615,19 @@ export function buildRetryLogicSection(kind) {
   ].join('\n');
 }
 
-// Planner-only: makes the headless-vs-interactive escalation branch in buildInputSection() an
-// explicit, hard-to-miss rule instead of something buried inside the Fallback Discovery flow.
+// Planner-only: makes the headless-vs-interactive escalation an explicit, hard-to-miss rule.
 // Not generalized to other kinds yet — see TODO near buildInputSection().
-function buildBatasanSection(kind) {
+// Not in SYNCABLE_SECTIONS on purpose (CAF-SDD-03c2b): a planner generated earlier gets a `curate
+// audit` rollout warning for this section (`rolloutWarnings`) and its text is changed by hand.
+export function buildBatasanSection(kind) {
   if (kind !== 'planner') return '';
   return `
 ## Constraints
 - The Planner is NEVER allowed to end a run waiting for chat confirmation if the prompt/context
   it received is prefixed with the \`[SYSTEM CONTEXT: Environment = headless...]\` marker. The
-  default escalation in this case is writing a file (\`requirements.md\` with
-  \`Status: NEEDS_HUMAN\` + \`tasks.md\` blocked), not asking in chat — see Fallback — Discovery
-  draft in the Input section.
+  escalation in this case is a file, not chat: \`requirements.md\` with
+  \`Status: NEEDS_CLARIFICATION\` and the \`BLOCKING\` questions that have no \`Answer:\`, and no
+  \`tasks.md\`.
 `;
 }
 
@@ -667,9 +669,10 @@ ${buildSkillsBody(skillPaths)}
 // generic wording for every non-Discovery kind by a CAF-SDD-03a2 test.
 // Rules this text must keep:
 // - Every artifact, path and stop token the planner already had stays: the first line of Output,
-//   `## Input`, `## Constraints` and `## Retry Logic` are untouched, and Clarify on the ticket path reuses
-//   their headless stop (`Status: NEEDS_HUMAN` + the blocked `tasks.md` note) — caf-orchestrator
-//   throws when the planner leaves no `tasks.md`. `NEEDS_CLARIFICATION` is the chat-path status.
+//   `## Input`, `## Constraints` and `## Retry Logic` are untouched, and Clarify on the ticket path stops
+//   the way the chat path does: `NEEDS_CLARIFICATION`, no `tasks.md` (CAF-SDD-03c2b; before it the
+//   ticket path wrote `NEEDS_HUMAN` + a blocked `tasks.md` note, which caf-orchestrator's routing
+//   threw on once SDD-04c stopped needing the file for Clarify).
 // - The requirements.md format is the `caf-spec` skill's; it is named, not copied. caf-spec is
 //   active since CAF-SDD-02c, but a planner generated earlier has no pointer to it until one is
 //   added by hand, so the text has to stand on its own when the skill is not in `## Skills`.
@@ -683,9 +686,8 @@ ${buildSkillsBody(skillPaths)}
 // - Rules added at CAF-SDD-02d, from a real dispatch and an audit, all whole lines inside steps
 //   that already exist: read a fact before writing it (rewritten at CAF-SDD-02e, see below), no
 //   placeholder section, no `tasks.md` at all while a
-//   `BLOCKING` question is unanswered (the ticket run's blocked note is the one exception:
-//   `## Constraints` names it and caf-orchestrator needs the file), an `automated test` AC names
-//   its test file, the refusal to change an approved spec is the first line of
+//   `BLOCKING` question is unanswered (no exception since CAF-SDD-03c2b: the ticket run stops on
+//   `NEEDS_CLARIFICATION` too), an `automated test` AC names its test file, the refusal to change an approved spec is the first line of
 //   `verify-report.md`, and the final message starts with a plain `Status:` line.
 // - One status convention: the status of `requirements.md` is a `Status:` line with four values,
 //   stated once in Specify. `## Input` used to call it a heading (`## Status: PLAN`); it now
@@ -776,10 +778,10 @@ const PLANNER_SPEC_WORKFLOW = [
   '- `BLOCKING` and unanswered: set `Status: NEEDS_CLARIFICATION` in `requirements.md` and stop.',
   '  Do not go on to Plan or Tasks, and do not write `tasks.md` at all while a `BLOCKING` question',
   '  is unanswered (it has no `Answer:`): no task breakdown, no placeholder, no marker line.',
-  '- Ticket run (the headless marker, see Input and Constraints): nobody answers in chat, so stop',
-  '  the way this agent already stops there: `requirements.md` with `Status: NEEDS_HUMAN` in',
-  '  place of `NEEDS_CLARIFICATION`, plus the blocked `tasks.md` note described in Input. That',
-  '  note is not a task breakdown, and a ticket run is the only case where it is written.',
+  '- Ticket run (the headless marker, see Constraints): nobody answers in chat and the run does',
+  '  not wait for an answer. A `BLOCKING` question with no `Answer:` ends it the same way: the',
+  '  `requirements.md` with `Status: NEEDS_CLARIFICATION` and that question in it, no `tasks.md`',
+  '  of any kind, then stop.',
   '',
   '### 3. Plan',
   '- Only when no `BLOCKING` question is open.',

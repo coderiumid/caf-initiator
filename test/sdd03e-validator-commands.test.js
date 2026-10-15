@@ -25,6 +25,7 @@ import { setSectionBaseline, writeManifest } from '../src/utils/generate-manifes
 import { hashSection } from '../src/utils/section-diff.js';
 import { copyFixture } from './helpers/make-repo.js';
 import { silenced, renderMonoSnapshot } from './helpers/mono-snapshot.js';
+import { swapConstraints } from './helpers/swap-constraints.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir, frontmatterTools, renderAgents, trackedSections } from './helpers/frozen-kinds.js';
 import { withLiveInput } from './helpers/swap-input.js';
 
@@ -324,7 +325,8 @@ for (const fixture of FIXTURE_NAMES) {
     assert.equal(read(dir, 'caf-validator.md'), validator[fixture].content);
     assert.equal(read(dir, 'caf-reviewer.md'), rendered[fixture].reviewer.content);
     // The planner: only its `## Output` moved (CAF-SDD-03f), to what a fresh render gives.
-    assert.equal(read(dir, OLD.planner[fixture].file), rendered[fixture].planner.content);
+    // (`## Constraints` is not tracked: CAF-SDD-03c2b changed it and sync leaves the old one)
+    assert.equal(read(dir, OLD.planner[fixture].file), swapConstraints(rendered[fixture].planner.content, OLD.planner[fixture].content));
   });
 
   test(`AC-13: ${fixture} — a validator and a reviewer whose Working Pattern was customized are not overwritten there`, async () => {

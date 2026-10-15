@@ -30,6 +30,7 @@ import { hashSection, SECTION_STATUS } from '../src/utils/section-diff.js';
 import { copyFixture, snapshotTree } from './helpers/make-repo.js';
 import { silenced } from './helpers/mono-snapshot.js';
 import { makeOldRepo } from './helpers/old-repo.js';
+import { swapConstraints } from './helpers/swap-constraints.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir, renderAgents, trackedSections } from './helpers/frozen-kinds.js';
 import { withLiveInput } from './helpers/swap-input.js';
 
@@ -37,6 +38,18 @@ const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const GOLDEN = path.join(ROOT, 'test', 'fixtures', 'pre-sdd03f');
 const golden = (name) => JSON.parse(fs.readFileSync(path.join(GOLDEN, name), 'utf8'));
 const OLD_PLANNER = Object.fromEntries(FIXTURE_NAMES.map((f) => [f, golden(`planner.${f}.json`)]));
+const TICKET_RUN_OLD = [
+  '- Ticket run (the headless marker, see Input and Constraints): nobody answers in chat, so stop',
+  '  the way this agent already stops there: `requirements.md` with `Status: NEEDS_HUMAN` in',
+  '  place of `NEEDS_CLARIFICATION`, plus the blocked `tasks.md` note described in Input. That',
+  '  note is not a task breakdown, and a ticket run is the only case where it is written.',
+];
+const TICKET_RUN_NEW = [
+  '- Ticket run (the headless marker, see Constraints): nobody answers in chat and the run does',
+  '  not wait for an answer. A `BLOCKING` question with no `Answer:` ends it the same way: the',
+  '  `requirements.md` with `Status: NEEDS_CLARIFICATION` and that question in it, no `tasks.md`',
+  '  of any kind, then stop.',
+];
 const OLD_PIV = golden('piv-workflow.json');
 const OLD_PIPELINE = golden('run-pipeline.json');
 
@@ -301,8 +314,10 @@ for (const fixture of FIXTURE_NAMES) {
     const flat = now.replace(/\s+/g, ' ');
     assert.match(flat, /It is never written in the outcome, the scope, the decisions or the `When \.\.\. then` sentence of an AC\./);
     const old = OLD_PLANNER[fixture].sections.Output;
-    assert.deepEqual(added(now, old), EXCEPTION_RULE);
-    assert.deepEqual(added(old, now), []);
+    // CAF-SDD-03c2b, after this ticket, replaced the four lines of the ticket-run rule of Clarify
+    // (test/sdd03c2b-planner-clarify.test.js holds the new text)
+    assert.deepEqual(added(now, old), [...EXCEPTION_RULE, ...TICKET_RUN_NEW]);
+    assert.deepEqual(added(old, now), TICKET_RUN_OLD);
   });
 }
 
@@ -315,7 +330,8 @@ for (const fixture of FIXTURE_NAMES) {
     const old = OLD_PLANNER[fixture];
     const now = rendered[fixture].planner.content;
     assert.notEqual(outputOf(fixture), old.sections.Output);
-    assert.equal(now.replace(outputOf(fixture), old.sections.Output), old.content);
+    // (`## Constraints` too: CAF-SDD-03c2b changed it)
+    assert.equal(swapConstraints(now.replace(outputOf(fixture), old.sections.Output), old.content), old.content);
     // the sections the AC names are not just "somewhere else": each is equal on its own too
     const nowSections = trackedSections(now);
     for (const header of Object.keys(old.sections)) {
@@ -367,7 +383,8 @@ for (const fixture of FIXTURE_NAMES) {
     assert.deepEqual(real.updated, [path.join(dir, PLANNER_REL)]);
 
     const now = read(dir, PLANNER_REL);
-    assert.equal(now, rendered[fixture].planner.content);
+    // (`## Constraints` is not tracked: CAF-SDD-03c2b changed it and sync leaves the old one)
+    assert.equal(now, swapConstraints(rendered[fixture].planner.content, OLD_PLANNER[fixture].content));
     assert.ok(now.includes(EXCEPTION_RULE.join('\n')));
     assert.equal(now.replace(outputOf(fixture), OLD_PLANNER[fixture].sections.Output), OLD_PLANNER[fixture].content);
     for (const { file, content } of others) assert.equal(read(dir, path.join(AGENT_DIR, file)), content, `${file} must stay byte-identical`);

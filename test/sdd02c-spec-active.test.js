@@ -25,6 +25,7 @@ import { setSectionBaseline, writeManifest } from '../src/utils/generate-manifes
 import { hashSection, SECTION_STATUS } from '../src/utils/section-diff.js';
 import { copyFixture, makeRepo, snapshotTree } from './helpers/make-repo.js';
 import { silenced } from './helpers/mono-snapshot.js';
+import { constraintsBody, swapConstraints } from './helpers/swap-constraints.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir, frontmatterTools, renderAgents, trackedSections } from './helpers/frozen-kinds.js';
 
 const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures');
@@ -328,7 +329,8 @@ for (const fixture of FIXTURE_NAMES) {
       .replace(toolsLine(md), toolsLine(old.content))
       .replace(trackedSections(md)['Allowed Tools'], old.sections['Allowed Tools'])
       .replace(trackedSections(md).Input, old.sections.Input)
-      .replace(output, old.sections.Output);
+      .replace(output, old.sections.Output)
+      .replace(constraintsBody(md), () => constraintsBody(old.content)); // CAF-SDD-03c2b changed it
     assert.equal(restored, old.content);
 
     const now = trackedSections(md);
@@ -406,7 +408,8 @@ for (const fixture of FIXTURE_NAMES) {
       assert.ok(!now.includes(SPEC_REL));
       assert.equal(toolsLine(now), 'tools: [Read, Write]');
       // and the whole file is the fresh render but for those two
-      assert.equal(now, withOldSkills(fresh).replace(toolsLine(fresh), 'tools: [Read, Write]'));
+      // (`## Constraints` is not tracked: CAF-SDD-03c2b changed it and sync leaves the old one)
+      assert.equal(now, swapConstraints(withOldSkills(fresh).replace(toolsLine(fresh), 'tools: [Read, Write]'), old));
       for (const { file, content } of others) assert.equal(read(dir, path.join(AGENT_DIR, file)), content, `${file} must stay byte-identical`);
 
       const after = agentTree(dir);
