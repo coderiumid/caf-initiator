@@ -271,20 +271,27 @@ test('pointers: --force never rewrites an agent definition', async () => {
   assert.deepEqual(Object.fromEntries(agentFiles(dir).map((f) => [f, readAgent(dir, f)])), agentsAfter);
 });
 
-test('H10: an agent of an unrecognized kind is asked with default No', async () => {
-  const custom = buildAgentMd({ name: 'x', role: 'r', scope: 's', scripts: null, packageManager: null, kind: 'implementation', slug: 'payments' });
-  const dir = makeRepo({ 'package.json': { name: 'r' }, [`${AGENT_DIR}/payments.md`]: custom, [`${AGENT_DIR}/caf-planner.md`]: oldVersionAgents()[`${AGENT_DIR}/caf-planner.md`] }, 'caf-skills-ptr-');
+test('H10: an agent of an unknown kind is not offered ## Skills; a per-app agent is, with default Yes (CAF-SDD-03g)', async () => {
+  // `payments.md` is the per-app agent of the repo (package name `payments`); `custom.md` is named after nothing.
+  const agent = (slug) => buildAgentMd({ name: 'x', role: 'r', scope: 's', scripts: null, packageManager: null, kind: 'implementation', slug });
+  const [payments, custom] = [agent('payments'), agent('custom')];
+  const dir = makeRepo(
+    {
+      'package.json': { name: 'payments' },
+      [`${AGENT_DIR}/payments.md`]: payments,
+      [`${AGENT_DIR}/custom.md`]: custom,
+      [`${AGENT_DIR}/caf-planner.md`]: oldVersionAgents()[`${AGENT_DIR}/caf-planner.md`],
+    },
+    'caf-skills-ptr-'
+  );
 
-  // empty queue → every prompt takes its `initial`: planner (recognized) yes, payments no
+  // empty queue → every prompt takes its `initial`: planner and payments yes, custom is not asked
   prompts._injected.length = 0;
   const byDefault = await silenced(() => skillsTarget({ dir }));
-  assert.deepEqual(byDefault.pointers.added, [agentPath(dir, 'caf-planner.md')]);
-  assert.deepEqual(byDefault.pointers.declined, [agentPath(dir, 'payments.md')]);
-  assert.equal(readAgent(dir, 'payments.md'), custom);
-
-  // an explicit yes still works
-  const explicit = await scaffoldSkills(dir, { expectPrompts: ['payments.md'] });
-  assert.deepEqual(explicit.pointers.added, [agentPath(dir, 'payments.md')]);
+  assert.deepEqual(byDefault.pointers.added, [agentPath(dir, 'caf-planner.md'), agentPath(dir, 'payments.md')]);
+  assert.deepEqual(byDefault.pointers.declined, []);
+  assert.deepEqual(byDefault.pointers.unknownKind, [agentPath(dir, 'custom.md')]);
+  assert.equal(readAgent(dir, 'custom.md'), custom);
   assert.deepEqual(pointersIn(readAgent(dir, 'payments.md')), ['caf-scope-discipline', 'caf-no-guess', 'caf-escalate'].map(skillPath));
 });
 

@@ -2,7 +2,7 @@ import path from 'node:path';
 import kleur from 'kleur';
 
 import { section, readFileSafe, readJsonSafe, exists } from '../util.js';
-import { SYNCABLE_SECTIONS, detectKind, parseSections, sectionBody } from '../utils/agent-sections.js';
+import { SYNCABLE_SECTIONS, detectKind, implementationSlugs, parseSections, sectionBody } from '../utils/agent-sections.js';
 import { hashSection, compareSection, extractSection, SECTION_STATUS } from '../utils/section-diff.js';
 import { readManifest, getBaselineHash } from '../utils/generate-manifest.js';
 import { findUnresolvedPlaceholders } from '../utils/placeholder-check.js';
@@ -67,12 +67,24 @@ function parseCommand(span) {
   return null;
 }
 
-function checkTrackedSections(dir, agentDir, agentFiles, findings) {
+// A file that is neither a known kind nor a per-app agent caf-init wrote (`appSlugs`) has no
+// template to be held against: one WARN, no FAIL (CAF-SDD-03g).
+function checkTrackedSections(dir, agentDir, agentFiles, findings, appSlugs) {
   const manifest = readManifest(dir);
   for (const rel of agentFiles) {
     const raw = readFileSafe(path.join(dir, rel));
     if (raw == null) continue;
-    const kind = detectKind(rel);
+    const kind = detectKind(rel, appSlugs);
+    if (kind == null) {
+      findings.push({
+        level: LEVEL.WARN,
+        file: rel,
+        message:
+          'unknown kind — not a kind caf-init knows or an agent it wrote for an app, so its tracked sections are not checked ' +
+          '(no template to compare them with)',
+      });
+      continue;
+    }
     const { lines, sections } = parseSections(raw);
     const untracked = [];
 
@@ -251,7 +263,8 @@ export async function checkDrafts({ dir, agentDir: agentDirOpt, repoMode }) {
     dir,
     agentDir,
     drafts.filter((rel) => rel.startsWith(`${agentDir}/`)),
-    findings
+    findings,
+    implementationSlugs(context.apps)
   );
 
   checkSkillPointers(

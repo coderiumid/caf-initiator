@@ -416,8 +416,8 @@ present) before changing code; stop with `Status: NEEDS_HUMAN` when the spec say
 every AC is a contract and one that cannot be met is reported; never write `requirements.md` or
 `tasks.md`, the proposal goes under `## Proposed Spec Changes` of `verify-report.md`; one evidence
 line per AC. What that text must keep:
-- Three kinds only, named in `SPEC_AWARE_IMPLEMENTATION_KINDS`. The `implementation` fallback of
-  `detectKind()` shares the artifact line and must keep the line alone: giving it the text would
+- Three kinds only, named in `SPEC_AWARE_IMPLEMENTATION_KINDS`. The `implementation` kind (the
+  per-app agent; before CAF-SDD-03g also `detectKind()`'s fallback for any name) shares the artifact line and must keep the line alone: giving it the text would
   make `curate sync` write it into every custom agent file. A test holds the `Output` of every
   other kind against `test/fixtures/pre-sdd03d/output-by-kind.json`.
 - `## Output` is the only section that changed. Tools, `## Allowed Tools`, `## Input`,
@@ -457,16 +457,18 @@ the paths named in `## Skills`. Before this an older planner with `tools: [Read,
   choice). `auditAgentDefinitions().entries` stays the section report alone.
 - A repo with nothing to warn about prints nothing new: the recorded report of
   `test/fixtures/pre-sdd03c1/curate-old-repo.*.json` is compared entry for entry.
-- Only files whose name is a known kind are checked. The `implementation` fallback is a guess
-  about a custom file, so it is skipped. Tools are compared as a set.
+- Only files whose name is a known kind are checked. A per-app `implementation` agent is skipped
+  (a guess about a hand-edited file), and a file of an unknown kind gets one `unknown-kind`
+  warning instead (CAF-SDD-03g, see "Recognizing an agent file"). Tools are compared as a set.
 - Read-only, deterministic, no model. The remedy in the message is the real one: frontmatter by
   hand; a pointer by hand when the agent has `## Skills`, `caf-init scaffold skills` when it has
   none. This reports the manual rollout steps, it does not perform them: don't turn it into a
   write, and don't make `## Skills` or frontmatter syncable.
 
-`KNOWN_KINDS` must list every kind `detectKind()` should recognize — a kind missing from it
-silently falls back to `implementation` (`Read`+`Write`+`Edit`+`Bash`), which is a privilege
-escalation risk for any restricted kind (CAF-DEVOPS-KIND-01: `devops` was in `TOOLS_BY_KIND`
+`KNOWN_KINDS` must list every kind `detectKind()` should recognize — a kind missing from it was,
+until CAF-SDD-03g, detected as `implementation` (`Read`+`Write`+`Edit`+`Bash`), a privilege
+escalation risk for any restricted kind; now it is an unknown kind and is skipped (see "Recognizing
+an agent file"), but still list every kind (CAF-DEVOPS-KIND-01: `devops` was in `TOOLS_BY_KIND`
 as read-only `[Read, Bash]` but missing from `KNOWN_KINDS`, so `caf-devops.md` misdetected as
 `implementation`). Unlike the Discovery gap above, `devops` did NOT need a
 `DISCOVERY_GUARDED_SECTIONS`-style guard entry once `KNOWN_KINDS` was fixed — its
@@ -853,3 +855,34 @@ before it — never regenerate it).
 - Older tests that named the skill were renamed; `sdd03d` reads `pre-sdd03d`'s `## Skills` through
   the rename (the golden is untouched). `mono-pnpm.json` and `frozen-kinds` did not change.
 - Left out: removing the old folder in repos, the other skills, the function names.
+
+## Recognizing an agent file (CAF-SDD-03g)
+
+`detectKind(filename, appSlugs)` (`src/utils/agent-sections.js`) returns a kind from `KNOWN_KINDS`
+(with or without `caf-`, checked first), `'implementation'` only when the file-name stem is in
+`appSlugs`, and `null` for any other name. `appSlugs` is `implementationSlugs(apps)` — the same
+`agentSlug('implementation', app)` that `scaffold agents` writes with, over the apps of
+`detectRepoContext({ dir, mode })` / `detectStack` for the same `--mode`; there is no second slug
+derivation. Before this ticket every unknown name was `implementation`, so `curate baseline` recorded a
+custom read-only agent and `curate sync` then rewrote it with `Read`+`Write`+`Edit`+`Bash`.
+`test/sdd03g-unknown-kind.test.js` holds the ticket against `test/fixtures/pre-sdd03g/` (the
+scaffold contents of four variants and the audit / sync --dry-run / check-drafts report of a
+monorepo with a per-app agent `admin.md` and a custom `caf-foo.md`, recorded before it — never
+regenerate it).
+- `null` is never handed to a template builder. Each caller skips the file and reports it, and the
+  skip happens before any section is read: `agentsSync` (`unknownKind` in its result), `curateBaseline`
+  (no manifest entry; `unknownKind` in its result), `auditAgentDefinitions` (one `check:
+  'unknown-kind'` warning, no section entry, no gap, exit code unchanged), `check-drafts` (one `WARN`,
+  never a `FAIL`) and `scaffold skills` (not offered, not edited, one line; `pointers.unknownKind`).
+  `unknownKind` is in a result only when non-empty, so the result of a repo without such a file keeps
+  the shape the recorded reports hold. `curate sync` still writes `DRIFT` only.
+- `agentsSync` and `curateBaseline` take `repoMode` (`curate` and the CLI pass `--mode`); both used
+  to run no detection. `skillsTarget` already had the stack.
+- Known limit: an agent written by hand under a name equal to an app slug is treated as that app's
+  `implementation` agent. A repo with a single root app has one slug (the package name, else `app`).
+- `readAgentRoster` (matches the 7 role slugs by name, the rest is `custom`) and `export` do not call
+  `detectKind`, so they are unchanged.
+- Old tests that held the fallback were changed, goldens were not: `devops-kind-detection`,
+  `sdd03d-implementation-spec` (name the app slug), `sdd02d-planner-audit` (an unknown file now has
+  its own warning), `skills-pointer` H10 (unknown file not asked; per-app agent default Yes).
+- Scaffold output, `frozen-kinds` and `mono-pnpm.json` did not change.

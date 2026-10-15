@@ -48,15 +48,15 @@ export const FROZEN = [
  * included) in the given fixture. MONOREPO assigns apps/web to frontend and apps/api to backend,
  * as test/helpers/mono-snapshot.js does; SINGLE_REPO uses the default `implementer` role.
  */
-export async function renderAgents(fixture, { skillsFor } = {}) {
-  const dir = fixtureDir(fixture);
+export async function renderAgents(fixture, { skillsFor, extraApps = [], dir: dirOverride } = {}) {
+  const dir = dirOverride || fixtureDir(fixture);
   const stack = await silenced(() => detectStack({ dir, explicitGlobs: undefined }));
 
   let candidates;
   if (stack.isMonorepo) {
     const web = stack.apps.find((a) => a.path === 'apps/web');
     const api = stack.apps.find((a) => a.path === 'apps/api');
-    candidates = buildCandidates({ frontend: [web], backend: [api] }, []);
+    candidates = buildCandidates({ frontend: [web], backend: [api] }, extraApps.map((p) => stack.apps.find((a) => a.path === p)));
   } else {
     candidates = buildSingleRepoCandidates(stack.apps[0], [], 'implementer');
   }

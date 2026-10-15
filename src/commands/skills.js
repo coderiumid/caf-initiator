@@ -19,7 +19,7 @@ import {
   skillPath,
 } from '../templates/skill-md.js';
 import { buildSkillsBody } from '../templates/agent-md.js';
-import { KNOWN_KINDS, detectKind, parseSections, sectionBody, insertSection } from '../utils/agent-sections.js';
+import { detectKind, implementationSlugs, parseSections, sectionBody, insertSection } from '../utils/agent-sections.js';
 import { assertNoUnresolvedPlaceholders } from '../utils/placeholder-check.js';
 
 /**
@@ -101,11 +101,6 @@ export function isPureInsertion(raw, next, core) {
   return next.slice(at, at + added).trim() === core;
 }
 
-function isRecognizedKind(file) {
-  const stem = path.basename(file, '.md');
-  return KNOWN_KINDS.includes(stem.startsWith('caf-') ? stem.slice('caf-'.length) : stem);
-}
-
 /**
  * Offer a `## Skills` pointer section to agent definitions that already exist — `scaffold
  * agents` writes through writeIfAbsent, so an agent generated earlier would otherwise never get
@@ -115,7 +110,7 @@ function isRecognizedKind(file) {
  * already has a `## Skills` section is never edited, whatever it contains. `--force` does not
  * reach this step.
  */
-async function addSkillPointers({ dir, agentDir, dryRun, onDisk }) {
+async function addSkillPointers({ dir, agentDir, dryRun, onDisk, appSlugs }) {
   const result = { added: [], wouldAdd: [], declined: [], untouched: [], refused: [] };
   const usable = SKILL_NAMES.filter((name) => onDisk.has(name) && !hasSkillDraftBanner(onDisk.get(name)));
 
@@ -135,7 +130,16 @@ async function addSkillPointers({ dir, agentDir, dryRun, onDisk }) {
 
   for (const file of files) {
     const filePath = path.join(agentDirPath, file);
-    const wanted = skillsForKind(detectKind(file)).filter((name) => usable.includes(name));
+    const kind = detectKind(file, appSlugs);
+    if (kind == null) {
+      // Which skills an agent of an unknown kind needs is a guess: not offered, not edited.
+      (result.unknownKind ||= []).push(filePath);
+      console.log(
+        kleur.dim(`  skip  ${file}: unknown kind — not a kind caf-init knows or an agent it wrote for an app; add the skill pointers by hand if you want them`)
+      );
+      continue;
+    }
+    const wanted = skillsForKind(kind).filter((name) => usable.includes(name));
     if (wanted.length === 0) continue;
 
     const raw = readFileSafe(filePath);
@@ -170,15 +174,11 @@ async function addSkillPointers({ dir, agentDir, dryRun, onDisk }) {
       continue;
     }
 
-    const recognized = isRecognizedKind(file);
     console.log('');
     console.log(kleur.yellow(`${file}: no "## Skills" section. Preview:`));
     console.log(kleur.dim('---'));
     console.log(`## Skills\n${body}`);
     console.log(kleur.dim('---'));
-    if (!recognized) {
-      console.log(kleur.yellow(`  ${file} is not a kind caf-init recognizes — treated as an implementation agent; default answer is No`));
-    }
 
     if (dryRun) {
       console.log(kleur.yellow(`  would add "## Skills" to ${file} (dry-run, nothing written)`));
@@ -190,7 +190,7 @@ async function addSkillPointers({ dir, agentDir, dryRun, onDisk }) {
       type: 'confirm',
       name: 'confirmed',
       message: `Add section "## Skills" to ${file}?`,
-      initial: recognized,
+      initial: true,
     });
     if (!confirmed) {
       result.declined.push(filePath);
@@ -286,7 +286,7 @@ export async function skillsTarget({ dir, agentDir = '.claude/agents', dryRun = 
   reportSkillDirCollisions(dirCollisions);
   reportRenamedSkills(dir, onDisk);
 
-  const pointers = await addSkillPointers({ dir, agentDir: agentDir || '.claude/agents', dryRun, onDisk });
+  const pointers = await addSkillPointers({ dir, agentDir: agentDir || '.claude/agents', dryRun, onDisk, appSlugs: implementationSlugs(stack.apps) });
 
   return { written, skipped, drafts, collisions: dirCollisions, pointers };
 }
