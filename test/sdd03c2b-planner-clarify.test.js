@@ -28,6 +28,7 @@ import { hashSection, SECTION_STATUS } from '../src/utils/section-diff.js';
 import { copyFixture, snapshotTree } from './helpers/make-repo.js';
 import { silenced } from './helpers/mono-snapshot.js';
 import { makeOldRepo } from './helpers/old-repo.js';
+import { sinceSdd03c2c } from './helpers/since-03c2c.js';
 import { CONTENT_VARIANTS, renderScaffoldContents } from './helpers/scaffold-contents.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir } from './helpers/frozen-kinds.js';
 
@@ -118,6 +119,8 @@ for (const { id } of CONTENT_VARIANTS) {
   test(`AC-4: ${id} — the planner differs from the pre-ticket golden in ## Output and ## Constraints only; every other file, agents included, is byte-identical (INDEX.md aside: AC-7)`, () => {
     const before = golden(id);
     const after = now[id];
+    // CAF-SDD-03c2c: /caf-plan-ticket is not written and /caf-run-pipeline is /caf-run.
+    before.files = sinceSdd03c2c(before.files, after.files);
     assert.deepEqual(Object.keys(after.files).sort(), Object.keys(before.files).sort());
     assert.deepEqual(after.agents, before.agents);
 

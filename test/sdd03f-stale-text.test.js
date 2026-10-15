@@ -67,7 +67,9 @@ const renderPiv = (name) => buildPivWorkflowMd({ agentDir: '.claude/agents', qaR
 // CAF-SDD-03c2 added the spec status section to /caf-run-pipeline (held in
 // test/sdd03c2-validator-default.test.js); this ticket's relation to its golden is about the rest.
 const SPEC_STATUS_03C2 = /## Spec Status Check[\s\S]*?(?=## 3\. Implementation)/;
+// CAF-SDD-03c2c: the command is /caf-run now; the golden is read with that one name changed.
 const renderPipeline = (name) => buildRunPipelineMd(OLD_PIPELINE[name].input).replace(SPEC_STATUS_03C2, '');
+const renamed = (text) => text.replaceAll('/caf-run-pipeline', '/caf-run');
 
 /** `## <header>` of a Markdown file, up to the next `## ` heading. */
 function mdSection(md, header) {
@@ -435,7 +437,7 @@ test('AC-11: the lines of piv-workflow.md that mention a gate with no known retr
 
 test('AC-11: /caf-run-pipeline with Documentation is the golden byte for byte; without it only the description changed', () => {
   for (const name of Object.keys(OLD_PIPELINE)) {
-    const old = OLD_PIPELINE[name].content;
+    const old = renamed(OLD_PIPELINE[name].content);
     if (name.endsWith('.with-documentation')) {
       assert.equal(renderPipeline(name), old, name);
     } else {

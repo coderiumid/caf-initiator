@@ -57,7 +57,8 @@ const DROPPED_COMMAND_FILES = [
   'caf-qa-check.md',
   'caf-review-ticket.md',
 ];
-const KEPT_COMMAND_FILES = ['caf-complete-drafts.md', 'caf-fix-review.md', 'caf-plan-ticket.md', 'caf-plan.md', 'caf-review.md', 'caf-run-pipeline.md'];
+// CAF-SDD-03c2c: caf-plan-ticket.md is hidden and caf-run-pipeline.md is written as caf-run.md.
+const KEPT_COMMAND_FILES = ['caf-complete-drafts.md', 'caf-fix-review.md', 'caf-plan.md', 'caf-review.md', 'caf-run.md'];
 const DROPPED_PATHS = [
   ...DROPPED_AGENT_FILES.map((f) => `${AGENT_DIR}/${f}`),
   ...DROPPED_COMMAND_FILES.map((f) => `${COMMAND_DIR}/${f}`),
@@ -82,6 +83,13 @@ const since03c2 = {
 // replaced by caf-frontend + caf-backend (`--role` unchanged). The goldens stay as recorded; the
 // expectation is the 03c2 one put through this. (test/sdd03c3-single-repo-roster.test.js holds the
 // 03c3 change itself.)
+// CAF-SDD-03c2c, once more: /caf-plan-ticket is not written and /caf-run-pipeline is /caf-run.
+const renameCommand = (f) => f.replace('caf-run-pipeline.md', 'caf-run.md');
+const since03c2c = {
+  commands: (list) => sorted(list.filter((f) => f !== 'caf-plan-ticket.md').map(renameCommand)),
+  files: (list) => sorted(list.filter((f) => f !== `${COMMAND_DIR}/caf-plan-ticket.md`).map(renameCommand)),
+};
+
 const since03c3 = {
   offered: (list) => list.flatMap((kind) => (kind === 'implementer' ? ['frontend', 'backend'] : [kind])),
   agents: (list) => sorted(list.flatMap((f) => (f === 'caf-implementer.md' ? ['caf-frontend.md', 'caf-backend.md'] : [f]))),
@@ -154,21 +162,22 @@ for (const variant of VARIANTS) {
 
   test(`AC-2: ${name} — the commands written are the ones recorded before, minus the eight dropped ones`, () => {
     assert.ok(before.commands.includes('caf-qa-check.md'), 'precondition: the golden is the pre-change set');
-    assert.deepEqual(now[name].commands, since03c2.commands(without(before.commands, DROPPED_COMMAND_FILES)));
+    assert.deepEqual(now[name].commands, since03c2c.commands(since03c2.commands(without(before.commands, DROPPED_COMMAND_FILES))));
     assert.deepEqual(now[name].commands.filter((f) => DROPPED_COMMAND_FILES.includes(f)), []);
     assert.deepEqual(now[name].commands.filter((f) => !KEPT_COMMAND_FILES.includes(f)), []);
     assert.ok(now[name].commands.includes('caf-plan.md'), '/caf-plan is written (CAF-SDD-03c2)');
-    assert.ok(now[name].commands.includes('caf-plan-ticket.md'), '/caf-plan-ticket is still written');
+    assert.ok(!now[name].commands.includes('caf-plan-ticket.md'), '/caf-plan-ticket is no longer written (CAF-SDD-03c2c)');
   });
 
   test(`AC-2: ${name} — every other file of the default scaffold is still written`, () => {
-    assert.deepEqual(now[name].files, since03c3.files(since03c2.files(without(before.files, DROPPED_PATHS))));
+    assert.deepEqual(now[name].files, since03c2c.files(since03c3.files(since03c2.files(without(before.files, DROPPED_PATHS)))));
   });
 }
 
 test('AC-2: the hidden commands are exactly the eight dropped ones, and none of them is a kept one', () => {
-  assert.deepEqual(sorted(HIDDEN_COMMAND_FILES), sorted(DROPPED_COMMAND_FILES));
-  assert.equal(HIDDEN_COMMAND_FILES.length, 8);
+  // CAF-SDD-03c2c adds caf-plan-ticket.md as a ninth (held in test/sdd03c2c-run-command.test.js).
+  assert.deepEqual(sorted(HIDDEN_COMMAND_FILES.filter((f) => f !== 'caf-plan-ticket.md')), sorted(DROPPED_COMMAND_FILES));
+  assert.equal(HIDDEN_COMMAND_FILES.length, 9);
   for (const file of KEPT_COMMAND_FILES) assert.ok(!HIDDEN_COMMAND_FILES.includes(file), file);
 });
 
@@ -184,7 +193,7 @@ for (const fixture of FIXTURE_NAMES) {
       ? buildCandidates({ frontend: [web], backend: [api] }, [])
       : buildSingleRepoCandidates(stack.apps[0], [], 'frontend');
     const picked = all.filter((c) => ['planner', 'architect', 'frontend', 'backend', 'qa', 'reviewer', 'auditor', 'pm', 'ux-designer'].includes(c.kind));
-    // (MONOREPO: the two app pickers.) agent multiselect, /caf-run-pipeline, /caf-fix-review, /caf-review, tracker.
+    // (MONOREPO: the two app pickers.) agent multiselect, /caf-run, /caf-fix-review, /caf-review, tracker.
     prompts.inject([...(stack.isMonorepo ? [[web], [api]] : []), picked, true, true, true, 'Linear']);
     try {
       await silenced(() => agents({ dir, dryRun: false, role: stack.isMonorepo ? undefined : 'frontend' }));
@@ -192,7 +201,7 @@ for (const fixture of FIXTURE_NAMES) {
       prompts._injected.length = 0;
     }
     const written = fs.readdirSync(path.join(dir, COMMAND_DIR));
-    assert.ok(written.includes('caf-plan-ticket.md'), 'precondition: the run did write commands');
+    assert.ok(written.includes('caf-plan.md'), 'precondition: the run did write commands');
     assert.deepEqual(written.filter((f) => DROPPED_COMMAND_FILES.includes(f)), []);
   });
 

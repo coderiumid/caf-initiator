@@ -80,8 +80,10 @@ for (const variant of VARIANTS) {
     const current = await renderDefaultFileSet(variant);
     const strip = (list) => list.filter((f) => !f.endsWith(OLD_NAME) && !f.endsWith('caf-plan-ticket.md'));
 
-    assert.ok(old.commands.includes(OLD_NAME) && old.commands.includes('caf-plan-ticket.md'), 'precondition, in the golden');
-    assert.ok(current.commands.includes(NEW_NAME));
+    // a variant with no implementation agent (single-nuxt under --mode mono) never had the command
+    const hadRun = old.commands.includes(OLD_NAME);
+    assert.ok(old.commands.includes('caf-plan-ticket.md'), 'precondition, in the golden');
+    assert.equal(current.commands.includes(NEW_NAME), hadRun);
     assert.ok(current.commands.includes('caf-plan.md'));
     assert.ok(!current.commands.includes(OLD_NAME));
     assert.ok(!current.commands.includes('caf-plan-ticket.md'));
@@ -93,7 +95,7 @@ for (const variant of VARIANTS) {
       strip(current.files).filter((f) => !f.endsWith(NEW_NAME)),
       strip(old.files)
     );
-    assert.ok(current.files.includes(`${COMMAND_DIR}/${NEW_NAME}`));
+    assert.equal(current.files.includes(`${COMMAND_DIR}/${NEW_NAME}`), hadRun);
   });
 }
 

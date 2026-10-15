@@ -35,6 +35,12 @@ const AGENT_DIR = '.claude/agents';
 const OLD = Object.fromEntries(
   FIXTURE_NAMES.map((f) => [f, JSON.parse(fs.readFileSync(path.join(FIXTURES, 'pre-sdd03b3', `commands.${f}.json`), 'utf8')).files])
 );
+// CAF-SDD-03c2c: /caf-run-pipeline is now /caf-run. The two review commands name it, so the golden
+// is read with that one name changed (the golden file itself is not touched); test/sdd03c2c-run-command.test.js
+// holds that this is the only difference.
+for (const f of FIXTURE_NAMES) {
+  for (const file of ['caf-review.md', 'caf-fix-review.md']) OLD[f][file] = OLD[f][file].replaceAll('/caf-run-pipeline', '/caf-run');
+}
 
 // T1(a): the 13 commands a full scaffold writes, in both fixtures.
 const COMMAND_FILES = [
@@ -56,7 +62,9 @@ const CHANGED_FILES = ['caf-fix-review.md', 'caf-review.md'];
 // CAF-SDD-03c1: eight of the 13 are no longer scaffolded. The golden still holds all 13; the
 // builders of the eight are compared against it in test/sdd03c1-stop-scaffold.test.js.
 // CAF-SDD-03c2 adds caf-plan.md (file-name order: '-' sorts before '.').
-const WRITTEN_FILES = ['caf-complete-drafts.md', 'caf-fix-review.md', 'caf-plan-ticket.md', 'caf-plan.md', 'caf-review.md', 'caf-run-pipeline.md'];
+// CAF-SDD-03c2c: caf-plan-ticket.md is no longer written, and caf-run-pipeline.md is caf-run.md.
+const WRITTEN_FILES = ['caf-complete-drafts.md', 'caf-fix-review.md', 'caf-plan.md', 'caf-review.md', 'caf-run.md'];
+const GOLDEN_NAME = { 'caf-run.md': 'caf-run-pipeline.md' };
 
 // CAF-SDD-03c1: what the golden text of a still-scaffolded command becomes now that four of the
 // agents it was recorded with are no longer written. No template changed:
@@ -74,7 +82,6 @@ const PIPELINE_ROLES = {
   'single-nuxt': { implementationRoles: ['caf-frontend', 'caf-backend'], appPaths: { 'caf-frontend': ['.'], 'caf-backend': ['.'] } },
 };
 const SINCE_03C1 = {
-  'caf-plan-ticket.md': (old) => old,
   'caf-plan.md': () => buildPlanMd({ agentDir: AGENT_DIR }),
   'caf-complete-drafts.md': (old) => {
     const gone = ['caf-auditor', 'caf-documentation', 'caf-pm', 'caf-ux-designer'].map((slug) => `- \`${AGENT_DIR}/${slug}.md\``);
@@ -100,7 +107,7 @@ const SINCE_03C1 = {
     }
     return kept.join('\n');
   },
-  'caf-run-pipeline.md': (old, fixture) => {
+  'caf-run.md': (old, fixture) => {
     assert.match(old, /caf-qa/, 'the golden is the one recorded with the qa gate');
     return buildRunPipelineMd({ agentDir: AGENT_DIR, ...PIPELINE_ROLES[fixture], hasArchitect: true, hasDocumentation: false, gate: 'validator' });
   },
@@ -309,7 +316,7 @@ for (const [fixture, role] of [['mono-pnpm'], ['single-nuxt'], ['single-nuxt', '
 
 test('AC-3: the frozen MONOREPO render and its snapshot have no /caf-plan entry', async () => {
   const rendered = Object.keys((await renderMonoSnapshot()).files);
-  assert.ok(rendered.includes('.claude/commands/caf-run-pipeline.md'));
+  assert.ok(rendered.includes('.claude/commands/caf-run.md'));
   assert.deepEqual(rendered.filter((f) => /caf-plan\.md$/.test(f)), []);
   const recorded = Object.keys(JSON.parse(fs.readFileSync(path.join(FIXTURES, 'snapshots', 'mono-pnpm.json'), 'utf8')).files);
   assert.deepEqual(recorded.filter((f) => /caf-plan\.md$/.test(f)), []);
@@ -338,7 +345,7 @@ for (const fixture of FIXTURE_NAMES) {
     assert.deepEqual(Object.keys(now[fixture].files), WRITTEN_FILES);
     for (const file of WRITTEN_FILES) {
       if (CHANGED_FILES.includes(file)) continue;
-      assert.equal(now[fixture].files[file], SINCE_03C1[file](OLD[fixture][file], fixture), `${file} must stay byte-identical`);
+      assert.equal(now[fixture].files[file], SINCE_03C1[file](OLD[fixture][GOLDEN_NAME[file] || file], fixture), `${file} must stay byte-identical`);
     }
   });
 }
@@ -348,7 +355,7 @@ test('AC-4: the name /caf-plan is not the name of a skill, of /caf-plan-ticket o
   assert.ok(!SKILL_NAMES.includes(PLAN_COMMAND_NAME));
   assert.notEqual(PLAN_COMMAND_NAME, 'caf-plan-ticket');
   assert.ok(!COMMAND_FILES.includes(`${PLAN_COMMAND_NAME}.md`));
-  assert.ok(COMMAND_FILES.includes('caf-plan-ticket.md'), '/caf-plan-ticket is still written');
+  assert.ok(COMMAND_FILES.includes('caf-plan-ticket.md'), 'the golden still holds /caf-plan-ticket (no longer written since CAF-SDD-03c2c)');
 });
 
 // ---------------------------------------------------------------------------------------------
