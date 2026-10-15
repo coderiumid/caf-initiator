@@ -6,24 +6,12 @@ import kleur from 'kleur';
 import { section } from '../util.js';
 import { writeIfAbsentGuarded, reportCollisions } from '../utils/collision-check.js';
 import { detectStack } from '../steps/02-detect-stack.js';
-import { detectTracker } from '../steps/03-detect-tracker.js';
 import { matchVerifyScripts, readPackageName } from '../utils/package-scripts.js';
 import { buildAgentMd, agentSlug, buildDirScopeSection, IMPLEMENTATION_KINDS } from '../templates/agent-md.js';
 import { REPO_MODE } from '../utils/repo-context.js';
 import { usableSkillPaths, collectVerifyApps } from './skills.js';
-import { buildAuditScanMd, buildAuditToTicketMd } from '../templates/audit-commands.js';
-import {
-  buildDiscoveryStartMd,
-  buildPmAgentMd,
-  buildUxDesignerAgentMd,
-} from '../templates/discovery-commands.js';
-import { buildDiscoveryToTicketMd } from '../templates/discovery-to-ticket.js';
-import {
-  buildDesignTicketMd,
-  buildPlanTicketMd,
-  buildQaCheckMd,
-  buildReviewTicketMd,
-} from '../templates/ticket-preview-commands.js';
+import { buildPmAgentMd, buildUxDesignerAgentMd } from '../templates/discovery-commands.js';
+import { buildPlanTicketMd } from '../templates/ticket-preview-commands.js';
 import { buildRunPipelineMd } from '../templates/run-pipeline-command.js';
 import { buildFixReviewMd } from '../templates/fix-review-command.js';
 import { buildReviewMd } from '../templates/review-command.js';
@@ -63,10 +51,9 @@ export function isOfferedCandidate(candidate) {
   return !HIDDEN_CANDIDATE_KINDS.includes(candidate.kind) && !SUPERSEDED_CANDIDATE_KINDS.includes(candidate.kind);
 }
 
-// The same for commands (CAF-SDD-03c1): files no scaffold run writes any more. Their builders and
-// templates stay, and a command file already in a repo is never touched. Checked where a command
-// is written (isHiddenCommand), not where it is offered: three of these belong to kinds that are
-// still scaffolded (architect, qa, reviewer).
+// The same for commands (CAF-SDD-03c1): files no scaffold run writes any more. A command file
+// already in a repo is never touched. Their builders were removed at CAF-SDD-03c3 (no path reached
+// them); the list stays, and `isHiddenCommand` is still checked where a command is written.
 export const HIDDEN_COMMAND_FILES = [
   'caf-discovery-start.md',
   'caf-discovery-to-ticket.md',
@@ -87,9 +74,6 @@ const PREVIEW_COMMANDS = [
   // CAF-SDD-03c2: no longer hidden. Unlike /caf-plan-ticket it spawns caf-planner.md and writes
   // nothing itself (see templates/plan-command.js).
   { kind: 'planner', label: 'Planner', file: 'caf-plan.md', build: buildPlanMd },
-  { kind: 'architect', label: 'Architect', file: 'caf-design-ticket.md', build: buildDesignTicketMd },
-  { kind: 'qa', label: 'QA', file: 'caf-qa-check.md', build: buildQaCheckMd },
-  { kind: 'reviewer', label: 'Reviewer', file: 'caf-review-ticket.md', build: buildReviewTicketMd },
 ];
 
 const VALIDATOR_ROLE =
@@ -508,45 +492,11 @@ export async function agents({
     return { written: [], skipped: [] };
   }
 
-  // UX Designer doesn't stand alone outside the Discovery flow: without PM Agent there's no
-  // prd.md to use as input, and no command that spawns it. That choice is dropped (not a total
-  // abort) so other agents selected in the same run still get generated.
-  let selected = picked;
-  const pmPicked = selected.some((c) => c.kind === 'pm');
-  const uxPicked = selected.some((c) => c.kind === 'ux-designer');
-  if (uxPicked && !pmPicked) {
-    console.log('');
-    console.log(
-      kleur.red(
-        '✗ UX Designer was selected without Product Manager — not generated.\n' +
-          '  UX Designer does not stand alone outside the Discovery flow: its input is prd.md from\n' +
-          '  the PM Agent, and it is spawned by PM\'s /caf-discovery-start. Re-run\n' +
-          '  `caf-init scaffold agents` and select Product Manager together with UX Designer.'
-      )
-    );
-    selected = selected.filter((c) => c.kind !== 'ux-designer');
-    if (selected.length === 0) {
-      console.log(kleur.dim('no agents remaining — done without generating'));
-      return { written: [], skipped: [] };
-    }
-  }
-  const uxSelected = selected.some((c) => c.kind === 'ux-designer');
+  const selected = picked;
 
   const agentDirPath = path.join(dir, agentDirOpt || '.claude/agents');
   const relativeAgentDir = agentDirOpt || '.claude/agents';
   const commandDirPath = path.join(dir, commandDirOpt || '.claude/commands');
-
-  // Auditor and PM both need the tracker for their companion command. Detection/prompting is
-  // done only once — if both are selected in the same run, the user isn't asked twice.
-  let trackerResolved = false;
-  let tracker = null;
-  const getTracker = async () => {
-    if (!trackerResolved) {
-      ({ tracker } = await detectTracker({ dir }));
-      trackerResolved = true;
-    }
-    return tracker;
-  };
 
   console.log('');
   const written = [];
@@ -832,51 +782,6 @@ export async function agents({
     } else {
       console.log(kleur.dim('/caf-review not generated'));
     }
-  }
-
-  // Companion commands of the auditor and the PM. Since CAF-SDD-03c1 all four are in
-  // HIDDEN_COMMAND_FILES, so nothing is written here (and the tracker is not asked for) even for
-  // a selection that still holds one of those kinds.
-  const companionGroups = [
-    {
-      picked: selected.some((c) => c.kind === 'auditor'),
-      title: 'Auditor selected — generate companion commands (/caf-audit-scan, /caf-audit-to-ticket)',
-      commands: [
-        { file: 'caf-audit-scan.md', build: () => buildAuditScanMd({ agentDir: relativeAgentDir }) },
-        { file: 'caf-audit-to-ticket.md', build: (tracker) => buildAuditToTicketMd({ tracker, agentDir: relativeAgentDir }) },
-      ],
-    },
-    {
-      picked: pmPicked,
-      title: 'Product Manager selected — generate companion commands (/caf-discovery-start, /caf-discovery-to-ticket)',
-      commands: [
-        {
-          file: 'caf-discovery-start.md',
-          build: () => buildDiscoveryStartMd({ agentDir: relativeAgentDir, hasUxDesigner: uxSelected }),
-        },
-        { file: 'caf-discovery-to-ticket.md', build: (tracker) => buildDiscoveryToTicketMd({ tracker, agentDir: relativeAgentDir }) },
-      ],
-    },
-  ];
-
-  for (const group of companionGroups) {
-    const commands = group.commands.filter((command) => !isHiddenCommand(command.file));
-    if (!group.picked || commands.length === 0) continue;
-
-    console.log('');
-    section(group.title);
-
-    const tracker = await getTracker();
-
-    for (const command of commands) {
-      const filePath = path.join(commandDirPath, command.file);
-      const result = writeIfAbsentGuarded(filePath, command.build(tracker), { dryRun, overwrite }, collisions);
-      if (result === 'written') written.push(filePath);
-      else if (result === 'skipped') skipped.push(filePath);
-    }
-
-    console.log('');
-    console.log(kleur.green(`generated command draft(s) in ${commandDirPath}`));
   }
 
   reportCollisions(collisions);

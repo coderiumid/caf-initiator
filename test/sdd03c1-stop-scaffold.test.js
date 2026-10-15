@@ -26,11 +26,6 @@ import {
 } from '../src/commands/agents.js';
 import { runScaffoldTarget } from '../src/commands/scaffold.js';
 import { detectStack } from '../src/steps/02-detect-stack.js';
-import { buildAuditScanMd, buildAuditToTicketMd } from '../src/templates/audit-commands.js';
-import { buildDiscoveryStartMd } from '../src/templates/discovery-commands.js';
-import { buildDiscoveryToTicketMd } from '../src/templates/discovery-to-ticket.js';
-import { buildFeatureCatalogSyncMd } from '../src/templates/feature-catalog.js';
-import { buildDesignTicketMd, buildQaCheckMd, buildReviewTicketMd } from '../src/templates/ticket-preview-commands.js';
 import { KNOWN_KINDS, detectKind } from '../src/utils/agent-sections.js';
 import { SECTION_STATUS } from '../src/utils/section-diff.js';
 import { AGENT_DIR, COMMAND_DIR, VARIANTS, variantName, renderDefaultFileSet } from './helpers/default-file-set.js';
@@ -216,26 +211,8 @@ for (const fixture of FIXTURE_NAMES) {
   });
 }
 
-// The dropped commands left the scaffold, so the 03b3 golden no longer sees them through a run.
-// Their builders are still held to it here: not one byte of their text changed.
-for (const fixture of FIXTURE_NAMES) {
-  test(`AC-2: ${fixture} — the builders of the eight dropped commands still render the text recorded before 03b3`, () => {
-    const old = JSON.parse(fs.readFileSync(path.join(HERE, 'fixtures', 'pre-sdd03b3', `commands.${fixture}.json`), 'utf8')).files;
-    const agentDir = AGENT_DIR;
-    const rendered = {
-      'caf-audit-scan.md': buildAuditScanMd({ agentDir }),
-      'caf-audit-to-ticket.md': buildAuditToTicketMd({ tracker: 'Linear', agentDir }),
-      'caf-discovery-start.md': buildDiscoveryStartMd({ agentDir, hasUxDesigner: true }),
-      'caf-discovery-to-ticket.md': buildDiscoveryToTicketMd({ tracker: 'Linear', agentDir }),
-      'caf-design-ticket.md': buildDesignTicketMd({ agentDir }),
-      'caf-qa-check.md': buildQaCheckMd({ agentDir }),
-      'caf-review-ticket.md': buildReviewTicketMd({ agentDir }),
-      'caf-feature-catalog-sync.md': buildFeatureCatalogSyncMd({ architecture: null, agentDir }),
-    };
-    assert.deepEqual(sorted(Object.keys(rendered)), sorted(DROPPED_COMMAND_FILES));
-    for (const [file, content] of Object.entries(rendered)) assert.equal(content, old[file], `${file} must stay byte-identical`);
-  });
-}
+// The builders of the eight dropped commands were removed at CAF-SDD-03c3 (nothing reached them),
+// and with them the test that held their text to the pre-03b3 golden.
 
 // ---------------------------------------------------------------------------------------------
 // AC-3 — discovery and audit folders
