@@ -125,6 +125,25 @@ incrementally** inside your project's repo, and it gets better with iteration.
 CAF is not tied to any particular stack, tracker, or AI runner — this document is generic and
 adapts itself through the detection process in Section 0.
 
+**CAF follows Spec-Driven Development (SDD).** The unit of work is a written spec, not a chat
+message. The level is **spec-first heading toward spec-anchored**, not spec-as-source:
+- *Spec-first:* the Planner writes `requirements.md` (outcome, scope, decisions, acceptance
+  criteria, each with a `Verify:` line) before any code is written, and a human approves it.
+- *Spec-anchored:* once approved, the spec stays the reference. Tasks, implementation, validation
+  and review are all checked against its acceptance criteria. An agent never edits an approved
+  spec; a needed change is proposed in `verify-report.md` under `## Proposed Spec Changes` and a
+  human decides.
+- *Not spec-as-source:* the code stays the source of truth for behavior. The spec is not
+  regenerated into code, and code is not regenerated from the spec.
+
+**The Validator.** The Validator Agent checks the implementation against every acceptance criterion
+of the spec and writes `validate-report.md`. It reports; it does not fix. A criterion is `PASS` only
+when the Validator ran the evidence itself (an automated test or a command); `FAIL` when it ran it
+and the result contradicts the criterion; `UNVERIFIED` for anything it could not run (`manual`,
+`build-only`, no named test, no evidence line). `UNVERIFIED` never turns the report into `FAIL`, but
+its count and ids are always on the `Unverified:` line. The Validator is the successor of the QA
+Agent and is being connected to the pipeline.
+
 ---
 
 ## 4-Cluster Structure
@@ -266,9 +285,16 @@ Every agent in CAF follows the same working pattern:
 PLAN       → write a plan first, don't touch code yet
 IMPLEMENT  → execute per the plan
 VERIFY     → check it yourself before claiming done (lint, typecheck, test)
-              if it fails → fix and retry (max 3x)
+              if it fails → fix and retry (up to 3x, inside this one agent)
               if it still fails → stop, escalate to a human
 ```
+
+**Two retries, not one.** They are counted in different places:
+- *Verify retry* — inside one agent. After a failed lint, typecheck or test, the agent fixes and
+  verifies again, up to 3 times, then stops with `Status: NEEDS_HUMAN`.
+- *Gate retry* — in the orchestrator, per gate (QA, Reviewer). It is the number of retries the
+  orchestrator allows when a gate fails, before it stops. The default is 1 (to save tokens) and it
+  is configurable per gate (`agents.qa.maxRetries`, `agents.reviewer.maxRetries`).
 
 This prevents the two most common problems in AI coding: coding straight away with no direction,
 and claiming to be done without verification.
@@ -284,7 +310,7 @@ Planner Agent      — read the ticket, write a plan (don't touch code)
   ↓
 Architect Agent    — decide the technical approach (optional, for complex tasks)
   ↓
-{{APP_1}}/{{APP_2}} Agent — implementation + self-verify (retry max 3x)
+{{APP_1}}/{{APP_2}} Agent — implementation + self-verify (verify retry up to 3x)
   ↓
 Documentation Agent — update docs (parallel, non-blocking)
   ↓
@@ -516,6 +542,7 @@ not from memory or chat. The folder name follows the ticket key from the tracker
   tasks.md           ← Planner Agent: concrete task breakdown
   verify-report.md   ← {{APP_1}}/{{APP_2}} Agent: implement + verify results
   qa-report.md       ← QA Agent: in-depth test results
+  validate-report.md ← Validator Agent: per-AC validation results
   review-notes.md    ← Reviewer Agent: qualitative review results
 ```
 
@@ -528,25 +555,67 @@ only read. Don't mix up these two kinds when generating a new artifact.
 
 **`verify-report.md` format:**
 ```markdown
-## Ticket: {{TICKET-ID}}
-## Status: SUCCESS / NEEDS_HUMAN
+# Verify Report
 
-## Attempt Log
-- Attempt 1: FAIL — [error]
-- Attempt 2: PASS
+Status: SUCCESS | NEEDS_HUMAN
+
+## Checklist
+- [ ] lint
+- [ ] typecheck
+- [ ] test
+- [ ] build
 
 ## Acceptance Criteria
-- [x] criterion 1 — met in File.ext line N
-- [x] criterion 2 — met in service.ext
+- AC-1: automated-test — <file>::<test name>
+- AC-2: command — <command> | <exit code or output observed>
+- AC-3: build-only — <command that passed>; no test exists for this behavior
+- AC-4: manual — <steps a human must run, or steps already run>
+- AC-5: none — <why>
 
-## Quality Gate
-- Lint: PASS
-- Typecheck: PASS
-- Test: PASS / SKIP (reason)
+## Proposed Spec Changes
+-
 
 ## Notes
-[deviations from the plan, if any]
+[verification result details, errors if any]
 ```
+- `Status:` is a plain line with the literal word `SUCCESS` on success, not `PASS`/`DONE`/`OK`;
+  anything else is read as `NEEDS_HUMAN` and stops the pipeline. The orchestrator reads the
+  anchored `Status:` line; the older heading form (`## Status: SUCCESS`) is only still accepted for
+  compatibility. Keep the word `SUCCESS` out of every other line of the report.
+- `## Acceptance Criteria` has one line per AC of `requirements.md`, in exactly one of the five
+  evidence forms above. Name the test; a count of passing tests is never evidence. `Verify: manual`
+  is reported as `manual`, `Verify: command:` as `command` with the result observed.
+- `## Proposed Spec Changes`: once `requirements.md` says `Status: APPROVED` it is never edited.
+  A wrong or impossible spec is proposed here and a human decides. Write `-` when there is none.
+
+**`validate-report.md` format** (written by the Validator Agent):
+```markdown
+## Validate Report — {TICKET-ID}
+Ticket: {TICKET-ID}
+Agent: caf-validator
+Status: PASS | FAIL | NEEDS_HUMAN
+Unverified: {count} — {AC ids, comma-separated, or "none"}
+
+### Acceptance Criteria
+| AC | Status | Evidence kind | Evidence |
+|----|--------|---------------|----------|
+| AC-1 | PASS, FAIL or UNVERIFIED | automated-test, command, build-only, manual or none | {what was run and what was observed, or why it is unverified} |
+
+### Verification Gate
+| Command | Result |
+|---------|--------|
+| {command from the Verify Checklist} | {exit code observed} |
+
+### Verification Gate Gaps
+{Verify Checklist lines that have no command, or "None"}
+
+### Notes
+{anything the Reviewer or the developer should know}
+```
+- `Status: PASS` only when no AC is `FAIL` and every command of the verification gate passed;
+  `FAIL` when an AC is `FAIL` or a gate command failed; `NEEDS_HUMAN` when the validation could not
+  be done at all. `UNVERIFIED` rows do not make the status `FAIL`; they are counted on the
+  `Unverified:` line (`Unverified: 0 — none` when there are none).
 
 ---
 
@@ -635,7 +704,7 @@ exact match on the script name first, and only fall back to pattern matching** w
 **Infrastructure components (the same for every tracker):**
 ```
 Small VPS (~$5-6/month)
-  └── Webhook Receiver (Express, ~150 lines)
+  └── Webhook Receiver (Fastify, ~150 lines; jobs queued with BullMQ)
         └── Spawn an AI runner per agent (on-demand, not always on)
               └── MCP access: {{TRACKER}} MCP + GitHub MCP / gh CLI
 ```
@@ -826,8 +895,8 @@ ticket/feature/date respectively, when the pipeline actually runs.
 | AI runner | Claude Code (default), OpenCode, etc. | `{{AI_RUNNER}}` |
 | MCP | Tracker MCP + GitHub MCP | `{{MCP_LIST}}` |
 | PR & branch | `gh` CLI (early phase), MCP (mature phase) | — |
-| Webhook receiver | Node.js + Express | — |
-| Queue | `p-queue` (prevents race conditions) | — |
+| Webhook receiver | Node.js + Fastify | — |
+| Queue | BullMQ (prevents race conditions) | — |
 | Runner infra | Small VPS (Hetzner CX22 / DigitalOcean Droplet) | — |
 | Artifact storage | Markdown files on a git branch | — |
 
