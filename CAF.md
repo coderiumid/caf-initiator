@@ -65,7 +65,7 @@ NOT an error and NOT a gap** — it is `SINGLE_REPO` mode, a fully supported mod
   this document" flow must arrive at the same `{{REPO_MODE}}`.
 - Caveat: `caf-orchestrator` currently routes only `caf-frontend`/`caf-backend`. Until its
   routing is updated, `caf-implementer` is used directly in Claude Code or through
-  `/caf-run-pipeline`.
+  `/caf-run`.
 - If this `SINGLE_REPO` project does run through `caf-orchestrator`, its single implementation
   agent is written under a name the orchestrator routes: `caf-frontend.md` or
   `caf-backend.md` (still one agent, scope still the whole repo / per directory). The role is
@@ -777,11 +777,11 @@ project-root/
 │   │   ├── caf-reviewer.md          ← Layer 2
 │   │   └── caf-documentation.md     ← Layer 2
 │   └── commands/
-│       ├── caf-plan-ticket.md       ← Layer 2, Planner companion
+│       ├── caf-plan.md              ← Layer 2, Planner companion
 │       ├── caf-design-ticket.md     ← Layer 2, Architect companion
 │       ├── caf-qa-check.md          ← Layer 2, QA companion
 │       ├── caf-review-ticket.md     ← Layer 2, Reviewer companion
-│       └── ...                      ← audit-scan, discovery-start, run-pipeline, etc. — all caf-*
+│       └── ...                      ← audit-scan, discovery-start, run, etc. — all caf-*
 │
 ├── .caf/
 │   ├── knowledge/                   ← Layer 1, CAF-generated (different from docs/ below)
