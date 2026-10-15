@@ -134,22 +134,6 @@ function auditKnowledgeBase(dir, stack) {
     }
   }
 
-  // The /caf-feature-catalog-sync slash command — optional like the reference docs,
-  // existence-only. The command dir is hardcoded to the default here: `caf-init curate` has no
-  // --command-dir, and a repo that moved its commands elsewhere will just see one optional gap
-  // it can ignore.
-  if (!exists(path.join(dir, '.claude', 'commands', 'caf-feature-catalog-sync.md'))) {
-    entries.push(
-      entry({
-        status: 'gap',
-        filePath: '.claude/commands/caf-feature-catalog-sync.md',
-        message: 'missing (optional)',
-        syncCommand: 'caf-init scaffold feature-catalog-sync',
-        severity: 'optional',
-      })
-    );
-  }
-
   return entries;
 }
 

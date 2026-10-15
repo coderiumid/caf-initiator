@@ -169,8 +169,8 @@ test('AC-3: the verify retry inside one agent (up to 3x) and the orchestrator ga
     assert.ok(retry.includes(GATE_NOTE), name);
     assert.match(retry.replace(/\s+/g, ' '), /verify retry inside one agent, up to 3x/);
     assert.match(retry.replace(/\s+/g, ' '), /orchestrator's retry gates, a separate count \(default 1,/);
-    // the 3x is not offered as the gate count
-    assert.ok(!/(QA|Reviewer) gate: max 3x/.test(retry), name);
+    // the 3x is not offered as the gate count (a count read from the config is the user's own)
+    if (!OLD_PIV[name].input.reviewerRetries) assert.ok(!/(QA|Reviewer) gate: max 3x/.test(retry), name);
     // and the workflow pattern says where the 3x is spent
     assert.ok(renderPiv(name).includes(NEW_PATTERN_LINE), name);
   }

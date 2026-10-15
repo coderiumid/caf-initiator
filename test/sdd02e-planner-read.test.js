@@ -151,6 +151,13 @@ const OLD_OUTPUT_LINES = [
   '  it makes no claim and asks no question.',
 ];
 
+// Added by CAF-SDD-03f, after this ticket: the planner's exception for a refactor or config ticket.
+const SDD03F_EXCEPTION = [
+  '- Exception, on a refactor or config ticket only: the `When ... then` sentence of an AC may name',
+  '  the file path or the symbol name that is the subject of the ticket. It may name no other path',
+  '  or symbol, and the outcome, the scope and the decisions keep the rule above.',
+];
+
 const added = (now, old) => now.split('\n').filter((l) => !old.split('\n').includes(l));
 
 // ---------------------------------------------------------------------------------------------
@@ -297,13 +304,16 @@ for (const fixture of FIXTURE_NAMES) {
 
   test(`AC-11: planner on ${fixture} — inside \`## Output\` only the rules of this ticket are new, and only the 02d "not read yet" rule is gone`, () => {
     const old = OLD_PLANNER[fixture];
-    const newLines = added(outputOf(fixture), old.sections.Output);
+    // CAF-SDD-03f added one rule after this ticket (test/sdd03f-stale-text.test.js holds its text);
+    // it is taken out here so this comparison still holds the 02e text line for line.
+    const later = (l) => !SDD03F_EXCEPTION.includes(l);
+    const newLines = added(outputOf(fixture), old.sections.Output).filter(later);
     assert.deepEqual(newLines, NEW_OUTPUT_BLOCKS.flat());
     assert.deepEqual(added(old.sections.Output, outputOf(fixture)), OLD_OUTPUT_LINES);
     assert.equal(outputOf(fixture).split('\n')[0], old.sections.Output.split('\n')[0], 'the artifact contract line');
     // every other line is where it was, in the same order
     const kept = (text, gone) => text.split('\n').filter((l) => !gone.includes(l));
-    assert.deepEqual(kept(outputOf(fixture), NEW_OUTPUT_BLOCKS.flat()), kept(old.sections.Output, OLD_OUTPUT_LINES));
+    assert.deepEqual(kept(outputOf(fixture), [...NEW_OUTPUT_BLOCKS.flat(), ...SDD03F_EXCEPTION]), kept(old.sections.Output, OLD_OUTPUT_LINES));
   });
 }
 

@@ -304,7 +304,9 @@ for (const fixture of FIXTURE_NAMES) {
     const dir = baselineRepo(fixture, old);
     const result = await silenced(() => agentsSync({ dir, agentDir: AGENT_DIR }));
 
-    const expectedDrift = Object.entries(CHANGED).flatMap(([kind, headers]) => headers.map((h) => `${path.join(AGENT_DIR, OLD[kind][fixture].file)}#${h}`));
+    // CAF-SDD-03f changed the planner's `## Output` after this ticket (the exception for a refactor
+    // or config ticket), so the 03e-era planner now drifts there and only there.
+    const expectedDrift = Object.entries({ ...CHANGED, planner: ['Output'] }).flatMap(([kind, headers]) => headers.map((h) => `${path.join(AGENT_DIR, OLD[kind][fixture].file)}#${h}`));
     assert.deepEqual([...result.drifted].sort(), expectedDrift.sort());
     assert.deepEqual(result.needsAttention, []);
     assert.deepEqual(result.unverifiable, []);
@@ -312,8 +314,8 @@ for (const fixture of FIXTURE_NAMES) {
     // The two changed files are now what a fresh render gives.
     assert.equal(read(dir, 'caf-validator.md'), validator[fixture].content);
     assert.equal(read(dir, 'caf-reviewer.md'), rendered[fixture].reviewer.content);
-    // The planner is not touched.
-    assert.equal(read(dir, OLD.planner[fixture].file), OLD.planner[fixture].content);
+    // The planner: only its `## Output` moved (CAF-SDD-03f), to what a fresh render gives.
+    assert.equal(read(dir, OLD.planner[fixture].file), rendered[fixture].planner.content);
   });
 
   test(`AC-13: ${fixture} — a validator and a reviewer whose Working Pattern was customized are not overwritten there`, async () => {
