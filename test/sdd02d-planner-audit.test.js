@@ -531,12 +531,14 @@ for (const fixture of FIXTURE_NAMES) {
     assert.deepEqual(result.sectionCounts, clean.sectionCounts);
   });
 
-  test(`AC-10: ${fixture} — tools in another order are the same list; an agent file of no known kind is not compared`, async () => {
+  test(`AC-10: ${fixture} — tools in another order are the same list; an agent file of no known kind is not compared, only reported`, async () => {
     const { dir } = await makeOldRepo(fixture);
     edit(dir, PLANNER_REL, (md) => md.replace('tools: [Read, Write, Glob, Grep]', 'tools: [Grep, Glob, Write, Read]'));
     fs.writeFileSync(path.join(dir, AGENT_DIR, 'security.md'), '---\nname: security\ntools: [Read]\n---\n\n# Agent: Security\n\n## Role\nx\n');
     const result = await auditOnly(dir);
-    assert.deepEqual(warningsOf(result), []);
+    // CAF-SDD-03g: no `tools` warning for either file; the unknown one gets its own, single warning (no section entry).
+    assert.deepEqual(warningsOf(result, 'tools'), []);
+    assert.deepEqual(warningsOf(result).map((w) => [w.check, w.filePath]), [['unknown-kind', path.join(AGENT_DIR, 'security.md')]]);
   });
 
   test(`AC-11: ${fixture} — an active skill of the agent's kind that \`## Skills\` does not point at is a warning naming agent, skill and the manual step`, async () => {

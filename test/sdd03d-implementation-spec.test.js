@@ -231,7 +231,8 @@ test('AC-6: the `implementation` fallback and every other kind keep the Output t
   }
   assert.equal(buildOutputSection('implementation'), CONTRACT);
   assert.equal(SYNCABLE_SECTIONS.Output('implementation'), CONTRACT);
-  assert.equal(detectKind(path.join(AGENT_DIR, 'web.md')), 'implementation', 'precondition: an unknown name is the fallback kind');
+  // CAF-SDD-03g: `implementation` is the kind of a per-app agent (its slug is in the app list), no longer the fallback of any name.
+  assert.equal(detectKind(path.join(AGENT_DIR, 'web.md'), ['web']), 'implementation', 'precondition: a per-app agent is the implementation kind');
 });
 
 // ---------------------------------------------------------------------------------------------

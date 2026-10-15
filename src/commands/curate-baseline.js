@@ -4,7 +4,8 @@ import prompts from 'prompts';
 import kleur from 'kleur';
 
 import { section, readFileSafe } from '../util.js';
-import { SYNCABLE_SECTIONS, detectKind, parseSections, sectionBody } from '../utils/agent-sections.js';
+import { SYNCABLE_SECTIONS, detectKind, implementationSlugs, parseSections, sectionBody } from '../utils/agent-sections.js';
+import { detectRepoContext } from '../utils/repo-context.js';
 import { hashSection } from '../utils/section-diff.js';
 import { readManifest, writeManifest, getBaselineHash, setSectionBaseline } from '../utils/generate-manifest.js';
 
@@ -25,7 +26,7 @@ function listAgentFiles(agentDirPath) {
 // confirms, because after this baseline is written, `curate sync` treats content unchanged from
 // this exact moment as "safe to auto-sync" and anything already-customized-but-not-yet-tracked
 // permanently loses the distinction from a fresh template match.
-export async function curateBaseline({ dir, agentDir: agentDirOpt, dryRun = false, yes = false }) {
+export async function curateBaseline({ dir, agentDir: agentDirOpt, dryRun = false, yes = false, repoMode }) {
   section(
     'curate baseline — record the CURRENT content of untracked sections as their manifest baseline. ' +
       'Never edits file content. Only for sections without an existing baseline.'
@@ -39,15 +40,24 @@ export async function curateBaseline({ dir, agentDir: agentDirOpt, dryRun = fals
     return { baselined: [] };
   }
 
+  const appSlugs = implementationSlugs((await detectRepoContext({ dir, mode: repoMode })).apps);
   const manifest = readManifest(dir);
   const candidates = [];
+  const unknownKind = [];
 
   for (const file of files) {
     const relPath = path.join(agentDirOpt || '.claude/agents', file);
     const raw = readFileSafe(path.join(agentDirPath, file));
     if (raw == null) continue;
 
-    const kind = detectKind(file);
+    const kind = detectKind(file, appSlugs);
+    if (kind == null) {
+      // Not a kind caf-init knows, not an agent it wrote for an app: no template to hold it
+      // against, so no baseline either (CAF-SDD-03g).
+      unknownKind.push(relPath);
+      console.log(kleur.yellow(`  skip  ${relPath}: unknown kind — not a kind caf-init knows or an agent it wrote for an app; no baseline recorded`));
+      continue;
+    }
     const { lines, sections } = parseSections(raw);
     const presentHeaders = new Set(sections.map((s) => s.header));
 
@@ -62,9 +72,12 @@ export async function curateBaseline({ dir, agentDir: agentDirOpt, dryRun = fals
     }
   }
 
+  // Present only when a file was skipped, so the result of a repo without one keeps its shape.
+  const found = unknownKind.length > 0 ? { unknownKind } : {};
+
   if (candidates.length === 0) {
     console.log(kleur.green('Nothing to baseline — every existing section already has a manifest entry.'));
-    return { baselined: [] };
+    return { baselined: [], ...found };
   }
 
   console.log(kleur.yellow(`${candidates.length} untracked section(s) found. Their CURRENT content will become the baseline as-is:`));
@@ -77,7 +90,7 @@ export async function curateBaseline({ dir, agentDir: agentDirOpt, dryRun = fals
 
   if (dryRun) {
     console.log(kleur.yellow(`would record ${candidates.length} baseline(s) (dry-run, nothing written)`));
-    return { baselined: [] };
+    return { baselined: [], ...found };
   }
 
   if (!yes) {
@@ -89,7 +102,7 @@ export async function curateBaseline({ dir, agentDir: agentDirOpt, dryRun = fals
     });
     if (!confirmed) {
       console.log(kleur.dim('cancelled — no baseline written'));
-      return { baselined: [] };
+      return { baselined: [], ...found };
     }
   }
 
@@ -99,5 +112,5 @@ export async function curateBaseline({ dir, agentDir: agentDirOpt, dryRun = fals
   writeManifest(dir, manifest);
 
   console.log(kleur.green(`baseline recorded for ${candidates.length} section(s) — future \`curate audit\`/\`curate sync\` runs will track drift from here on.`));
-  return { baselined: candidates };
+  return { baselined: candidates, ...found };
 }

@@ -68,8 +68,10 @@ test('regression: every other KNOWN_KINDS entry + implementation still detect un
     const filename = kind === 'auditor' ? 'caf-auditor.md' : `caf-${kind}.md`;
     assert.equal(detectKind(filename), kind, `kind=${kind}`);
   }
-  assert.equal(detectKind('apps-web.md'), 'implementation');
-  assert.equal(detectKind('random-unknown-name.md'), 'implementation');
+  // CAF-SDD-03g: `implementation` is a per-app agent (a name in the app slug list), not the fallback.
+  assert.equal(detectKind('apps-web.md', ['apps-web']), 'implementation');
+  assert.equal(detectKind('apps-web.md'), null);
+  assert.equal(detectKind('random-unknown-name.md', ['apps-web']), null);
 });
 
 test('buildToolsSection(devops) is unchanged by the KNOWN_KINDS fix — already Read+Bash, kind-aware', () => {

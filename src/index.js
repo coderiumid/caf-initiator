@@ -160,6 +160,7 @@ program
         agentDir: cmdOpts.agentDir,
         dryRun: Boolean(cmdOpts.dryRun),
         yes: Boolean(cmdOpts.yes),
+        repoMode: cmdOpts.mode,
       });
       return;
     }

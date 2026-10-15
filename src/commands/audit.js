@@ -4,7 +4,7 @@ import kleur from 'kleur';
 
 import { section, readFileSafe, exists, dirHasContent } from '../util.js';
 import { detectStack } from '../steps/02-detect-stack.js';
-import { SYNCABLE_SECTIONS, detectKind, parseSections, sectionBody, templateForExistingSection } from '../utils/agent-sections.js';
+import { SYNCABLE_SECTIONS, detectKind, implementationSlugs, parseSections, sectionBody, templateForExistingSection } from '../utils/agent-sections.js';
 import { readSyncState, contentHash, getDecision } from '../utils/sync-state.js';
 import { canonicalHeaders } from '../utils/canonical-sections.js';
 import { extractHeaders } from '../utils/section-headers.js';
@@ -171,8 +171,8 @@ const toolList = (tools) => `\`[${tools.join(', ')}]\``;
 // Warnings on purpose, never gaps: a `tools:` line may differ because a human added an MCP tool
 // or took one away, and a pointer may have been left out by choice. They must not change the
 // exit code. Read-only and deterministic: the same tables the generator renders from.
-// - Only for a file whose name is a known kind. `implementation` is the fallback for any other
-//   name; holding a custom agent against it would be a guess.
+// - Only for a file whose name is a known kind. A per-app `implementation` agent is skipped too;
+//   an unknown-kind file never gets here (auditAgentDefinitions warns about it instead).
 // - Tools are compared as a set: the order of the list means nothing to the harness.
 // - "Active" is the generator's own rule (usableSkillPaths): the skill is mapped to the kind,
 //   its file exists and it has no DRAFT banner. A DRAFT skill is never asked for.
@@ -236,7 +236,10 @@ function rolloutWarnings(dir, relPath, raw, kind, lines, sections) {
   return warnings;
 }
 
-export function auditAgentDefinitions(dir, agentDirOpt) {
+// `appSlugs` are the file-name stems of the per-app `implementation` agents (implementationSlugs of
+// the detected apps). A file that is neither a known kind nor one of those gets one `unknown-kind`
+// warning and no section entry: it is not compared, synced or baselined (CAF-SDD-03g).
+export function auditAgentDefinitions(dir, agentDirOpt, appSlugs = []) {
   const agentDirPath = path.join(dir, agentDirOpt || '.claude/agents');
   if (!fs.existsSync(agentDirPath)) return { entries: [], sectionCounts: {}, warnings: [] };
 
@@ -264,7 +267,20 @@ export function auditAgentDefinitions(dir, agentDirOpt) {
     const raw = readFileSafe(path.join(agentDirPath, file));
     if (raw == null) continue;
 
-    const kind = detectKind(file);
+    const kind = detectKind(file, appSlugs);
+    if (kind == null) {
+      warnings.push({
+        ...entry({
+          status: 'warn',
+          filePath: relPath,
+          message:
+            'unknown kind — not a kind caf-init knows or an agent it wrote for an app, so it is not compared with a template, ' +
+            'not synced and not baselined (warning — leave it as it is, or name the file after a kind to have it tracked)',
+        }),
+        check: 'unknown-kind',
+      });
+      continue;
+    }
     const { lines, sections } = parseSections(raw);
     const presentHeaders = new Set(sections.map((s) => s.header));
     const fileEntries = [];
@@ -371,7 +387,7 @@ export async function audit({ dir, agentDir: agentDirOpt, output, repoMode }) {
   section('audit — read-only compliance report against caf-initiator templates (never writes)');
 
   const stack = await detectStack({ dir, explicitGlobs: undefined, mode: repoMode });
-  const agentDefsResult = auditAgentDefinitions(dir, agentDirOpt);
+  const agentDefsResult = auditAgentDefinitions(dir, agentDirOpt, implementationSlugs(stack.apps));
 
   const layers = [
     { name: 'Layer 1 (Knowledge Base)', entries: auditKnowledgeBase(dir, stack) },

@@ -8,12 +8,14 @@ import { readSyncState, writeSyncState, contentHash, getDecision, setDecision } 
 import {
   SYNCABLE_SECTIONS,
   detectKind,
+  implementationSlugs,
   parseSections,
   sectionBody,
   insertSection,
   replaceSectionBody,
   templateForExistingSection,
 } from '../utils/agent-sections.js';
+import { detectRepoContext } from '../utils/repo-context.js';
 import { hashSection, compareSection, SECTION_STATUS } from '../utils/section-diff.js';
 import { readManifest, writeManifest, getBaselineHash, setSectionBaseline } from '../utils/generate-manifest.js';
 
@@ -33,7 +35,10 @@ const NEVER_SYNCED = {
   [SECTION_STATUS.UNTRACKED]: 'no manifest baseline yet — run `caf-init curate baseline` first to record the current content as the baseline',
 };
 
-export async function agentsSync({ dir, agentDir: agentDirOpt, dryRun = false }) {
+// `repoMode` is the `--mode single|mono` override: it decides the app list, and so which file names
+// are per-app `implementation` agents (CAF-SDD-03g). A file that is neither a known kind nor one of
+// those is skipped — it is never compared, baselined or written.
+export async function agentsSync({ dir, agentDir: agentDirOpt, dryRun = false, repoMode }) {
   section(
     'sync agents — add missing sections and update sections that drifted from the template in ' +
       'already-generated .claude/agents/*.md. Never overwrites a section you edited yourself.'
@@ -47,6 +52,7 @@ export async function agentsSync({ dir, agentDir: agentDirOpt, dryRun = false })
     return { updated: [], skipped: [], drifted: [], needsAttention: [], unverifiable: [] };
   }
 
+  const appSlugs = implementationSlugs((await detectRepoContext({ dir, mode: repoMode })).apps);
   const state = readSyncState(agentDirPath);
   const manifest = readManifest(dir);
   const updated = [];
@@ -54,6 +60,7 @@ export async function agentsSync({ dir, agentDir: agentDirOpt, dryRun = false })
   const drifted = [];
   const needsAttention = [];
   const unverifiable = [];
+  const unknownKind = [];
   let manifestChanged = false;
 
   for (const file of files) {
@@ -62,7 +69,12 @@ export async function agentsSync({ dir, agentDir: agentDirOpt, dryRun = false })
     const raw = readFileSafe(filePath);
     if (raw == null) continue;
 
-    const kind = detectKind(file);
+    const kind = detectKind(file, appSlugs);
+    if (kind == null) {
+      unknownKind.push(relPath);
+      console.log(kleur.yellow(`  skip  ${file}: unknown kind — not a kind caf-init knows or an agent it wrote for an app; not compared, not synced`));
+      continue;
+    }
     let { lines, sections } = parseSections(raw);
     const presentHeaders = new Set(sections.map((s) => s.header));
     let currentContent = raw;
@@ -200,5 +212,6 @@ export async function agentsSync({ dir, agentDir: agentDirOpt, dryRun = false })
     console.log('');
   }
 
-  return { updated, skipped, drifted, needsAttention, unverifiable };
+  // `unknownKind` is only present when there is one, so the result of a repo without such a file keeps its shape.
+  return { updated, skipped, drifted, needsAttention, unverifiable, ...(unknownKind.length > 0 && { unknownKind }) };
 }

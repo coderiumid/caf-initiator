@@ -1,6 +1,7 @@
 import path from 'node:path';
 
 import {
+  agentSlug,
   buildInputSection,
   buildOutputSection,
   buildToolsSection,
@@ -134,7 +135,25 @@ export function templateForExistingSection(header, kind, body) {
 // commands/agents.js.
 export const KNOWN_KINDS = ['planner', 'architect', 'frontend', 'backend', 'implementer', 'qa', 'reviewer', 'documentation', 'auditor', 'pm', 'ux-designer', 'devops', 'validator'];
 
-export function detectKind(filename) {
+/**
+ * File-name stems of the per-app `implementation` agents `scaffold agents` writes: one per detected
+ * app, named by the same `agentSlug('implementation', app)` that writes them (CAF-SDD-03g). `apps`
+ * is `detectStack(...).apps` / `detectRepoContext(...).apps` for the same `--mode` the command runs
+ * with — there is no second way to derive a slug.
+ */
+export function implementationSlugs(apps = []) {
+  return apps.map((app) => agentSlug('implementation', app));
+}
+
+/**
+ * The kind of an agent file, or `null` when it is not one CAF knows. A kind from KNOWN_KINDS (with
+ * or without `caf-`) is checked first; `implementation` is only a file named after the slug of a
+ * detected app (`appSlugs`, see implementationSlugs). Any other name is unknown: the caller skips
+ * and reports the file and never hands `null` to a template builder — falling back to
+ * `implementation` here let `curate sync` rewrite a custom read-only agent with Read+Write+Edit+Bash.
+ * Known limit: a hand-written agent whose name happens to equal an app slug is `implementation`.
+ */
+export function detectKind(filename, appSlugs = []) {
   const stem = path.basename(filename, '.md');
   // Strip the caf- prefix only when the remainder is a kind we actually renamed — avoids
   // misreading an unrelated custom agent that happens to be named caf-<something>.md. Checked
@@ -143,7 +162,8 @@ export function detectKind(filename) {
   // manually-named or future-renamed caf-devops.md is still recognized (CAF-DEVOPS-KIND-01).
   const unprefixed = stem.startsWith('caf-') ? stem.slice(4) : stem;
   const slug = KNOWN_KINDS.includes(unprefixed) ? unprefixed : stem;
-  return KNOWN_KINDS.includes(slug) ? slug : 'implementation';
+  if (KNOWN_KINDS.includes(slug)) return slug;
+  return appSlugs.includes(stem) ? 'implementation' : null;
 }
 
 export function parseSections(content) {

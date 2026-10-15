@@ -15,7 +15,7 @@ const SYNC_COMMAND = 'caf-init curate --sync-only';
 // from `mode` here, which already means audit-only/sync-only.
 export async function curate({ dir, agentDir, output, mode = 'default', dryRun = false, repoMode }) {
   if (mode === 'sync-only') {
-    return agentsSync({ dir, agentDir, dryRun });
+    return agentsSync({ dir, agentDir, dryRun, repoMode });
   }
 
   const auditResult = await audit({ dir, agentDir, output, repoMode });
@@ -43,6 +43,6 @@ export async function curate({ dir, agentDir, output, mode = 'default', dryRun =
     return auditResult;
   }
 
-  const syncResult = await agentsSync({ dir, agentDir, dryRun });
+  const syncResult = await agentsSync({ dir, agentDir, dryRun, repoMode });
   return { ...auditResult, sync: syncResult };
 }

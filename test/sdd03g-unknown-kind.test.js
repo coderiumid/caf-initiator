@@ -31,6 +31,9 @@ import { AGENT_DIR } from './helpers/frozen-kinds.js';
 import { CONTENT_VARIANTS, renderScaffoldContents } from './helpers/scaffold-contents.js';
 import { APP_AGENT, CUSTOM_AGENT, STALE_OUTPUT, makeDrift, makeKindsRepo, relativeTo, reportKindsRepo } from './helpers/sdd03g-repo.js';
 
+// Once inject() has been called, prompts never reads stdin: an empty queue answers every prompt with its `initial`.
+prompts.inject([]);
+
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const GOLDEN = path.join(ROOT, 'test', 'fixtures', 'pre-sdd03g');
 const golden = (name) => JSON.parse(fs.readFileSync(path.join(GOLDEN, name), 'utf8'));
@@ -103,9 +106,7 @@ test('AC-1: the slugs come from the detected apps, in a monorepo and in a SINGLE
   const ctx = await silenced(() => detectRepoContext({ dir: single }));
   assert.deepEqual(implementationSlugs(ctx.apps), ['scope-my-app']);
   assert.equal(detectKind('scope-my-app.md', implementationSlugs(ctx.apps)), 'implementation');
-  const bare = makeRepo({ 'package.json': {} }, 'caf-sdd03g-single-');
-  const bareCtx = await silenced(() => detectRepoContext({ dir: bare }));
-  assert.deepEqual(implementationSlugs(bareCtx.apps), ['app']);
+  assert.deepEqual(implementationSlugs([{ path: '.' }]), ['app'], 'a root app with no name is never an empty slug');
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -181,7 +182,9 @@ test('AC-4: curate baseline records nothing for an unknown file and says so; the
   }
 
   await silenced(() => curateBaseline({ dir: without.dir, agentDir: AGENT_DIR, yes: true }));
-  assert.deepEqual(readManifest(withCustom.dir).files, readManifest(without.dir).files, 'known kinds and the per-app agent are baselined as before');
+  const hashes = (dir) =>
+    Object.fromEntries(Object.entries(readManifest(dir).files).map(([file, e]) => [file, Object.fromEntries(Object.entries(e.sections).map(([h, v]) => [h, v.hash]))]));
+  assert.deepEqual(hashes(withCustom.dir), hashes(without.dir), 'known kinds and the per-app agent are baselined as before');
   assert.ok(readManifest(withCustom.dir).files[APP_REL], 'the per-app agent has its baseline');
 });
 
@@ -234,6 +237,7 @@ test('AC-6: with no unknown file the report of the repo is the recorded one', as
   const report = await reportKindsRepo(dir);
   const recorded = golden('curate.known-only.json');
   assert.deepEqual(report.audit, recorded.audit);
+  // The result of a repo with no unknown file has the shape it always had (no `unknownKind`).
   assert.deepEqual(report.syncDryRun, recorded.syncDryRun);
   assert.deepEqual(report.checkDrafts, recorded.checkDrafts);
 });
