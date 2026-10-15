@@ -108,14 +108,12 @@ test('AC-4: frontmatter tools of every rendered kind match the literal table', (
   }
 });
 
-// AC-7 / Q-1. Current behaviour, documented rather than changed here: an unrecognized filename
-// is treated as `implementation`, so a restricted custom agent that has a manifest baseline reads
-// as DRIFT and `curate sync` rewrites its Allowed Tools to implementation's. commands/skills.js
-// relies on the same fallback, which is why it is not fixed in this ticket. The assertions below
-// describe the safe behaviour and fail today.
+// AC-7 / Q-1 (CAF-SDD-03g). An unrecognized filename is not `implementation`: a restricted custom
+// agent that has a manifest baseline is skipped and reported by `curate sync`, never rewritten
+// with implementation's Allowed Tools. Only `<slug>.md` of a detected app is `implementation`
+// (see test/sdd03g-unknown-kind.test.js).
 test(
   'AC-7: an unknown kind (caf-foo.md) is not treated as implementation and is left alone by curate sync',
-  { todo: 'fallback berbahaya; putuskan sebelum rilis penghapusan penuh (Q-1)' },
   async () => {
     // A read-only agent under a name no kind claims.
     const content = rendered['mono-pnpm'].devops.content;
