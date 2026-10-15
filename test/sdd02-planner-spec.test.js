@@ -26,6 +26,7 @@ import { findUnresolvedPlaceholders } from '../src/utils/placeholder-check.js';
 import { hashSection, SECTION_STATUS } from '../src/utils/section-diff.js';
 import { copyFixture, makeRepo, snapshotTree } from './helpers/make-repo.js';
 import { silenced, renderMonoSnapshot } from './helpers/mono-snapshot.js';
+import { constraintsBody, swapConstraints } from './helpers/swap-constraints.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir, frontmatterTools, renderAgents, trackedSections } from './helpers/frozen-kinds.js';
 
 const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures');
@@ -49,7 +50,8 @@ const specOf = (fixture) => trackedSections(plannerOf(fixture))[SPEC];
 // the status of `requirements.md` as a `Status:` line (test/sdd02d-planner-audit.test.js).
 const OLD_TOOLS_LINE = 'tools: [Read, Write]';
 const NEW_TOOLS_LINE = 'tools: [Read, Write, Glob, Grep]';
-const syncedOf = (fixture) => plannerOf(fixture).replace(NEW_TOOLS_LINE, OLD_TOOLS_LINE);
+// `## Constraints` is not tracked (CAF-SDD-03c2b changed it): sync leaves the old one in place.
+const syncedOf = (fixture) => swapConstraints(plannerOf(fixture).replace(NEW_TOOLS_LINE, OLD_TOOLS_LINE), OLD_PLANNER[fixture].content);
 const DRIFTED = [`${PLANNER_REL}#Allowed Tools`, `${PLANNER_REL}#Input`, `${PLANNER_REL}#${SPEC}`];
 
 /** The lines of `### <n>. <title>` up to the next `### ` heading. */
@@ -88,9 +90,10 @@ for (const fixture of FIXTURE_NAMES) {
     assert.match(clarify, /`Status: NEEDS_CLARIFICATION` in `requirements\.md`/);
     assert.match(clarify, /stop/i);
     assert.match(clarify, /do not write[^.]*`tasks\.md`[^.]*while a `?BLOCKING`? question is unanswered/i);
-    // ticket path: the stop token the planner already used before this ticket (AC-5 table)
+    // ticket path: CAF-SDD-03c2b — the same stop as the chat path, `NEEDS_CLARIFICATION`, no
+    // `tasks.md` (before it: `NEEDS_HUMAN` plus a blocked note; held by test/sdd03c2b-planner-clarify.test.js)
     assert.match(clarify, /headless/);
-    assert.match(clarify, /`Status: NEEDS_HUMAN`/);
+    assert.doesNotMatch(clarify, /`Status: NEEDS_HUMAN`/);
   });
 
   test(`AC-3: planner on ${fixture} — an APPROVED spec is not changed; proposals go to verify-report.md`, () => {
@@ -126,10 +129,10 @@ for (const fixture of FIXTURE_NAMES) {
       // with it five literals this list held: the `.caf/discovery/{TICKET-ID}/prd.md` path, the two
       // `requirements.md` lines about it (`... as usual, with the `Status:` line` and `... directly
       // with `Status: NEEDS_HUMAN``), `and still create `tasks.md``, and `## Open Questions`.
-      // The headless stop token below is still in `## Constraints`.
+      // The headless stop token `Status: NEEDS_HUMAN` + `tasks.md` blocked of `## Constraints` was
+      // replaced by CAF-SDD-03c2b (`Status: NEEDS_CLARIFICATION`, no `tasks.md`).
       '`## Frontend Tasks` / `## Backend Tasks`',
       '`[SYSTEM CONTEXT: Environment = headless...]`',
-      '`Status: NEEDS_HUMAN` + `tasks.md` blocked',
       '`verify-report.md` with **`Status: SUCCESS`**',
       '`verify-report.md` with Status: NEEDS_HUMAN',
     ]) {
@@ -148,7 +151,8 @@ for (const fixture of FIXTURE_NAMES) {
       .replace(NEW_TOOLS_LINE, OLD_TOOLS_LINE)
       .replace(trackedSections(md)['Allowed Tools'], old.sections['Allowed Tools'])
       .replace(trackedSections(md).Input, old.sections.Input)
-      .replace(specOf(fixture), old.sections[SPEC]);
+      .replace(specOf(fixture), old.sections[SPEC])
+      .replace(constraintsBody(md), () => constraintsBody(old.content));
     assert.equal(restored, old.content);
   });
 

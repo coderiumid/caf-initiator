@@ -24,6 +24,7 @@ import { setSectionBaseline, writeManifest } from '../src/utils/generate-manifes
 import { hashSection, SECTION_STATUS } from '../src/utils/section-diff.js';
 import { copyFixture, makeRepo, snapshotTree } from './helpers/make-repo.js';
 import { silenced, renderMonoSnapshot } from './helpers/mono-snapshot.js';
+import { constraintsBody, swapConstraints } from './helpers/swap-constraints.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir, renderAgents, trackedSections } from './helpers/frozen-kinds.js';
 
 const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures');
@@ -61,7 +62,8 @@ const outputOf = (fixture) => trackedSections(plannerOf(fixture)).Output;
 // the status of `requirements.md` as a `Status:` line (test/sdd02d-planner-audit.test.js).
 const OLD_TOOLS_LINE = 'tools: [Read, Write]';
 const NEW_TOOLS_LINE = 'tools: [Read, Write, Glob, Grep]';
-const syncedOf = (fixture) => plannerOf(fixture).replace(NEW_TOOLS_LINE, OLD_TOOLS_LINE);
+// `## Constraints` is not tracked (CAF-SDD-03c2b changed it): sync leaves the old one in place.
+const syncedOf = (fixture) => swapConstraints(plannerOf(fixture).replace(NEW_TOOLS_LINE, OLD_TOOLS_LINE), SDD02_PLANNER[fixture].content);
 const DRIFTED = [`${PLANNER_REL}#Allowed Tools`, `${PLANNER_REL}#Input`, `${PLANNER_REL}#Output`];
 
 /** caf-spec as 02b wrote it: the banner block back in place of the blank line 02c left there. */
@@ -352,7 +354,8 @@ for (const fixture of FIXTURE_NAMES) {
       .replace(NEW_TOOLS_LINE, OLD_TOOLS_LINE)
       .replace(trackedSections(md)['Allowed Tools'], old.sections['Allowed Tools'])
       .replace(trackedSections(md).Input, old.sections.Input)
-      .replace(output, old.sections.Output);
+      .replace(output, old.sections.Output)
+      .replace(constraintsBody(md), () => constraintsBody(old.content)); // CAF-SDD-03c2b changed it
     assert.equal(restored, old.content);
 
     const frontmatter = (text) => text.slice(0, text.indexOf('\n---\n', 4) + 5);
@@ -365,7 +368,6 @@ for (const fixture of FIXTURE_NAMES) {
       const { lines, sections } = parseSections(text);
       return sectionBody(lines, sections.find((s) => s.header === header));
     };
-    assert.equal(body(md, 'Constraints'), body(old.content, 'Constraints'));
     assert.deepEqual(parseSections(md).sections.map((s) => s.header), parseSections(old.content).sections.map((s) => s.header));
     // inside Output: same contract line, same steps
     assert.equal(output.split('\n')[0], old.sections.Output.split('\n')[0]);

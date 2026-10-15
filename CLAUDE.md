@@ -284,8 +284,8 @@ text and a new header would only reach existing planners through the interactive
 section" prompt. An existing planner therefore gets it from `curate sync` as an ordinary `DRIFT`
 of `Output`. Two things that text must keep: every artifact, path and stop token the planner had
 before (`test/fixtures/pre-sdd02/` is the pre-change render — never regenerate it), and the
-headless stop on the ticket path (`Status: NEEDS_HUMAN` + the blocked `tasks.md` note):
-caf-orchestrator throws when the planner leaves no `tasks.md`.
+stop on the ticket path (CAF-SDD-03c2b: `Status: NEEDS_CLARIFICATION`, no `tasks.md`; see "The ticket run asks
+through the status" below).
 Since CAF-SDD-02c the planner has `Glob` and `Grep` on top of `Read` and `Write` (read-only, so a
 fact about the repo is not a question; never `Bash` or `Edit`), and its `## Output` has two more
 rules, both from a real dispatch: read the files that already exist in the task folder before
@@ -327,10 +327,9 @@ other new line in the two sections. What that text must keep:
   item as a line that starts with the to-do word. Don't "fix" the skills to match.
 - The word `TODO` must still not appear in that text (`check-drafts` counts it per agent), which
   is why the first rule said "a note ... that says something was not read yet".
-- The ticket run (headless marker) is the one exception to "no `tasks.md`": it still writes the
-  blocked note. `## Constraints` names that note, is outside the two sections, and
-  caf-orchestrator throws when the planner leaves no `tasks.md`. Dropping the exception is a
-  change to `## Constraints` and to the orchestrator (CAF-SDD-04b), not to this text alone.
+- The ticket run (headless marker) was the one exception to "no `tasks.md`" (it wrote a blocked
+  note) until CAF-SDD-03c2b dropped it, in `## Output` and `## Constraints` together; see "The
+  ticket run asks through the status".
 - One status convention: the status of `requirements.md` is a `Status:` line with the values
   `DRAFT`, `NEEDS_CLARIFICATION`, `APPROVED`, `NEEDS_HUMAN`, stated once in Specify. `## Input`
   used to call it a heading (`## Status: PLAN`, `## Status: NEEDS_HUMAN`); it now refers to that
@@ -370,7 +369,8 @@ implementer to read what the spec needed. What that text must keep:
 - The word `TODO` is still not in that text: the `caf-no-guess` line says "a line that starts
   with the to-do word".
 - `## Coverage` is named inline, in backticks: a line that starts with `## ` would split the
-  tracked section. The blocked note of a ticket run holds no tasks, so it gets no coverage part.
+  tracked section. (The blocked note of a ticket run, which held no tasks and got no coverage part,
+  is gone since CAF-SDD-03c2b.)
 - The skills are not changed (`caf-spec` and `caf-no-guess` are both held by sha256 in the test).
   Where they differ, the agent definition wins: `caf-spec` writes `Assumption:` with no number
   and lets a refactor ticket name the artifact in an AC.
@@ -710,8 +710,8 @@ reviewer, `/caf-run-pipeline`, from before it — never regenerate it).
   reads. The planner's lost the "Fallback — Discovery draft without a ticket" flow. Both reach a
   repo scaffolded earlier through `curate sync` as ordinary `DRIFT` (an edited `## Input` is a
   `CONFLICT` and is left alone). Commands and `piv-workflow.md` do not: delete the file and
-  scaffold again. **Known gap:** the planner's `## Constraints` (not touched here) still says "see
-  Fallback — Discovery draft in the Input section"; fix it with the Constraints ticket (03c2b).
+  scaffold again. (The planner's `## Constraints` still pointed at the removed Discovery flow after
+  this ticket; CAF-SDD-03c2b fixed it.)
 - **Derived output moved without a template change:** `/caf-complete-drafts` lists `caf-validator.md`
   in place of `caf-qa.md` (so the "byte-identical" check of it is on the file minus that one line),
   and `piv-workflow.md`/`agent-handoff.md` list the roster as it is.
@@ -724,6 +724,47 @@ reviewer, `/caf-run-pipeline`, from before it — never regenerate it).
   `agent-handoff.md` changed. Not a precedent. The `frozen-kinds` goldens did not change.
 - Left for 03c2b: the rename of `/caf-run-pipeline` and `caf-verify`, removing `/caf-plan-ticket`,
   and the planner's `## Constraints`.
+
+## The ticket run asks through the status (CAF-SDD-03c2b)
+
+On a ticket run (the `[SYSTEM CONTEXT: Environment = headless...]` marker) a planner with an
+unanswered `BLOCKING` question writes `requirements.md` with `Status: NEEDS_CLARIFICATION`, no
+`tasks.md`, and stops. It used to write `Status: NEEDS_HUMAN` plus a blocked `tasks.md` note;
+caf-orchestrator (SDD-04c) stops on `NEEDS_CLARIFICATION` before it needs `tasks.md`, pushes the
+draft and asks on the ticket, and its routing throws on a `tasks.md` with no Frontend/Backend
+section. `test/sdd03c2b-planner-clarify.test.js` holds the ticket against
+`test/fixtures/pre-sdd03c2b/` (the default scaffold of the four variants before it — never
+regenerate it).
+- Only the planner's `## Output` (the ticket-run rule of Clarify, no exception to the no-`tasks.md`
+  rule any more) and `## Constraints` changed. Neither says "Fallback", "Discovery" or "blocked";
+  the refusal to change an approved spec is still `Status: NEEDS_HUMAN`, first line of
+  `verify-report.md`, and is not touched.
+- `## Constraints` is **not** in `SYNCABLE_SECTIONS` and must not become one (a rationale as for
+  `## Skills`: it is per-project text). `buildBatasanSection` is exported only so that
+  `rolloutWarnings` (`src/commands/audit.js`) can compare it: a planner whose `## Constraints` body
+  differs from the template gets one `warn` entry (`check: 'planner-constraints'`) that names the
+  section and says to edit it by hand. Warning only, as the other two: no gap, same exit code and
+  counts. Only the planner is checked; a planner with no `## Constraints` is not warned about.
+- Rollout: `curate sync` carries `## Output` (ordinary `DRIFT`); `## Constraints` is by hand. Order:
+  caf-orchestrator with SDD-04c deployed first. An old planner under an old orchestrator keeps
+  writing `tasks.md`; a new planner under an old orchestrator writes none on a ticket run with a
+  `BLOCKING` question, and the run fails for the missing file.
+- Tests of earlier tickets that held the old sentences were updated, not their goldens: those that
+  compare a whole planner with a golden put the live `## Constraints` into the golden
+  (`test/helpers/swap-constraints.js`), those that sync an old planner expect the old
+  `## Constraints` to stay (sync never writes it), and the lines of the old ticket-run rule are
+  listed where an older test counts the lines of `## Output`.
+- `makeOldRepo` renders its agents from the live builders, so the recorded `curate` report of the
+  old repo (`pre-sdd03c1/`) is compared as it was, with no warning; the warning is tested by
+  putting the pre-ticket `## Constraints` into that repo's planner.
+- `.caf/knowledge/INDEX.md` lost the paragraph that contrasted it with `.caf/discovery/{slug}/prd.md`.
+  `readAgentRoster` is now held for a repo with only `caf-qa.md`, only `caf-validator.md` and both.
+  `src/utils/architecture-signatures.js` (unused since 03c3) is removed.
+- `mono-pnpm.json` was regenerated for this, one entry changed (`caf-planner.md`). Not a precedent.
+- Left for 03c2c: renaming `/caf-run-pipeline` and `caf-verify`, removing `/caf-plan-ticket`, the
+  routing step 4 of a single repo, the pipeline-level retry sentence. The planner's refusal of an
+  approved-spec change on a ticket run (`verify-report.md` plus a `tasks.md` the orchestrator goes
+  on to read) is unchanged, a backlog item.
 
 ## SINGLE_REPO roster and the dead builders (CAF-SDD-03c3)
 
@@ -755,4 +796,4 @@ holds the ticket against `test/fixtures/pre-sdd03c3/` (single-nuxt default, `--r
   groups and the UX-without-PM message of `agents()`, and the tail of `featureCatalogSync`. The
   agent builders and texts (`buildPmAgentMd`, `buildUxDesignerAgentMd`, auditor, documentation,
   devops), `HIDDEN_COMMAND_FILES`, `HIDDEN_CANDIDATE_KINDS` and the CLI message "no longer
-  scaffolded" stay. `src/utils/architecture-signatures.js` is now unused and was left on purpose.
+  scaffolded" stay. `src/utils/architecture-signatures.js` was unused and left on purpose (removed at CAF-SDD-03c2b).

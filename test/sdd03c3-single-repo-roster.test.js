@@ -48,6 +48,9 @@ const RUN_PIPELINE = '.claude/commands/caf-run-pipeline.md';
 const COMPLETE_DRAFTS = '.claude/commands/caf-complete-drafts.md';
 const HANDOFF = '.caf/workflows/agent-handoff.md';
 const PIV = '.caf/workflows/piv-workflow.md';
+// The two files CAF-SDD-03c2b changed on purpose (the planner's Output and Constraints, INDEX.md):
+// test/sdd03c2b-planner-clarify.test.js compares them against a golden of its own.
+const CHANGED_BY_03C2B = ['.claude/agents/caf-planner.md', '.caf/knowledge/INDEX.md'];
 
 /** Lines printed by `fn` (colour codes removed), console.log restored afterwards. */
 async function printed(fn) {
@@ -111,7 +114,7 @@ for (const id of ['single-nuxt.frontend', 'single-nuxt.backend']) {
     assert.deepEqual(current.agents, old.agents);
     assert.deepEqual(current.commands, old.commands);
     assert.deepEqual(Object.keys(current.files).sort(), Object.keys(old.files).sort());
-    for (const [rel, content] of Object.entries(old.files)) assert.equal(current.files[rel], content, rel);
+    for (const [rel, content] of Object.entries(old.files)) if (!CHANGED_BY_03C2B.includes(rel)) assert.equal(current.files[rel], content, rel);
   });
 }
 
@@ -315,7 +318,7 @@ test('AC-9: mono-pnpm — the file set and every file are byte-for-byte the gold
   assert.deepEqual(current.agents, old.agents);
   assert.deepEqual(current.commands, old.commands);
   assert.deepEqual(Object.keys(current.files).sort(), Object.keys(old.files).sort());
-  for (const [rel, content] of Object.entries(old.files)) assert.equal(current.files[rel], content, rel);
+  for (const [rel, content] of Object.entries(old.files)) if (!CHANGED_BY_03C2B.includes(rel)) assert.equal(current.files[rel], content, rel);
 });
 
 // ---------------------------------------------------------------------------------------------

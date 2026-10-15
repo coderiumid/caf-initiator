@@ -28,6 +28,7 @@ import { renderDefaultFileSet } from './helpers/default-file-set.js';
 import { renderCommands } from './helpers/commands-render.js';
 import { copyFixture, snapshotTree } from './helpers/make-repo.js';
 import { silenced } from './helpers/mono-snapshot.js';
+import { swapConstraints } from './helpers/swap-constraints.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir, renderAgents } from './helpers/frozen-kinds.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -348,7 +349,9 @@ for (const fixture of FIXTURE_NAMES) {
     const after = mdSections(now.content);
     assert.deepEqual(after.map((s) => s.header), before.map((s) => s.header));
     for (let i = 0; i < before.length; i++) {
-      if (before[i].header === 'Input') continue;
+      // `Output` and `Constraints` of the planner were changed by CAF-SDD-03c2b (held by
+      // test/sdd03c2b-planner-clarify.test.js, against its own golden)
+      if (['Input', 'Output', 'Constraints'].includes(before[i].header)) continue;
       assert.equal(after[i].body, before[i].body, `section ${before[i].header}`);
     }
     const input = after.find((s) => s.header === 'Input').body;
@@ -394,7 +397,7 @@ function baselined(fixture, files) {
 }
 
 for (const fixture of FIXTURE_NAMES) {
-  test(`AC-10: ${fixture} — pre-ticket planner and reviewer: curate sync writes only their Input`, async () => {
+  test(`AC-10: ${fixture} — pre-ticket planner and reviewer: curate sync writes only their Input (the planner's Output too since CAF-SDD-03c2b)`, async () => {
     const files = {
       'caf-planner.md': golden(`planner.${fixture}.json`).content,
       'caf-reviewer.md': golden(`reviewer.${fixture}.json`).content,
@@ -417,10 +420,13 @@ for (const fixture of FIXTURE_NAMES) {
       const was = mdSections(before[rel]);
       const is = mdSections(after[rel]);
       for (let i = 0; i < was.length; i++) {
-        if (was[i].header === 'Input') assert.notEqual(is[i].body, was[i].body, `${file}: Input changed`);
+        // the planner's `Output` is a tracked section CAF-SDD-03c2b changed: sync carries it too
+        if (was[i].header === 'Input' || (kind === 'planner' && was[i].header === 'Output')) assert.notEqual(is[i].body, was[i].body, `${file}: ${was[i].header} changed`);
         else assert.equal(is[i].body, was[i].body, `${file}: ${was[i].header} untouched`);
       }
-      assert.equal(after[rel], now[kind].content, `${file}: the file is now what a new scaffold writes`);
+      // `## Constraints` of the planner is not tracked (CAF-SDD-03c2b): sync leaves the old one
+      const fresh = kind === 'planner' ? swapConstraints(now[kind].content, files[file]) : now[kind].content;
+      assert.equal(after[rel], fresh, `${file}: the file is now what a new scaffold writes`);
     }
   });
 
@@ -435,9 +441,14 @@ for (const fixture of FIXTURE_NAMES) {
     fs.writeFileSync(path.join(dir, AGENT_DIR, 'caf-reviewer.md'), reviewer);
 
     const result = await silenced(() => agentsSync({ dir, agentDir: AGENT_DIR, dryRun: false }));
-    assert.equal(read(dir, path.join(AGENT_DIR, 'caf-planner.md')), planner);
     assert.equal(read(dir, path.join(AGENT_DIR, 'caf-reviewer.md')), reviewer);
-    assert.deepEqual(result.updated, []);
+    // The planner's untouched `## Output` is synced since CAF-SDD-03c2b (its template changed);
+    // the customized Input is not: the file is the edited one with only Output replaced.
+    const plannerNow = read(dir, path.join(AGENT_DIR, 'caf-planner.md'));
+    const outputOf = (md) => mdSections(md).find((x) => x.header === 'Output').body;
+    const freshOutput = outputOf((await renderAgents(fixture)).planner.content);
+    assert.equal(plannerNow, planner.replace(outputOf(planner), () => freshOutput));
+    assert.deepEqual(result.updated, [path.join(dir, AGENT_DIR, 'caf-planner.md')]);
     assert.ok(result.needsAttention.length >= 2, 'both are reported as needing attention');
     assert.ok(SECTION_STATUS.CONFLICT);
   });

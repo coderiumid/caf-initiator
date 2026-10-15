@@ -209,7 +209,7 @@ The generated Planner:
 - ends a `tasks.md` that holds tasks with `## Coverage`: one line per acceptance criterion, with the tasks that serve it;
 - writes the same list, number or term the same way in every artifact, and reads the files it wrote again before it ends the run;
 - writes `Tidak ada` for a section with nothing to say, never a placeholder (`- -`, an empty section, `TBD`);
-- writes no `tasks.md` at all while a `BLOCKING` question has no `Answer:`. The one exception is a ticket run (the headless marker): there it still writes the blocked note, because caf-orchestrator fails when the file is missing;
+- writes no `tasks.md` at all while a `BLOCKING` question has no `Answer:`, with no exception. On a ticket run (the headless marker) nobody answers in chat, so the Planner writes `requirements.md` with `Status: NEEDS_CLARIFICATION` and the unanswered `BLOCKING` questions, no `tasks.md`, and stops; caf-orchestrator (SDD-04c) then pushes the draft and asks on the ticket. Its `## Constraints` says the same (a headless run never ends waiting for a chat reply) and no longer points at the removed Discovery fallback;
 - names the test file, or the task that creates it, for every acceptance criterion with `Verify: automated test`;
 - starts its final message with one plain line, `Status: <value>`, with no bold and nothing before it;
 - uses one status convention: the status of `requirements.md` is a `Status:` line with the values `DRAFT`, `NEEDS_CLARIFICATION`, `APPROVED` and `NEEDS_HUMAN`. Its `## Input` no longer calls it a heading (`## Status: PLAN`).
@@ -224,12 +224,15 @@ Two skills say something else on a few points, and the agent definition wins. `c
 |---|---|
 | `caf-spec` without the banner | By hand. The existing skill file is never replaced: remove the three banner lines, or delete the file and run `caf-init scaffold skills` again |
 | The Planner's `## Input`, `## Output` and `## Allowed Tools` | `caf-init curate sync` (only where you have not edited the section) |
+| The Planner's `## Constraints` | By hand. The section is not tracked, so `curate sync` never writes it: copy the text from a fresh `caf-init scaffold agents` render. `curate audit` reports it as a warning until it matches the template |
 | The pointer to `caf-spec` in the Planner's `## Skills` | By hand. `scaffold skills` never edits an agent that already has a `## Skills` section; it prints the path that is not listed there. Add the line ``- `.claude/skills/caf-spec/SKILL.md` `` to the list |
 | `Glob` and `Grep` in the Planner's frontmatter | By hand. `curate sync` does not write frontmatter: change the line to `tools: [Read, Write, Glob, Grep]` |
 
 Until the frontmatter line is changed, the Planner's `## Allowed Tools` names two tools it does not have yet.
 
-The two steps done by hand are reported by the audit report of `caf-init curate` as warnings (see [Rollout warnings](#rollout-warnings)), so an older Planner is no longer shown as "already in sync".
+**Rollout order for the ticket-run rule.** Deploy caf-orchestrator with SDD-04c first. A Planner generated earlier keeps writing the blocked `tasks.md` under an older orchestrator and works there as before. A Planner with the new `## Output` under an orchestrator without SDD-04c writes no `tasks.md` on a ticket run with a `BLOCKING` question, so the run fails because the file is missing.
+
+The steps done by hand are reported by the audit report of `caf-init curate` as warnings (see [Rollout warnings](#rollout-warnings)), so an older Planner is no longer shown as "already in sync".
 
 No npm release carries this yet: a release of `caf-init` waits until caf-orchestrator handles a repo without `caf-documentation` (CAF-SDD-04, see [No longer scaffolded](#no-longer-scaffolded)).
 
@@ -307,11 +310,12 @@ Both used to read as `DRIFT` right after `curate baseline` and a sync rewrote th
 
 #### Rollout warnings
 
-Two parts of a template change never reach an agent file through `curate sync`: the frontmatter and the `## Skills` section. The audit report lists them as warnings, under the agent definitions, marked `!`:
+Three parts of a template change never reach an agent file through `curate sync`: the frontmatter, the `## Skills` section and the Planner's `## Constraints`. The audit report lists them as warnings, under the agent definitions, marked `!`:
 
 | Warning | When | What to do |
 |---|---|---|
 | `tools:` differs | The frontmatter `tools:` list of an agent is not the list the template gives its kind. The message names the file, the tools it has now and the tools of the template. The order of the list does not matter | Edit the frontmatter line by hand, or leave it if you changed it on purpose (an MCP tool you added, for example) |
+| Planner `## Constraints` differs | The `## Constraints` section of `caf-planner.md` is not the text of the template (CAF-SDD-03c2b). The section is not tracked, so `curate sync` does not carry it | Edit the section by hand to the current template text, or leave it if the difference is on purpose |
 | Skill pointer missing | A skill that is mapped to the agent's kind, exists in `.claude/skills/` and has no DRAFT banner is not listed in the agent's `## Skills`. The message names the agent and the skill | With a `## Skills` section: add the pointer line by hand. Without one: run `caf-init scaffold skills`, which offers to add the section |
 
 - They are warnings only. They are counted on their own line in the summary and never change the exit code, also with `--audit-only`.
@@ -439,7 +443,7 @@ The spec-driven design dropped five agents and eight commands. A new repo does n
 - **Implementer is replaced.** Since CAF-SDD-03c3 `SINGLE_REPO` gets `caf-frontend` and `caf-backend` instead (see [SINGLE_REPO](#repo-mode-monorepo-vs-single_repo)). `implementer` is filtered out of the picker like `qa` (a superseded kind, not a hidden one); its kind is still known, so `caf-init curate` reads a `caf-implementer.md` already in a repo as before.
 - **Architect stays** until what replaces it is connected. QA is no longer offered (see [The default roster](#the-default-roster-validator-and-caf-plan)); its kind and any `caf-qa.md` already in a repo are untouched.
 - **A new repo has no Documentation agent**, so `/caf-run-pipeline` is written with its "no Documentation Agent" stage, and `piv-workflow.md` lists the role as not scaffolded.
-- **Some generated text still mentions them**: the `.gitignore` lines for `.caf/discovery/` and `.caf/audits/` (kept on purpose), and a pointer to the planner's Discovery fallback in the planner's `## Constraints`. The planner's `## Input` no longer has that fallback, the review commands no longer name `/caf-review-ticket`, and `.caf/knowledge/INDEX.md` no longer names the PM agent (CAF-SDD-03c2).
+- **Some generated text still mentions them**: the `.gitignore` lines for `.caf/discovery/` and `.caf/audits/` (kept on purpose). The planner's `## Input` and, since CAF-SDD-03c2b, its `## Constraints` no longer point at the Discovery fallback, the review commands no longer name `/caf-review-ticket`, and `.caf/knowledge/INDEX.md` names neither the PM agent (CAF-SDD-03c2) nor `.caf/discovery/` (CAF-SDD-03c2b).
 - **No npm release yet.** caf-orchestrator still expects `caf-documentation`; a release of `caf-init` with this change waits until the orchestrator handles a repo without it (CAF-SDD-04).
 
 ### The agents and commands the design ends with

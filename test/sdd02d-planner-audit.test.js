@@ -29,6 +29,7 @@ import { hashSection, SECTION_STATUS } from '../src/utils/section-diff.js';
 import { copyFixture, snapshotTree } from './helpers/make-repo.js';
 import { silenced } from './helpers/mono-snapshot.js';
 import { makeOldRepo } from './helpers/old-repo.js';
+import { constraintsBody, swapConstraints } from './helpers/swap-constraints.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir, frontmatterTools, renderAgents, trackedSections } from './helpers/frozen-kinds.js';
 
 const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures');
@@ -206,17 +207,19 @@ for (const fixture of FIXTURE_NAMES) {
     for (const placeholder of ['`- -`', 'empty section', '`TBD`']) assert.ok(text.includes(placeholder), placeholder);
   });
 
-  test(`AC-3: planner on ${fixture} — no \`tasks.md\` at all while a BLOCKING question has no \`Answer:\`; the ticket run keeps its blocked note`, () => {
+  test(`AC-3: planner on ${fixture} — no \`tasks.md\` at all while a BLOCKING question has no \`Answer:\`; the 02d ticket-run stop is replaced by CAF-SDD-03c2b`, () => {
     const clarify = stepLines(outputOf(fixture), '### 2. Clarify');
     assertBlock(clarify, RULE_NO_TASKS);
     const text = flat(RULE_NO_TASKS);
     assert.match(text, /do not write `tasks\.md` at all while a `BLOCKING` question is unanswered/);
     assert.match(text, /it has no `Answer:`/);
     assert.match(text, /no task breakdown, no placeholder, no marker line/);
-    // the stop the orchestrator depends on today is still there, and named as the only exception
-    assertBlock(clarify, RULE_TICKET_RUN);
+    // The 02d ticket-run rule (`NEEDS_HUMAN` plus a blocked `tasks.md` note, named as the only
+    // exception) was in the 02d render and is not in the live one: CAF-SDD-03c2b replaced it, and
+    // test/sdd03c2b-planner-clarify.test.js holds the new text.
+    assertBlock(stepLines(SDD02D_PLANNER[fixture].sections.Output, '### 2. Clarify'), RULE_TICKET_RUN);
     assert.match(flat(RULE_TICKET_RUN), /a ticket run is the only case where it is written/);
-    assert.ok(clarify.indexOf(RULE_TICKET_RUN[0]) > clarify.indexOf(RULE_NO_TASKS[0]));
+    assert.ok(!clarify.includes(RULE_TICKET_RUN[0]), 'live: the blocked-note rule is gone');
   });
 
   test(`AC-4: planner on ${fixture} — the refusal to change an approved spec is \`Status: NEEDS_HUMAN\` on the first line of \`verify-report.md\`, never in \`requirements.md\``, () => {
@@ -293,12 +296,15 @@ for (const fixture of FIXTURE_NAMES) {
     assert.notEqual(outputOf(fixture), old.sections.Output);
 
     // put the two old sections back: the whole file is then the golden
-    const restored = md.replace(inputOf(fixture), old.sections.Input).replace(outputOf(fixture), old.sections.Output);
+    // (and `## Constraints`, which CAF-SDD-03c2b changed)
+    const restored = md
+      .replace(inputOf(fixture), old.sections.Input)
+      .replace(outputOf(fixture), old.sections.Output)
+      .replace(constraintsBody(md), () => constraintsBody(old.content));
     assert.equal(restored, old.content);
 
     const now = trackedSections(md);
     for (const header of ['Allowed Tools', 'Working Pattern (PIV)', 'Retry Logic']) assert.equal(now[header], old.sections[header], header);
-    assert.equal(bodyOf(md, 'Constraints'), bodyOf(old.content, 'Constraints'));
     assert.deepEqual(frontmatterTools(md), ['Read', 'Write', 'Glob', 'Grep']);
     assert.deepEqual(frontmatterTools(md), old.tools);
     assert.equal(now['Allowed Tools'], buildToolsSection('planner'));
@@ -314,9 +320,10 @@ for (const fixture of FIXTURE_NAMES) {
     const blockLines = NEW_OUTPUT_BLOCKS.flat();
     for (const line of newLines) assert.ok(blockLines.includes(line), `unexpected new line in Output: ${line}`);
     assert.deepEqual(added(old.sections.Output, output02d), OLD_OUTPUT_LINES);
-    // and of those blocks, the live Output lacks only the one CAF-SDD-02e replaced
+    // and of those blocks, the live Output lacks only the one CAF-SDD-02e replaced and the ticket-run
+    // rule CAF-SDD-03c2b replaced
     const live = outputOf(fixture).split('\n');
-    assert.deepEqual(blockLines.filter((l) => !live.includes(l)), RULE_READ_FACTS);
+    assert.deepEqual(blockLines.filter((l) => !live.includes(l)).sort(), [...RULE_READ_FACTS, ...RULE_TICKET_RUN].sort());
     assert.equal(outputOf(fixture).split('\n')[0], old.sections.Output.split('\n')[0], 'the artifact contract line');
 
     // `## Input`: three lines, the ones that named the status as a heading, in the 02d render ...
@@ -380,7 +387,8 @@ for (const fixture of FIXTURE_NAMES) {
     assert.deepEqual(real.updated, [path.join(dir, PLANNER_REL)]);
 
     // the synced file is the fresh render: only the two sections differ from the old one
-    assert.equal(read(dir, PLANNER_REL), plannerOf(fixture));
+    // (`## Constraints` is not tracked: CAF-SDD-03c2b changed it and sync leaves the old one)
+    assert.equal(read(dir, PLANNER_REL), swapConstraints(plannerOf(fixture), old));
     for (const { file, content } of others) assert.equal(read(dir, path.join(AGENT_DIR, file)), content, `${file} must stay byte-identical`);
 
     const after = agentTree(dir);

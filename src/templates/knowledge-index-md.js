@@ -32,11 +32,6 @@ export function buildKnowledgeIndexMd({ items }) {
 > documents linked below is NOT — that remains the responsibility of the Product/Architecture
 > team, read when available, never a hard requirement before the pipeline runs.
 
-**Difference from \`.caf/discovery/{slug}/prd.md\`:** documents under \`.caf/discovery/\` are
-per-feature drafts written during the Discovery flow (Cluster 1), not
-necessarily final and not necessarily relevant across features. \`docs/product/prd.md\` below is
-the opposite: a product-level PRD, project-owned, reused across tickets. Don't confuse the two.
-
 ## Reference Documents
 
 | Dokumen | Path | Status |
