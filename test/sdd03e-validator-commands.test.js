@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 import prompts from 'prompts';
 
 import { agentsSync } from '../src/commands/agents-sync.js';
-import { agents, buildCandidates, buildSingleRepoCandidates, buildValidatorAgent, HIDDEN_CANDIDATE_KINDS, SINGLE_REPO_ROLES } from '../src/commands/agents.js';
+import { agents, buildCandidates, buildSingleRepoCandidates, buildValidatorAgent, isOfferedCandidate, SINGLE_REPO_ROLES } from '../src/commands/agents.js';
 import { detectStack } from '../src/steps/02-detect-stack.js';
 import { KNOWN_KINDS, SYNCABLE_SECTIONS, parseSections, sectionBody } from '../src/utils/agent-sections.js';
 import { setSectionBaseline, writeManifest } from '../src/utils/generate-manifest.js';
@@ -189,9 +189,11 @@ for (const fixture of FIXTURE_NAMES) {
 
   test(`AC-10: ${fixture} — every other rendered kind keeps its Working Pattern byte for byte`, () => {
     const before = OLD_WP.rendered[fixture];
-    assert.deepEqual(Object.keys(rendered[fixture]).sort(), Object.keys(before).sort());
+    // CAF-SDD-03c2: the validator is a candidate now (rendered the same way); the recorded
+    // render of before this ticket had no entry for it, and its own Working Pattern is tested above.
+    assert.deepEqual(Object.keys(rendered[fixture]).filter((k) => k !== 'validator').sort(), Object.keys(before).sort());
     for (const [kind, agent] of Object.entries(rendered[fixture])) {
-      if (kind === 'reviewer') continue;
+      if (kind === 'reviewer' || kind === 'validator') continue;
       assert.equal(trackedSections(agent.content)[WP], before[kind], kind);
     }
     assert.equal(trackedSections(rendered[fixture].planner.content)[WP], OLD.planner[fixture].sections[WP]);
@@ -238,10 +240,10 @@ test('AC-10: the Working Pattern builder answers as before for every kind but va
 });
 
 // ---------------------------------------------------------------------------------------------
-// AC-12 — the validator stays hidden
+// AC-12 — the validator was hidden; CAF-SDD-03c2 reversed it (these tests now state the opposite)
 // ---------------------------------------------------------------------------------------------
 
-test('AC-12: validator is not a scaffold candidate, and the MONOREPO render has no caf-validator.md', async () => {
+test('AC-12: validator is a scaffold candidate, and the MONOREPO render has caf-validator.md', async () => {
   const mono = await stackOf(fixtureDir('mono-pnpm'));
   const web = mono.apps.find((a) => a.path === 'apps/web');
   const api = mono.apps.find((a) => a.path === 'apps/api');
@@ -250,15 +252,15 @@ test('AC-12: validator is not a scaffold candidate, and the MONOREPO render has 
     buildCandidates({ frontend: [web], backend: [api] }, []),
     ...SINGLE_REPO_ROLES.map((role) => buildSingleRepoCandidates(single, [], role)),
   ]) {
-    assert.ok(!candidates.some((c) => c.kind === 'validator'));
+    assert.ok(candidates.some((c) => c.kind === 'validator'));
   }
-  assert.ok(!Object.keys((await renderMonoSnapshot()).files).some((f) => /validator/.test(f)));
+  assert.ok(Object.keys((await renderMonoSnapshot()).files).includes('.claude/agents/caf-validator.md'));
 });
 
-const NO_TRACKER_PROMPT = (c) => !HIDDEN_CANDIDATE_KINDS.includes(c.kind) && !['auditor', 'pm', 'ux-designer'].includes(c.kind);
+const NO_TRACKER_PROMPT = (c) => isOfferedCandidate(c) && !['auditor', 'pm', 'ux-designer'].includes(c.kind);
 
 for (const fixture of FIXTURE_NAMES) {
-  test(`AC-12: scaffold agents on ${fixture} writes no caf-validator.md`, async () => {
+  test(`AC-12: scaffold agents on ${fixture} writes caf-validator.md`, async () => {
     const dir = copyFixture(fixtureDir(fixture), 'caf-sdd03e-scaffold-');
     const stack = await stackOf(dir);
     let answers;
@@ -274,7 +276,7 @@ for (const fixture of FIXTURE_NAMES) {
     prompts._injected.length = 0;
     const written = fs.readdirSync(path.join(dir, AGENT_DIR));
     assert.ok(written.includes('caf-reviewer.md'), 'precondition: the run did write agents');
-    assert.deepEqual(written.filter((f) => /validator/.test(f)), []);
+    assert.deepEqual(written.filter((f) => /validator/.test(f)), ['caf-validator.md']);
   });
 }
 

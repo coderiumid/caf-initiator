@@ -165,10 +165,24 @@ test('AC-4: validator and /caf-plan are not hidden; the five hidden kinds still 
 // ---------------------------------------------------------------------------------------------
 
 for (const fixture of FIXTURE_NAMES) {
-  test(`AC-5: ${fixture} — /caf-plan-ticket and /caf-complete-drafts are byte-identical`, async () => {
+  test(`AC-5: ${fixture} — /caf-plan-ticket is byte-identical, /caf-complete-drafts too but for the agent file it lists`, async () => {
     const old = golden(`commands.${fixture}.json`).files;
     const { files } = await renderCommands(fixture);
-    for (const name of ['caf-plan-ticket.md', 'caf-complete-drafts.md']) assert.equal(files[name], old[name], name);
+    assert.equal(files['caf-plan-ticket.md'], old['caf-plan-ticket.md']);
+
+    // /caf-complete-drafts lists the agent files that exist (listDraftFiles), so the one line for
+    // caf-qa.md becomes the one for caf-validator.md (AC-1 puts the validator in place of qa) and
+    // nothing else in the file moves. This is the one place AC-5 cannot be read as "no byte changes".
+    const qa = '- `.claude/agents/caf-qa.md`';
+    const validator = '- `.claude/agents/caf-validator.md`';
+    const lines = old['caf-complete-drafts.md'].split('\n');
+    assert.equal(lines.filter((l) => l === qa).length, 1);
+    const at = lines.indexOf(qa);
+    lines.splice(at, 1);
+    const last = lines.map((l, i) => (l.startsWith('- `.claude/agents/') ? i : -1)).filter((i) => i >= 0).pop();
+    lines.splice(last + 1, 0, validator);
+    assert.equal(files['caf-complete-drafts.md'], lines.join('\n'));
+    assert.ok(!files['caf-complete-drafts.md'].includes('caf-qa.md'));
   });
 
   test(`AC-5: ${fixture} — /caf-review and /caf-fix-review differ only at the /caf-review-ticket reference`, async () => {

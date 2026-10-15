@@ -55,6 +55,7 @@ const TOOLS = {
   implementer: ['Read', 'Write', 'Edit', 'Bash'],
   qa: ['Read', 'Write', 'Bash'],
   reviewer: ['Read', 'Write', 'Bash'],
+  validator: ['Read', 'Write', 'Bash'],
   documentation: ['Read', 'Write', 'Edit'],
   auditor: ['Read', 'Bash'],
   devops: ['Read', 'Bash'],

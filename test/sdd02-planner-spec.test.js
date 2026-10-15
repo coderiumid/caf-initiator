@@ -182,7 +182,9 @@ for (const fixture of FIXTURE_NAMES) {
       documentation: line('update `docs/` (parallel, non-blocking)'),
       devops: 'TODO: which artifact is produced for the next agent',
     };
-    const kinds = Object.keys(rendered[fixture]).filter((k) => k !== 'planner');
+    // CAF-SDD-03c2: the validator is a candidate now; its Output and Working Pattern are locked in
+    // test/sdd03b1-validator.test.js and test/sdd03e-validator-commands.test.js.
+    const kinds = Object.keys(rendered[fixture]).filter((k) => k !== 'planner' && k !== 'validator');
     assert.ok(kinds.length >= 7);
     for (const kind of kinds) {
       const sections = trackedSections(rendered[fixture][kind].content);

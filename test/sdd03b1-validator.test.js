@@ -1,9 +1,8 @@
 // CAF-SDD-03b1 — the `validator` kind and the `validate-report.md` format.
 //
-// The kind is complete (detection, tools, tracked sections, skill mapping) but hidden: it is not
-// a `buildCandidates()` entry, so no scaffold run offers or writes it and the frozen MONOREPO
-// snapshot does not gain a file. Until the ticket that connects it, `buildValidatorAgent()` is
-// only reached from here.
+// The kind is complete (detection, tools, tracked sections, skill mapping). It was hidden until
+// CAF-SDD-03c2 (not a `buildCandidates()` entry); since then it is a candidate, offered by the
+// picker in place of `qa`, and `agents()` renders it through `buildValidatorAgent()`.
 // Every expected value below is written out literally. Every `scaffold` and `curate sync` runs on
 // a temp copy of a fixture.
 
@@ -21,6 +20,7 @@ import {
   buildSingleRepoCandidates,
   buildValidatorAgent,
   HIDDEN_CANDIDATE_KINDS,
+  isOfferedCandidate,
   SINGLE_REPO_ROLES,
 } from '../src/commands/agents.js';
 import { auditAgentDefinitions } from '../src/commands/audit.js';
@@ -138,7 +138,8 @@ test('AC-2: frontmatter tools of the validator match the literal table: Read, Wr
 // AC-3 — hidden
 // ---------------------------------------------------------------------------------------------
 
-test('AC-3: validator is not a scaffold candidate in any mode', async () => {
+// CAF-SDD-03c2 reversed these: the validator is a scaffold candidate in every mode and is offered.
+test('AC-3: validator is a scaffold candidate in every mode, and offered by the picker', async () => {
   const mono = await stackOf(fixtureDir('mono-pnpm'));
   const web = mono.apps.find((a) => a.path === 'apps/web');
   const api = mono.apps.find((a) => a.path === 'apps/api');
@@ -151,20 +152,21 @@ test('AC-3: validator is not a scaffold candidate in any mode', async () => {
     ...SINGLE_REPO_ROLES.map((role) => buildSingleRepoCandidates(single, [], role)),
   ];
   for (const candidates of lists) {
-    assert.ok(!candidates.some((c) => c.kind === 'validator'));
+    assert.ok(candidates.some((c) => c.kind === 'validator'));
+    assert.ok(candidates.filter(isOfferedCandidate).some((c) => c.kind === 'validator'));
   }
   for (const kind of HIDDEN_CANDIDATE_KINDS) assert.ok(KNOWN_KINDS.includes(kind), kind);
 });
 
-test('AC-3: the frozen MONOREPO render has no caf-validator.md', async () => {
+test('AC-3: the MONOREPO render has caf-validator.md in place of caf-qa.md', async () => {
   const files = Object.keys((await renderMonoSnapshot()).files);
-  assert.ok(files.includes('.claude/agents/caf-qa.md'));
-  assert.ok(!files.some((f) => /validator/.test(f)));
+  assert.ok(files.includes('.claude/agents/caf-validator.md'));
+  assert.ok(!files.includes('.claude/agents/caf-qa.md'));
 });
 
 // Every candidate the picker offers except the three that ask for a tracker (auditor, pm,
 // ux-designer): their prompt is not part of what is tested here.
-const NO_TRACKER_PROMPT = (c) => !HIDDEN_CANDIDATE_KINDS.includes(c.kind) && !['auditor', 'pm', 'ux-designer'].includes(c.kind);
+const NO_TRACKER_PROMPT = (c) => isOfferedCandidate(c) && !['auditor', 'pm', 'ux-designer'].includes(c.kind);
 
 async function scaffoldAgents(fixture, { role } = {}) {
   const dir = copyFixture(fixtureDir(fixture), 'caf-validator-scaffold-');
@@ -185,13 +187,15 @@ async function scaffoldAgents(fixture, { role } = {}) {
 }
 
 for (const [fixture, role] of [['mono-pnpm'], ['single-nuxt'], ['single-nuxt', 'frontend'], ['single-nuxt', 'backend']]) {
-  test(`AC-3: scaffold agents on ${fixture}${role ? ` (--role ${role})` : ''} writes no caf-validator.md`, async () => {
+  test(`AC-3: scaffold agents on ${fixture}${role ? ` (--role ${role})` : ''} writes caf-validator.md, the one buildValidatorAgent() renders, and no caf-qa.md`, async () => {
     const { dir, result } = await scaffoldAgents(fixture, { role });
     const written = fs.readdirSync(path.join(dir, AGENT_DIR));
-    assert.ok(written.includes('caf-qa.md'), 'precondition: the run did write agents');
-    assert.ok(written.includes('caf-planner.md'));
-    assert.deepEqual(written.filter((f) => /validator/.test(f)), []);
-    assert.ok(!result.written.some((f) => /validator/.test(path.basename(f))));
+    assert.ok(written.includes('caf-planner.md'), 'precondition: the run did write agents');
+    assert.ok(written.includes('caf-validator.md'));
+    assert.ok(!written.includes('caf-qa.md'));
+    assert.ok(result.written.some((f) => path.basename(f) === 'caf-validator.md'));
+    const expected = buildValidatorAgent(dir, await stackOf(dir), { skills: [] }).content;
+    assert.equal(fs.readFileSync(path.join(dir, AGENT_DIR, 'caf-validator.md'), 'utf8'), expected);
   });
 }
 

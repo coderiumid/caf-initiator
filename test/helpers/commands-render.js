@@ -8,7 +8,7 @@ import path from 'node:path';
 
 import prompts from 'prompts';
 
-import { agents, buildCandidates, buildSingleRepoCandidates, HIDDEN_CANDIDATE_KINDS } from '../../src/commands/agents.js';
+import { agents, buildCandidates, buildSingleRepoCandidates, isOfferedCandidate } from '../../src/commands/agents.js';
 import { completeDrafts } from '../../src/commands/complete-drafts.js';
 import { featureCatalogSync } from '../../src/commands/feature-catalog-sync.js';
 import { detectStack } from '../../src/steps/02-detect-stack.js';
@@ -37,7 +37,7 @@ async function run(answers, fn) {
 export async function renderCommands(fixture, { role } = {}) {
   const dir = copyFixture(fixtureDir(fixture), 'caf-commands-render-');
   const stack = await silenced(() => detectStack({ dir, explicitGlobs: undefined }));
-  const offered = (c) => !HIDDEN_CANDIDATE_KINDS.includes(c.kind);
+  const offered = isOfferedCandidate;
 
   // Answers in prompt order: (MONOREPO only) frontend apps, backend apps; agent multiselect;
   // /caf-run-pipeline, /caf-fix-review, /caf-review; then the tracker, asked once for the

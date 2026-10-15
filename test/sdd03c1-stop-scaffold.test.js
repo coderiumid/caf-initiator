@@ -62,7 +62,7 @@ const DROPPED_COMMAND_FILES = [
   'caf-qa-check.md',
   'caf-review-ticket.md',
 ];
-const KEPT_COMMAND_FILES = ['caf-complete-drafts.md', 'caf-fix-review.md', 'caf-plan-ticket.md', 'caf-review.md', 'caf-run-pipeline.md'];
+const KEPT_COMMAND_FILES = ['caf-complete-drafts.md', 'caf-fix-review.md', 'caf-plan-ticket.md', 'caf-plan.md', 'caf-review.md', 'caf-run-pipeline.md'];
 const DROPPED_PATHS = [
   ...DROPPED_AGENT_FILES.map((f) => `${AGENT_DIR}/${f}`),
   ...DROPPED_COMMAND_FILES.map((f) => `${COMMAND_DIR}/${f}`),
@@ -70,6 +70,18 @@ const DROPPED_PATHS = [
 
 const sorted = (list) => [...list].sort();
 const without = (list, dropped) => list.filter((item) => !dropped.includes(item));
+
+// CAF-SDD-03c2 changed the default scaffold again, on top of the 03c1 change these tests hold: the
+// validator is offered and written in place of qa, and /caf-plan is written. The goldens in
+// test/fixtures/pre-sdd03c1/ stay as recorded; each expected value is the golden minus the dropped
+// ones, put through this. (test/sdd03c2-validator-default.test.js holds the 03c2 change itself.)
+const swapQa = (item) => item.replace('caf-qa.md', 'caf-validator.md');
+const since03c2 = {
+  offered: (list) => list.map((kind) => (kind === 'qa' ? 'validator' : kind)),
+  agents: (list) => sorted(list.map(swapQa)),
+  commands: (list) => sorted([...list, 'caf-plan.md']),
+  files: (list) => sorted([...list.map(swapQa), `${COMMAND_DIR}/caf-plan.md`]),
+};
 
 const now = {};
 for (const variant of VARIANTS) now[variantName(variant)] = await renderDefaultFileSet(variant);
@@ -83,20 +95,21 @@ for (const variant of VARIANTS) {
   const before = readGolden(name);
 
   test(`AC-1: ${name} — the five dropped kinds are not offered, and every other kind still is, in the same order`, () => {
-    assert.deepEqual(now[name].offered, without(before.offered, DROPPED_KINDS));
+    assert.deepEqual(now[name].offered, since03c2.offered(without(before.offered, DROPPED_KINDS)));
     for (const kind of DROPPED_KINDS) assert.ok(!now[name].offered.includes(kind), `${kind} must not be offered`);
-    for (const kind of ['planner', 'architect', 'qa', 'reviewer']) assert.ok(now[name].offered.includes(kind), `${kind} is still offered`);
+    for (const kind of ['planner', 'architect', 'validator', 'reviewer']) assert.ok(now[name].offered.includes(kind), `${kind} is still offered`);
+    assert.ok(!now[name].offered.includes('qa'), 'qa is replaced by validator (CAF-SDD-03c2)');
     assert.equal(now[name].offered.includes('implementer'), before.offered.includes('implementer'), 'implementer is offered where it was');
   });
 
   test(`AC-1: ${name} — the agent files written are the ones recorded before, minus the five dropped kinds`, () => {
     assert.ok(before.agents.includes('caf-documentation.md'), 'precondition: the golden is the pre-change set');
-    assert.deepEqual(now[name].agents, without(before.agents, DROPPED_AGENT_FILES));
+    assert.deepEqual(now[name].agents, since03c2.agents(without(before.agents, DROPPED_AGENT_FILES)));
     assert.deepEqual(now[name].agents.filter((f) => DROPPED_AGENT_FILES.includes(f)), []);
     assert.ok(now[name].agents.includes('caf-architect.md'), 'architect is still written');
-    assert.ok(now[name].agents.includes('caf-qa.md'), 'qa is still written');
+    assert.ok(now[name].agents.includes('caf-validator.md'), 'validator is written in place of qa (CAF-SDD-03c2)');
+    assert.ok(!now[name].agents.includes('caf-qa.md'));
     assert.equal(now[name].agents.includes('caf-implementer.md'), before.agents.includes('caf-implementer.md'), 'implementer is written where it was');
-    assert.deepEqual(now[name].agents.filter((f) => /validator/.test(f)), [], 'the validator stays hidden');
   });
 }
 
@@ -136,15 +149,15 @@ for (const variant of VARIANTS) {
 
   test(`AC-2: ${name} — the commands written are the ones recorded before, minus the eight dropped ones`, () => {
     assert.ok(before.commands.includes('caf-qa-check.md'), 'precondition: the golden is the pre-change set');
-    assert.deepEqual(now[name].commands, without(before.commands, DROPPED_COMMAND_FILES));
+    assert.deepEqual(now[name].commands, since03c2.commands(without(before.commands, DROPPED_COMMAND_FILES)));
     assert.deepEqual(now[name].commands.filter((f) => DROPPED_COMMAND_FILES.includes(f)), []);
     assert.deepEqual(now[name].commands.filter((f) => !KEPT_COMMAND_FILES.includes(f)), []);
-    assert.ok(!now[name].commands.includes('caf-plan.md'), '/caf-plan stays hidden');
+    assert.ok(now[name].commands.includes('caf-plan.md'), '/caf-plan is written (CAF-SDD-03c2)');
     assert.ok(now[name].commands.includes('caf-plan-ticket.md'), '/caf-plan-ticket is still written');
   });
 
   test(`AC-2: ${name} — every other file of the default scaffold is still written`, () => {
-    assert.deepEqual(now[name].files, without(before.files, DROPPED_PATHS));
+    assert.deepEqual(now[name].files, since03c2.files(without(before.files, DROPPED_PATHS)));
   });
 }
 
@@ -292,8 +305,8 @@ test('AC-5: HIDDEN_CANDIDATE_KINDS holds exactly the five dropped kinds (no impl
   assert.deepEqual(sorted(HIDDEN_CANDIDATE_KINDS), sorted(DROPPED_KINDS));
   for (const kind of HIDDEN_CANDIDATE_KINDS) assert.ok(KNOWN_KINDS.includes(kind), kind);
   assert.equal(HIDDEN_CANDIDATE_KINDS.length, 5);
-  for (const kind of ['planner', 'architect', 'frontend', 'backend', 'implementer', 'qa', 'reviewer']) assert.ok(!HIDDEN_CANDIDATE_KINDS.includes(kind), `${kind} must stay offered`);
-  // The validator is hidden another way (it is not a candidate at all) and stays that way.
+  for (const kind of ['planner', 'architect', 'frontend', 'backend', 'implementer', 'qa', 'reviewer']) assert.ok(!HIDDEN_CANDIDATE_KINDS.includes(kind), `${kind} is not one of the five dropped kinds`);
+  // CAF-SDD-03c2: the validator is a candidate and offered; qa is not offered but is not dropped either.
   assert.ok(!HIDDEN_CANDIDATE_KINDS.includes('validator'));
 });
 
@@ -303,7 +316,8 @@ test('AC-5: the candidate definitions of the dropped kinds are still there — o
   const single = (await silenced(() => detectStack({ dir: fixtureDir('single-nuxt'), explicitGlobs: undefined }))).apps[0];
   const singleKinds = buildSingleRepoCandidates(single, [], 'implementer').map((c) => c.kind);
   for (const kind of RETIRED_KINDS) assert.ok(singleKinds.includes(kind), kind);
-  assert.ok(!mono.includes('validator') && !singleKinds.includes('validator'));
+  assert.ok(mono.includes('validator') && singleKinds.includes('validator'), 'CAF-SDD-03c2: the validator is a candidate');
+  assert.ok(mono.includes('qa') && singleKinds.includes('qa'), 'qa is replaced in the offer, not removed');
 });
 
 test('AC-5: the 15 frozen-kinds goldens are all there (test/frozen-kinds.test.js compares their content)', () => {

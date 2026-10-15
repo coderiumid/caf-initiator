@@ -33,7 +33,9 @@ export async function makeOldRepo(fixture) {
     fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
     fs.writeFileSync(path.join(dir, rel), content, 'utf8');
   };
-  const agents = Object.values(await renderAgents(fixture));
+  // Not the validator (CAF-SDD-03c2): it is a candidate now, but a repo scaffolded before this
+  // ticket never had it.
+  const agents = Object.entries(await renderAgents(fixture)).filter(([kind]) => kind !== 'validator').map(([, agent]) => agent);
   for (const { file, content } of agents) write(path.join(AGENT_DIR, file), content);
   const commands = JSON.parse(fs.readFileSync(path.join(FIXTURES_DIR, 'pre-sdd03b3', `commands.${fixture}.json`), 'utf8')).files;
   for (const [file, content] of Object.entries(commands)) write(path.join(COMMAND_DIR, file), content);

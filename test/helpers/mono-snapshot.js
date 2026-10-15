@@ -9,7 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { detectStack } from '../../src/steps/02-detect-stack.js';
-import { buildCandidates, HIDDEN_CANDIDATE_KINDS } from '../../src/commands/agents.js';
+import { buildCandidates, buildValidatorAgent, isOfferedCandidate } from '../../src/commands/agents.js';
 import { matchVerifyScripts, readPackageName } from '../../src/utils/package-scripts.js';
 import { buildAgentMd, agentSlug } from '../../src/templates/agent-md.js';
 import { buildClaudeMd } from '../../src/templates/claude-md.js';
@@ -51,13 +51,17 @@ export async function renderMonoSnapshot(detectOpts = {}) {
   // CAF-SDD-03c1: only what a scaffold run can write — the candidates the picker offers. Until
   // then every candidate was rendered, hidden ones included, so the snapshot held files no run
   // wrote (devops.md).
-  const candidates = buildCandidates({ frontend: [web], backend: [api] }, []).filter(
-    (c) => !HIDDEN_CANDIDATE_KINDS.includes(c.kind)
-  );
+  const candidates = buildCandidates({ frontend: [web], backend: [api] }, []).filter(isOfferedCandidate);
 
   const agentFiles = {};
   for (const candidate of candidates) {
     if (candidate.kind === 'pm' || candidate.kind === 'ux-designer') continue;
+    // CAF-SDD-03c2: the validator is rendered the way a scaffold writes it (the gate from every app).
+    if (candidate.kind === 'validator') {
+      const validator = buildValidatorAgent(dir, stack);
+      agentFiles[validator.file] = validator.content;
+      continue;
+    }
     const verifyApps = candidate.apps
       ? candidate.apps.map((app) => ({
           scripts: matchVerifyScripts(dir, app.path),
