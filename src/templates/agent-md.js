@@ -85,9 +85,10 @@ export function buildVerifyChecklist(verifyApps) {
 
 // Planner/Architect may optionally read Layer 1 reference docs (CAF.md Layer 2) — these are
 // never a gate, so the language here must stay explicit that missing docs are fine.
-// Planner's discovery-draft fallback is deliberately verbose: the mandatory re-copying of
-// unanswered Open Questions into requirements.md is the safety contract (a draft PRD must
-// never silently become requirements with assumed answers) — don't compress that away.
+// The Planner's Input used to hold a "Fallback — Discovery draft without a ticket" flow (a PRD
+// draft read as the requirement). CAF-SDD-03c2 removed it: the Discovery flow and its command are
+// no longer scaffolded. The planner's `## Constraints` still says the headless run escalates to a
+// file and not to chat (see buildBatasanSection).
 // The escalation MECHANISM branches on environment: interactive (default) still STOPs and waits
 // for chat confirmation, unchanged from before. Headless runs (caf-orchestrator prepends a
 // "[SYSTEM CONTEXT: Environment = headless...]" marker to the prompt) have no chat to wait on —
@@ -113,36 +114,6 @@ export function buildInputSection(kind, appNames = []) {
   if (kind === 'planner') {
     return [
       'Ticket description from the tracker (required).',
-      '',
-      '### Fallback — Discovery draft without a ticket',
-      '',
-      '1. If the given TICKET-ID is not found in either the tracker or the repo backlog, check',
-      '   whether `.caf/discovery/{TICKET-ID}/prd.md` exists (TICKET-ID is used as the folder name —',
-      '   the slug produced by `/caf-discovery-start`, used consistently as the identity throughout',
-      '   the pipeline when not going through the tracker).',
-      '2. If `.caf/discovery/{TICKET-ID}/` does NOT exist: proceed with the existing behavior (ask',
-      '   the user for the task description directly) — the remaining steps below don\'t apply.',
-      '3. If `prd.md` exists: first check the list of Open Questions that are still UNANSWERED (from',
-      '   `prd.md`/`flow.md`), then check whether the received prompt/context is prefixed with the',
-      '   `[SYSTEM CONTEXT: Environment = headless...]` marker.',
-      '   - **No open questions remain at all** (all answered): proceed to generate',
-      '     `requirements.md` as usual, with the `Status:` line described in Output — unaffected by',
-      '     headless or not, no need to show anything in chat first.',
-      '   - **There are unanswered Open Questions, NOT headless**: first show the user a summary',
-      '     of `prd.md` (Problem, Scope, Success Metric) and the list of questions, then ask',
-      '     explicitly "Found a discovery draft for this. [N open questions unanswered]. Proceed',
-      '     using this as the requirement as-is?" — STOP until the user answers. If the user says',
-      '     no/cancel, don\'t proceed to generate `requirements.md` — report and stop. (Existing',
-      '     behavior, unchanged.)',
-      '   - **There are unanswered Open Questions, headless**: do NOT STOP waiting for chat — no',
-      '     human will answer. Generate `requirements.md` directly with `Status: NEEDS_HUMAN`,',
-      '     and still create `tasks.md` (may be minimal, containing a short note like "blocked —',
-      '     waiting on answers to Open Questions, see requirements.md") so caf-orchestrator doesn\'t',
-      '     except on its file-existence check. See the `Constraints` section below.',
-      '4. On both "has open questions" paths above (headless or not) that proceed to generate:',
-      '   `requirements.md` MUST re-copy all still-unanswered Open Questions into the',
-      '   `## Open Questions` section (a new section, added to the existing `requirements.md`',
-      '   format) — do NOT silently assume the answers, on either path.',
       '',
       '### Optional — Layer 1 reference docs',
       '',
@@ -203,8 +174,13 @@ export function buildInputSection(kind, appNames = []) {
   }
   if (kind === 'reviewer') {
     const who = appNames.length > 0 ? `implementation agent (${appNames.join(', ')})` : 'implementation agent';
+    // CAF-SDD-03c2: the gate report is validate-report.md (caf-validator), or qa-report.md in a repo
+    // that still has caf-qa; both names stay so a repo with the new reviewer and the old gate reads
+    // right. The phrase "from the implementation agent" is what parseInputAppNames() reads the app
+    // list after: keep it, with the list right behind it.
     return [
-      `\`verify-report.md\` from the ${who} and \`qa-report.md\` from the QA Agent, both in`,
+      `\`verify-report.md\` from the ${who}, and the gate report — \`validate-report.md\` from the`,
+      'Validator Agent, or `qa-report.md` from the QA Agent in a repo that still uses `caf-qa` — all in',
       '`.caf/tasks/{TICKET-ID}/` (required).',
       '',
       'Optional — when invoked from post-PR mode (`/caf-fix-review`, not the normal pre-PR pipeline',
@@ -212,7 +188,7 @@ export function buildInputSection(kind, appNames = []) {
       'INLINE path:line or GENERAL metadata, and scoped/global mode) as additional input, inserted',
       'directly into the spawn prompt by that command — not a separate file artifact in',
       '`.caf/tasks/{TICKET-ID}/`. If this input is absent (normal pre-PR mode), proceed as usual',
-      'from `verify-report.md`/`qa-report.md` alone.',
+      'from `verify-report.md` and the gate report alone.',
     ].join('\n');
   }
   if (kind === 'documentation') {

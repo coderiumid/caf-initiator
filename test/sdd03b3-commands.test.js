@@ -103,6 +103,19 @@ const REVIEW_CHANGED = [
 ];
 const FIX_REVIEW_CHANGED = ['4. Spawn `caf-reviewer` (`.claude/agents/caf-reviewer.md`)', '6. Summary to User', 'Constraints'];
 
+// CAF-SDD-03c2: the one sentence of each opening paragraph that named /caf-review-ticket, and what
+// replaced it. [golden text, text now].
+const REVIEW_TICKET_REFERENCE = {
+  'caf-review.md': [
+    "timeline. This isn't a\nread-only preview like `/caf-review-ticket` — only run it when you actually intend to review\nthis PR right now.",
+    "timeline. This isn't a\nread-only command — only run it when you actually intend to review this PR right now.",
+  ],
+  'caf-fix-review.md': [
+    'This is not a read-only preview like\n`/caf-review-ticket` — run it only when you actually intend to respond to review comments now.',
+    'This is not a read-only command — run it\nonly when you actually intend to respond to review comments now.',
+  ],
+};
+
 const REVIEW_HEADERS = [
   '0. Permission Check (REQUIRED, before any step below)',
   '0.5 Resolve PR Number & TICKET-ID',
@@ -432,9 +445,13 @@ for (const fixture of FIXTURE_NAMES) {
       const allHeaders = (c) => c.split('\n').filter((l) => /^\s*#{1,6} /.test(l));
       assert.deepEqual(allHeaders(now[fixture].files[file]), allHeaders(OLD[fixture][file]));
 
+      // CAF-SDD-03c2 took the reference to /caf-review-ticket (no longer scaffolded) out of the
+      // opening paragraph; that is the one change outside the sections recorded by T1.
+      const [before, after] = REVIEW_TICKET_REFERENCE[file];
+      assert.equal(oldSections[0].body.split(before).length, 2, 'the golden has the reference once');
+      assert.equal(newSections[0].body, oldSections[0].body.replace(before, after), 'frontmatter, banner, title and purpose are untouched but for the reference');
       const differing = newSections.filter((s, i) => s.body !== oldSections[i].body).map((s) => s.header);
-      assert.deepEqual(differing, changed);
-      assert.equal(newSections[0].body, oldSections[0].body, 'frontmatter, banner, title and purpose are untouched');
+      assert.deepEqual(differing, [null, ...changed]);
     });
 
     test(`${file} on ${fixture} — the new text adds no TODO, no placeholder and no fence`, () => {

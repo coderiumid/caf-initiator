@@ -165,6 +165,20 @@ const OLD_INPUT_LINES = [
 
 const added = (now, old) => now.split('\n').filter((l) => !old.split('\n').includes(l));
 
+// CAF-SDD-03c2 removed the "Fallback — Discovery draft without a ticket" flow from `## Input` (it
+// pointed at a folder and a command no scaffold writes any more). The three lines this ticket
+// changed in `## Input` were all inside it, so what is left to compare against the 02d render is
+// that render without the flow: from its heading up to the next one.
+const FALLBACK_HEADING = '### Fallback — Discovery draft without a ticket';
+const NEXT_HEADING = '### Optional — Layer 1 reference docs';
+const dropFallback = (text) => {
+  const lines = text.split('\n');
+  const from = lines.indexOf(FALLBACK_HEADING);
+  const to = lines.indexOf(NEXT_HEADING);
+  assert.ok(from >= 0 && to > from, 'the 02d Input has the flow');
+  return [...lines.slice(0, from), ...lines.slice(to)].join('\n');
+};
+
 // ---------------------------------------------------------------------------------------------
 // AC-1 .. AC-6 — the planner's `## Output`
 // ---------------------------------------------------------------------------------------------
@@ -238,7 +252,7 @@ for (const fixture of FIXTURE_NAMES) {
     assert.ok(!/^## /m.test(output) && !/\bTODO\b/.test(output));
     const headings = (text) => text.split('\n').filter((l) => l.startsWith('### '));
     assert.deepEqual(headings(output), headings(OLD_PLANNER[fixture].sections.Output));
-    assert.deepEqual(headings(inputOf(fixture)), headings(OLD_PLANNER[fixture].sections.Input));
+    assert.deepEqual(headings(inputOf(fixture)), headings(OLD_PLANNER[fixture].sections.Input).filter((h) => h !== FALLBACK_HEADING));
   });
 
   // -------------------------------------------------------------------------------------------
@@ -253,14 +267,17 @@ for (const fixture of FIXTURE_NAMES) {
       assert.ok(!/Status: PLAN\b/.test(section), '`PLAN` is not a status');
     }
     assert.ok(!plannerOf(fixture).includes('## Status'));
-    for (const line of NEW_INPUT_LINES) assert.ok(input.split('\n').includes(line), line);
-    assert.match(input.replace(/\s+/g, ' '), /`requirements\.md` as usual, with the `Status:` line described in Output/);
-    assert.match(input.replace(/\s+/g, ' '), /`requirements\.md` directly with `Status: NEEDS_HUMAN`/);
+    // The three Input lines of this ticket were inside the flow CAF-SDD-03c2 removed: they are in
+    // the 02d render, and not in the live one.
+    for (const line of NEW_INPUT_LINES) {
+      assert.ok(SDD02D_PLANNER[fixture].sections.Input.split('\n').includes(line), `02d render: ${line}`);
+      assert.ok(!input.split('\n').includes(line), `live: ${line}`);
+    }
 
     assertBlock(stepLines(output, '### 1. Specify'), RULE_STATUS_LINE);
     assert.match(flat(RULE_STATUS_LINE), /one plain line, `Status: <value>`, never a heading/);
     // every status the two sections name is one of the four
-    const named = new Set([...`${input}\n${output}`.matchAll(/Status: ([A-Z_]+)/g)].map((m) => m[1]));
+    const named = new Set([...output.matchAll(/Status: ([A-Z_]+)/g)].map((m) => m[1]));
     assert.deepEqual([...named].sort(), ['APPROVED', 'DRAFT', 'NEEDS_CLARIFICATION', 'NEEDS_HUMAN']);
   });
 
@@ -302,10 +319,13 @@ for (const fixture of FIXTURE_NAMES) {
     assert.deepEqual(blockLines.filter((l) => !live.includes(l)), RULE_READ_FACTS);
     assert.equal(outputOf(fixture).split('\n')[0], old.sections.Output.split('\n')[0], 'the artifact contract line');
 
-    // `## Input`: three lines, the ones that named the status as a heading
-    assert.deepEqual(added(inputOf(fixture), old.sections.Input), NEW_INPUT_LINES);
-    assert.deepEqual(added(old.sections.Input, inputOf(fixture)), OLD_INPUT_LINES);
-    assert.equal(inputOf(fixture).split('\n').length, old.sections.Input.split('\n').length);
+    // `## Input`: three lines, the ones that named the status as a heading, in the 02d render ...
+    const input02d = SDD02D_PLANNER[fixture].sections.Input;
+    assert.deepEqual(added(input02d, old.sections.Input), NEW_INPUT_LINES);
+    assert.deepEqual(added(old.sections.Input, input02d), OLD_INPUT_LINES);
+    assert.equal(input02d.split('\n').length, old.sections.Input.split('\n').length);
+    // ... and the live Input is that render without the flow CAF-SDD-03c2 removed.
+    assert.equal(inputOf(fixture), dropFallback(input02d));
   });
 }
 

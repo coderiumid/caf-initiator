@@ -16,6 +16,7 @@ import prompts from 'prompts';
 import * as AGENTS from '../src/commands/agents.js';
 import { agentsSync } from '../src/commands/agents-sync.js';
 import { curate } from '../src/commands/curate.js';
+import { curateBaseline } from '../src/commands/curate-baseline.js';
 import { skillsTarget } from '../src/commands/skills.js';
 import { detectStack } from '../src/steps/02-detect-stack.js';
 import { buildPlanMd } from '../src/templates/plan-command.js';
@@ -388,9 +389,10 @@ for (const fixture of FIXTURE_NAMES) {
     const after = snapshotTree(dir);
 
     const changed = Object.keys(after).filter((k) => after[k] !== before[k]).sort();
-    const manifest = path.join('.caf', '.generate-manifest.json');
-    assert.deepEqual(changed.filter((k) => k !== manifest), [path.join(AGENT_DIR, 'caf-planner.md'), path.join(AGENT_DIR, 'caf-reviewer.md')]);
-    assert.deepEqual(Object.keys(after).sort(), Object.keys(before).sort(), 'no file added or removed');
+    // What `curate sync` keeps for itself, whatever it syncs: the manifest and its sync state.
+    const bookkeeping = [path.join('.caf', '.generate-manifest.json'), path.join(AGENT_DIR, '.caf-sync-state.json')];
+    assert.deepEqual(changed.filter((k) => !bookkeeping.includes(k)), [path.join(AGENT_DIR, 'caf-planner.md'), path.join(AGENT_DIR, 'caf-reviewer.md')]);
+    assert.deepEqual(Object.keys(after).filter((k) => !bookkeeping.includes(k)).sort(), Object.keys(before).filter((k) => !bookkeeping.includes(k)).sort(), 'no file added or removed');
     assert.equal(result.updated.length, 2);
 
     const now = await renderAgents(fixture);
@@ -451,12 +453,21 @@ for (const fixture of FIXTURE_NAMES) {
     assert.ok(fs.existsSync(path.join(dir, AGENT_DIR, 'caf-validator.md')));
     assert.ok(fs.existsSync(path.join(dir, '.claude', 'commands', 'caf-plan.md')));
 
+    const about = (result) =>
+      result.layers.flatMap((l) => l.entries).filter((e) => /caf-validator|caf-planner|caf-reviewer|caf-plan\b/.test(`${e.filePath} ${e.message}`));
+
+    // As scaffolded: no warning and no gap. (Every section of every agent reads UNTRACKED until
+    // `curate baseline` records it, the validator's no more than the planner's.)
+    const fresh = await auditOnly(dir);
+    assert.deepEqual(about(fresh).filter((e) => e.status === 'warn' || e.status === 'gap'), []);
+    assert.deepEqual(fresh.warnings.filter((w) => /caf-validator|caf-planner|caf-reviewer/.test(w.filePath)), []);
+    assert.ok(about(fresh).some((e) => /caf-validator/.test(e.filePath)), 'the validator is audited');
+
+    // Baselined, as `scaffold complete-drafts` offers: every entry for them is ok.
+    await silenced(() => curateBaseline({ dir, yes: true }));
     const result = await auditOnly(dir);
-    const entries = result.layers.flatMap((l) => l.entries);
-    const about = entries.filter((e) => /caf-validator|caf-planner|caf-reviewer|caf-plan\b/.test(`${e.filePath} ${e.message}`));
-    const notOk = about.filter((e) => e.status !== 'ok');
-    assert.deepEqual(notOk, [], 'no warning, gap or declined entry for them');
-    assert.ok(about.some((e) => /caf-validator/.test(e.filePath)), 'the validator is audited');
+    assert.deepEqual(about(result).filter((e) => e.status !== 'ok'), [], 'no warning, gap or declined entry for them');
     assert.deepEqual(result.warnings.filter((w) => /caf-validator|caf-planner|caf-reviewer/.test(w.filePath)), []);
+    assert.ok(about(result).some((e) => /caf-validator/.test(e.filePath)));
   });
 }

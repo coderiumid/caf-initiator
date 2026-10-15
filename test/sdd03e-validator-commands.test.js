@@ -26,6 +26,7 @@ import { hashSection } from '../src/utils/section-diff.js';
 import { copyFixture } from './helpers/make-repo.js';
 import { silenced, renderMonoSnapshot } from './helpers/mono-snapshot.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir, frontmatterTools, renderAgents, trackedSections } from './helpers/frozen-kinds.js';
+import { withLiveInput } from './helpers/swap-input.js';
 
 const PRE = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'pre-sdd03e');
 const golden = (name) => JSON.parse(fs.readFileSync(path.join(PRE, name), 'utf8'));
@@ -57,6 +58,12 @@ const validator = Object.fromEntries(
   await Promise.all(FIXTURE_NAMES.map(async (f) => [f, buildValidatorAgent(fixtureDir(f), await stackOf(fixtureDir(f)))]))
 );
 const rendered = Object.fromEntries(await Promise.all(FIXTURE_NAMES.map(async (f) => [f, await renderAgents(f)])));
+// CAF-SDD-03c2 changed the `## Input` of the reviewer and the planner after these goldens were
+// recorded; this ticket is about other sections, so each golden is compared with the live Input
+// put in (test/helpers/swap-input.js). The validator's Input did not change.
+for (const kind of ['reviewer', 'planner']) {
+  for (const f of FIXTURE_NAMES) OLD[kind][f] = withLiveInput(OLD[kind][f], rendered[f][kind].content);
+}
 
 const flat = (text) => text.replace(/\s+/g, ' ');
 const sectionsOf = (content) => {
