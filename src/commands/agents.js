@@ -44,16 +44,19 @@ import { buildPlanMd } from '../templates/plan-command.js';
 // no longer scaffolded with them. Hidden, not removed: each stays in KNOWN_KINDS with its
 // builder, because a repo scaffolded earlier still holds the file and `curate` must keep reading
 // it as its own kind. The picker is the only place an agent kind is chosen (there is no flag for
-// it), so filtering the offer is the whole mechanism. `implementer` is dropped by the design too
-// but stays offered until CAF-SDD-03c3: in SINGLE_REPO without --role it is the only
-// implementation agent, and /caf-run-pipeline is only offered when there is one.
+// it), so filtering the offer is the whole mechanism. `implementer` is dropped by the design too;
+// since CAF-SDD-03c3 it is filtered by SUPERSEDED_CANDIDATE_KINDS below, not listed here.
 export const HIDDEN_CANDIDATE_KINDS = ['devops', 'documentation', 'pm', 'ux-designer', 'auditor'];
 
 // CAF-SDD-03c2: `qa` is replaced by `validator` in the default roster. Replaced, not dropped like
 // the kinds above: `qa` stays a candidate (frozen-kinds renders it, tests pick it) and a known
 // kind, and a caf-qa.md already in a repo is never touched; it is only no longer offered. Kept
 // apart from HIDDEN_CANDIDATE_KINDS, which holds exactly the five kinds the design drops.
-export const SUPERSEDED_CANDIDATE_KINDS = ['qa'];
+//
+// CAF-SDD-03c3: `implementer` is replaced the same way, by caf-frontend + caf-backend in
+// SINGLE_REPO. Its candidate stays in buildSingleRepoCandidates(.., 'implementer') and the kind in
+// KNOWN_KINDS, and a caf-implementer.md already in a repo is never touched.
+export const SUPERSEDED_CANDIDATE_KINDS = ['qa', 'implementer'];
 
 /** Is this candidate offered by the agent picker (the one place an agent kind is chosen)? */
 export function isOfferedCandidate(candidate) {
@@ -351,36 +354,40 @@ export function normalizeScopeDirs(dir, rawScope) {
   return { dirs, errors };
 }
 
-// `--role` values for SINGLE_REPO's one implementation agent. `implementer` is the default;
-// `frontend`/`backend` write the same agent under the filename caf-orchestrator already routes
-// (caf-frontend.md / caf-backend.md), for single-package projects that run through it.
+// `--role` values buildSingleRepoCandidates() can render. `implementer` is the kind CAF-INIT-SINGLE-REPO
+// added; since CAF-SDD-03c3 it is no longer offered (SUPERSEDED_CANDIDATE_KINDS), but its candidate is
+// still built for a caller that asks for it by name.
 export const SINGLE_REPO_ROLES = ['implementer', ...FIXED_ROLES];
 
+// The `--role` values the CLI accepts: the filenames caf-orchestrator routes.
+export const SINGLE_REPO_OFFERED_ROLES = [...FIXED_ROLES];
+
 /**
- * SINGLE_REPO candidates (CAF-INIT-SINGLE-REPO): the same whole-repo roles as MONOREPO, but one
- * implementation agent covering the repo (or the `--scope` directories) in place of the
- * frontend/backend split — a single package has no apps to assign to two roles.
+ * SINGLE_REPO candidates (CAF-INIT-SINGLE-REPO): the same whole-repo roles as MONOREPO, but the
+ * implementation agents cover the repo (or the `--scope` directories) in place of the app split —
+ * a single package has no apps to assign to two roles.
  *
- * `role` picks that agent's kind, and therefore its filename: `implementer` (default,
- * caf-implementer.md), or `frontend`/`backend` (caf-frontend.md / caf-backend.md). The role is
- * chosen by the user, never inferred from the framework.
+ * Without `role` (CAF-SDD-03c3) both caf-frontend and caf-backend are built, each for the whole
+ * repo; `role` picks one agent's kind, and therefore its filename (caf-frontend.md /
+ * caf-backend.md, or caf-implementer.md for the superseded `implementer`). The role is chosen by
+ * the user, never inferred from the framework.
  */
-export function buildSingleRepoCandidates(app, scopeDirs = [], role = 'implementer') {
-  if (!SINGLE_REPO_ROLES.includes(role)) {
+export function buildSingleRepoCandidates(app, scopeDirs = [], role) {
+  if (role !== undefined && !SINGLE_REPO_ROLES.includes(role)) {
     throw new Error(`unknown --role "${role}" (choices: ${SINGLE_REPO_ROLES.join(', ')})`);
   }
   const label = `${app.name}${app.framework ? ` (${app.framework})` : ''}`;
-  const implementer = {
-    kind: role,
-    name: `${role[0].toUpperCase()}${role.slice(1)} (${label})`,
-    role: `Implements code changes in ${label} per the Planner's plan (role: ${role}).`,
+  const implementation = (role === undefined ? FIXED_ROLES : [role]).map((kind) => ({
+    kind,
+    name: `${kind[0].toUpperCase()}${kind.slice(1)} (${label})`,
+    role: `Implements code changes in ${label} per the Planner's plan (role: ${kind}).`,
     scope: buildDirScopeSection(scopeDirs),
     app,
     scopeDirs,
-  };
+  }));
   const others = buildCandidates({}, []);
   const insertAt = others.findIndex((c) => c.kind === 'qa');
-  return [...others.slice(0, insertAt), implementer, ...others.slice(insertAt)];
+  return [...others.slice(0, insertAt), ...implementation, ...others.slice(insertAt)];
 }
 
 export async function agents({
@@ -427,8 +434,8 @@ export async function agents({
         'Drop --role, or pass --mode single if this repo was detected wrong.'
     );
   }
-  if (roleOpt && !SINGLE_REPO_ROLES.includes(roleOpt)) {
-    scopeErrors.push(`unknown --role "${roleOpt}" (choices: ${SINGLE_REPO_ROLES.join(', ')})`);
+  if (roleOpt && !SINGLE_REPO_OFFERED_ROLES.includes(roleOpt)) {
+    scopeErrors.push(`unknown --role "${roleOpt}" (choices: ${SINGLE_REPO_OFFERED_ROLES.join(', ')})`);
   }
   if (scopeErrors.length > 0) {
     for (const message of scopeErrors) console.log(kleur.red(`✗ ${message}`));
@@ -446,35 +453,34 @@ export async function agents({
       process.exitCode = 1;
       return { written: [], skipped: [] };
     }
-    // One package, one implementation agent: nothing to assign to frontend/backend and no
-    // "extra apps", so both pickers are skipped.
-    const role = roleOpt || 'implementer';
-    candidates = buildSingleRepoCandidates(apps[0], scopeDirs, role);
+    // One package: nothing to assign to frontend/backend and no "extra apps", so both pickers
+    // are skipped. Without --role both caf-frontend and caf-backend are offered, each for the
+    // whole repo (or the --scope directories).
+    candidates = buildSingleRepoCandidates(apps[0], scopeDirs, roleOpt);
+    const scopeLabel = scopeDirs.length > 0 ? scopeDirs.map((d) => `${d}/**`).join(', ') : null;
     console.log('');
-    if (role === 'implementer') {
+    if (roleOpt) {
       console.log(
-        kleur.yellow(
-          '⚠ SINGLE_REPO: the implementation agent is generated as caf-implementer.md. caf-orchestrator\n' +
-            '  currently routes only caf-frontend/caf-backend, so it will NOT invoke caf-implementer\n' +
-            '  automatically until its routing is updated — use it directly in Claude Code or via\n' +
-            '  /caf-run-pipeline in the meantime. If this project runs through caf-orchestrator,\n' +
-            '  re-run with --role frontend (or --role backend) to generate it as caf-frontend.md /\n' +
-            '  caf-backend.md instead.'
+        kleur.dim(
+          `  SINGLE_REPO: the implementation agent is generated as caf-${roleOpt}.md (--role ${roleOpt}), the\n` +
+            '  filename caf-orchestrator routes.'
         )
       );
     } else {
       console.log(
         kleur.dim(
-          `  SINGLE_REPO: the implementation agent is generated as caf-${role}.md (--role ${role}), the\n` +
-            '  filename caf-orchestrator routes.'
+          '  SINGLE_REPO: the implementation agents are generated as caf-frontend.md and caf-backend.md, the\n' +
+            '  filenames caf-orchestrator routes. Both cover the same scope; pass --role frontend or\n' +
+            '  --role backend to generate only one of them.'
         )
       );
     }
+    const scopeOf = roleOpt || 'frontend and backend';
     console.log(
       kleur.dim(
-        scopeDirs.length > 0
-          ? `  ${role} scope: ${scopeDirs.map((d) => `${d}/**`).join(', ')}`
-          : `  ${role} scope: whole repo (pass --scope <dir...> to limit it to specific directories)`
+        scopeLabel
+          ? `  ${scopeOf} scope: ${scopeLabel}`
+          : `  ${scopeOf} scope: whole repo (pass --scope <dir...> to limit it to specific directories)`
       )
     );
     console.log('');
@@ -626,6 +632,23 @@ export async function agents({
           '  caf-qa (qa-report.md) as long as caf-validator.md is present. caf-qa.md was not changed or\n' +
           '  removed: delete it by hand when you no longer need it, or delete caf-validator.md to keep the\n' +
           '  old gate.'
+      )
+    );
+  }
+
+  // CAF-SDD-03c3 (Q-2): a caf-implementer.md in the repo is never touched, but caf-orchestrator routes
+  // tasks to caf-frontend/caf-backend only, so say once why the two new files are written next to it.
+  if (
+    selected.some((c) => c.kind === 'frontend' || c.kind === 'backend') &&
+    fs.existsSync(path.join(agentDirPath, 'caf-implementer.md'))
+  ) {
+    console.log('');
+    console.log(
+      kleur.yellow(
+        `⚠ ${path.join(agentDirPath, 'caf-implementer.md')} already exists, and caf-frontend.md / caf-backend.md\n` +
+          '  were generated next to it. caf-orchestrator routes tasks to caf-frontend/caf-backend, never to\n' +
+          '  caf-implementer, so the implementer is no longer used there. caf-implementer.md was not changed\n' +
+          '  or removed: delete it by hand when you no longer need it.'
       )
     );
   }

@@ -65,13 +65,15 @@ async function scaffoldSingleRepo({ scope, role } = {}) {
   const dir = copyFixture(SINGLE_FIXTURE);
   const before = new Set(listFiles(dir));
   const { dirs } = normalizeScopeDirs(dir, scope);
-  const picked = pick(buildSingleRepoCandidates(SINGLE_APP, dirs, role), ['planner', role || 'implementer', 'qa', 'reviewer']);
+  // CAF-SDD-03c3: no role = caf-frontend + caf-backend. `role: 'implementer'` builds the superseded
+  // kind by hand (the CLI refuses `--role implementer`), for the tests of that kind's own text.
+  const picked = pick(buildSingleRepoCandidates(SINGLE_APP, dirs, role), ['planner', ...(role ? [role] : ['frontend', 'backend']), 'qa', 'reviewer']);
 
   await silenced(async () => {
     const setup = await runSetup({ dir, dryRun: false, explicitGlobs: undefined });
     assert.equal(setup.ok, true);
     prompts.inject([picked, true, false, false]);
-    await agents({ dir, dryRun: false, scope, role });
+    await agents({ dir, dryRun: false, scope, role: role === 'implementer' ? undefined : role });
     await taskCompletion({ dir, dryRun: false });
     await workflow({ dir, dryRun: false });
   });
@@ -89,7 +91,8 @@ test('SINGLE_REPO scaffold on a Nuxt single package is complete and leaves no un
     '.caf/tasks/README.md',
     '.caf/knowledge/INDEX.md',
     '.claude/agents/caf-planner.md',
-    '.claude/agents/caf-implementer.md',
+    '.claude/agents/caf-frontend.md',
+    '.claude/agents/caf-backend.md',
     '.claude/agents/caf-qa.md',
     '.claude/agents/caf-reviewer.md',
     '.claude/commands/caf-run-pipeline.md',
@@ -98,10 +101,9 @@ test('SINGLE_REPO scaffold on a Nuxt single package is complete and leaves no un
     assert.ok(generated.includes(expected), `${expected} should be generated — got: ${generated.join(', ')}`);
   }
 
-  // One root CLAUDE.md, no per-app CLAUDE.md, no frontend/backend split, no empty-named agent.
+  // One root CLAUDE.md, no per-app CLAUDE.md, no implementer (CAF-SDD-03c3), no empty-named agent.
   assert.deepEqual(generated.filter((f) => path.basename(f) === 'CLAUDE.md'), ['CLAUDE.md']);
-  assert.ok(!generated.includes('.claude/agents/caf-frontend.md'));
-  assert.ok(!generated.includes('.claude/agents/caf-backend.md'));
+  assert.ok(!generated.includes('.claude/agents/caf-implementer.md'));
   assert.ok(!generated.includes('.claude/agents/.md'));
   // golden-examples has no per-app subfolder in SINGLE_REPO.
   assert.deepEqual(fs.readdirSync(path.join(dir, '.caf', 'knowledge', 'golden-examples')), []);
@@ -122,8 +124,8 @@ test('SINGLE_REPO scaffold on a Nuxt single package is complete and leaves no un
   assert.match(claudeMd, /^- Package manager: pnpm$/m);
 });
 
-test('SINGLE_REPO implementer: default scope is the whole repo, verify commands are unscoped root scripts', async () => {
-  const { dir } = await scaffoldSingleRepo();
+test('SINGLE_REPO implementer (superseded kind): default scope is the whole repo, verify commands are unscoped root scripts', async () => {
+  const { dir } = await scaffoldSingleRepo({ role: 'implementer' });
   const implementer = fs.readFileSync(path.join(dir, '.claude', 'agents', 'caf-implementer.md'), 'utf8');
 
   assert.match(implementer, /^name: caf-implementer$/m);
@@ -153,7 +155,7 @@ test('SINGLE_REPO implementer: default scope is the whole repo, verify commands 
 });
 
 test('--scope writes the implementer scope and the commit whitelist per directory', async () => {
-  const { dir } = await scaffoldSingleRepo({ scope: ['components,composables/'] });
+  const { dir } = await scaffoldSingleRepo({ scope: ['components,composables/'], role: 'implementer' });
   const implementer = fs.readFileSync(path.join(dir, '.claude', 'agents', 'caf-implementer.md'), 'utf8');
   const scope = bodyOf(implementer, 'Scope');
   assert.match(scope, /^- `components\/\*\*`$/m);
@@ -213,9 +215,11 @@ test('--role frontend generates the single implementation agent as caf-frontend.
   assert.match(pipeline, /^- `caf-frontend`: `components\/`$/m);
 });
 
-test('--role: default is implementer, whole-repo scope works for frontend/backend, unknown role is rejected', async () => {
+test('--role: default is frontend + backend, whole-repo scope works for each, unknown role is rejected', async () => {
   const kindsFor = (role) => buildSingleRepoCandidates(SINGLE_APP, [], role).map((c) => c.kind);
-  assert.ok(kindsFor(undefined).includes('implementer'));
+  assert.ok(kindsFor(undefined).includes('frontend'));
+  assert.ok(kindsFor(undefined).includes('backend'));
+  assert.ok(!kindsFor(undefined).includes('implementer'));
   for (const role of ['frontend', 'backend']) {
     const kinds = kindsFor(role);
     assert.ok(kinds.includes(role));
@@ -240,11 +244,10 @@ test('--role is refused in MONOREPO — nothing is written', async () => {
   }
 });
 
-test('SINGLE_REPO candidates: planner, implementer, qa, reviewer are offered; frontend/backend are not', () => {
+test('SINGLE_REPO candidates: planner, frontend, backend, qa, reviewer; no implementer (CAF-SDD-03c3)', () => {
   const kinds = buildSingleRepoCandidates(SINGLE_APP).map((c) => c.kind);
-  for (const kind of ['planner', 'implementer', 'qa', 'reviewer']) assert.ok(kinds.includes(kind), kind);
-  assert.ok(!kinds.includes('frontend'));
-  assert.ok(!kinds.includes('backend'));
+  for (const kind of ['planner', 'frontend', 'backend', 'qa', 'reviewer']) assert.ok(kinds.includes(kind), kind);
+  assert.ok(!kinds.includes('implementer'));
   assert.ok(!kinds.includes('implementation'));
 });
 
@@ -269,7 +272,7 @@ test('implementer is a known kind with its own real section content', () => {
 });
 
 test('curate on a freshly generated caf-implementer.md: no drift, and sync leaves the file byte-identical', async () => {
-  const { dir } = await scaffoldSingleRepo();
+  const { dir } = await scaffoldSingleRepo({ role: 'implementer' });
   const filePath = path.join(dir, '.claude', 'agents', 'caf-implementer.md');
   const before = fs.readFileSync(filePath, 'utf8');
 

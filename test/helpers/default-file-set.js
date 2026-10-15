@@ -66,7 +66,7 @@ function dirsUnder(root, base = root) {
 function offeredFor(stack, role) {
   const offered = isOfferedCandidate;
   if (!stack.isMonorepo) {
-    return { before: [], candidates: buildSingleRepoCandidates(stack.apps[0], [], role || 'implementer').filter(offered) };
+    return { before: [], candidates: buildSingleRepoCandidates(stack.apps[0], [], role).filter(offered) };
   }
   const web = stack.apps.find((a) => a.path === 'apps/web');
   const api = stack.apps.find((a) => a.path === 'apps/api');

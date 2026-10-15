@@ -83,6 +83,16 @@ const since03c2 = {
   files: (list) => sorted([...list.map(swapQa), `${COMMAND_DIR}/caf-plan.md`]),
 };
 
+// CAF-SDD-03c3 changed it once more: in SINGLE_REPO the default implementation agent `implementer` is
+// replaced by caf-frontend + caf-backend (`--role` unchanged). The goldens stay as recorded; the
+// expectation is the 03c2 one put through this. (test/sdd03c3-single-repo-roster.test.js holds the
+// 03c3 change itself.)
+const since03c3 = {
+  offered: (list) => list.flatMap((kind) => (kind === 'implementer' ? ['frontend', 'backend'] : [kind])),
+  agents: (list) => sorted(list.flatMap((f) => (f === 'caf-implementer.md' ? ['caf-frontend.md', 'caf-backend.md'] : [f]))),
+  files: (list) => sorted(list.flatMap((f) => (f === `${AGENT_DIR}/caf-implementer.md` ? [`${AGENT_DIR}/caf-frontend.md`, `${AGENT_DIR}/caf-backend.md`] : [f]))),
+};
+
 const now = {};
 for (const variant of VARIANTS) now[variantName(variant)] = await renderDefaultFileSet(variant);
 
@@ -95,37 +105,37 @@ for (const variant of VARIANTS) {
   const before = readGolden(name);
 
   test(`AC-1: ${name} — the five dropped kinds are not offered, and every other kind still is, in the same order`, () => {
-    assert.deepEqual(now[name].offered, since03c2.offered(without(before.offered, DROPPED_KINDS)));
+    assert.deepEqual(now[name].offered, since03c3.offered(since03c2.offered(without(before.offered, DROPPED_KINDS))));
     for (const kind of DROPPED_KINDS) assert.ok(!now[name].offered.includes(kind), `${kind} must not be offered`);
     for (const kind of ['planner', 'architect', 'validator', 'reviewer']) assert.ok(now[name].offered.includes(kind), `${kind} is still offered`);
     assert.ok(!now[name].offered.includes('qa'), 'qa is replaced by validator (CAF-SDD-03c2)');
-    assert.equal(now[name].offered.includes('implementer'), before.offered.includes('implementer'), 'implementer is offered where it was');
+    assert.ok(!now[name].offered.includes('implementer'), 'implementer is superseded (CAF-SDD-03c3)');
   });
 
   test(`AC-1: ${name} — the agent files written are the ones recorded before, minus the five dropped kinds`, () => {
     assert.ok(before.agents.includes('caf-documentation.md'), 'precondition: the golden is the pre-change set');
-    assert.deepEqual(now[name].agents, since03c2.agents(without(before.agents, DROPPED_AGENT_FILES)));
+    assert.deepEqual(now[name].agents, since03c3.agents(since03c2.agents(without(before.agents, DROPPED_AGENT_FILES))));
     assert.deepEqual(now[name].agents.filter((f) => DROPPED_AGENT_FILES.includes(f)), []);
     assert.ok(now[name].agents.includes('caf-architect.md'), 'architect is still written');
     assert.ok(now[name].agents.includes('caf-validator.md'), 'validator is written in place of qa (CAF-SDD-03c2)');
     assert.ok(!now[name].agents.includes('caf-qa.md'));
-    assert.equal(now[name].agents.includes('caf-implementer.md'), before.agents.includes('caf-implementer.md'), 'implementer is written where it was');
+    assert.ok(!now[name].agents.includes('caf-implementer.md'), 'implementer is not written (CAF-SDD-03c3)');
   });
 }
 
 test('AC-1: the goldens cover both fixtures, both modes and every --role', () => {
   assert.deepEqual(sorted(VARIANTS.map((v) => v.fixture).filter((f, i, all) => all.indexOf(f) === i)), sorted(FIXTURE_NAMES));
   assert.deepEqual(sorted(fs.readdirSync(GOLDEN).filter((f) => !f.startsWith('curate-'))), sorted(VARIANTS.map((v) => `${variantName(v)}.json`)));
-  // SINGLE_REPO: `implementer` (the default), `frontend`, `backend`.
+  // SINGLE_REPO: no --role (both agents, since CAF-SDD-03c3; `implementer` before), `frontend`, `backend`.
   const roles = VARIANTS.filter((v) => v.fixture === 'single-nuxt' && !v.mode).map((v) => v.role || 'implementer');
   assert.deepEqual(sorted(roles), sorted(SINGLE_REPO_ROLES));
   assert.ok(VARIANTS.some((v) => v.mode === 'single') && VARIANTS.some((v) => v.mode === 'mono'), 'both --mode overrides');
 });
 
-test('AC-1: every mode that had an implementation agent still has it — SINGLE_REPO without --role keeps caf-implementer.md', () => {
+test('AC-1: every mode that had an implementation agent still has it — SINGLE_REPO without --role has caf-frontend.md and caf-backend.md (CAF-SDD-03c3)', () => {
   const implementation = (name) => now[name].agents.filter((f) => ['caf-implementer.md', 'caf-frontend.md', 'caf-backend.md'].includes(f));
-  assert.deepEqual(implementation('single-nuxt.auto'), ['caf-implementer.md']);
-  assert.deepEqual(implementation('mono-pnpm.single'), ['caf-implementer.md']);
+  assert.deepEqual(implementation('single-nuxt.auto'), ['caf-backend.md', 'caf-frontend.md']);
+  assert.deepEqual(implementation('mono-pnpm.single'), ['caf-backend.md', 'caf-frontend.md']);
   assert.deepEqual(implementation('single-nuxt.auto.frontend'), ['caf-frontend.md']);
   assert.deepEqual(implementation('single-nuxt.auto.backend'), ['caf-backend.md']);
   assert.deepEqual(implementation('mono-pnpm.auto'), ['caf-backend.md', 'caf-frontend.md']);
@@ -157,7 +167,7 @@ for (const variant of VARIANTS) {
   });
 
   test(`AC-2: ${name} — every other file of the default scaffold is still written`, () => {
-    assert.deepEqual(now[name].files, since03c2.files(without(before.files, DROPPED_PATHS)));
+    assert.deepEqual(now[name].files, since03c3.files(since03c2.files(without(before.files, DROPPED_PATHS))));
   });
 }
 

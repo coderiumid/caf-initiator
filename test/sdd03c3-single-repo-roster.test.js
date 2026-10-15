@@ -298,9 +298,9 @@ for (const rel of [COMPLETE_DRAFTS, HANDOFF]) {
     const changed = changedLines(before, after);
     assert.ok(changed.length > 0, 'the agent list did change');
     for (const line of changed) assert.match(line, /implementer|frontend|backend/i, line);
-    assert.match(after, /caf-frontend/);
-    assert.match(after, /caf-backend/);
-    assert.doesNotMatch(after, /caf-implementer/);
+    assert.match(after, /[Ff]rontend/);
+    assert.match(after, /[Bb]ackend/);
+    assert.doesNotMatch(after, /[Ii]mplementer/);
   });
 }
 

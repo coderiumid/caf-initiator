@@ -48,7 +48,7 @@ export async function renderCommands(fixture, { role } = {}) {
     const api = stack.apps.find((a) => a.path === 'apps/api');
     answers = [[web], [api], buildCandidates({ frontend: [web], backend: [api] }, []).filter(offered), true, true, true, 'Linear'];
   } else {
-    answers = [buildSingleRepoCandidates(stack.apps[0], [], role || 'implementer').filter(offered), true, true, true, 'Linear'];
+    answers = [buildSingleRepoCandidates(stack.apps[0], [], role).filter(offered), true, true, true, 'Linear'];
   }
   await run(answers, () => agents({ dir, dryRun: false, role }));
   // complete-drafts offers `curate baseline` (declined); feature-catalog-sync asks for the
