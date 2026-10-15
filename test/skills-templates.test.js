@@ -46,11 +46,11 @@ const SHAPES = {
 // caf-spec (CAF-SDD-01) and caf-traceability (CAF-SDD-02) are constant too, but born a DRAFT —
 // covered in skills-spec.test.js and sdd02-planner-spec.test.js.
 const BORN_DRAFT = ['caf-spec', 'caf-traceability'];
-const CONSTANT = SKILL_NAMES.filter((n) => n !== 'caf-verify' && !BORN_DRAFT.includes(n));
+const CONSTANT = SKILL_NAMES.filter((n) => n !== 'caf-self-verify' && !BORN_DRAFT.includes(n));
 const byName = (files, name) => files.find((f) => f.name === name);
 
 test('skill set: seven caf- prefixed skills under .claude/skills, in a fixed order', () => {
-  assert.deepEqual(SKILL_NAMES, ['caf-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate', 'caf-piv', 'caf-spec', 'caf-traceability']);
+  assert.deepEqual(SKILL_NAMES, ['caf-self-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate', 'caf-piv', 'caf-spec', 'caf-traceability']);
   assert.ok(SKILL_NAMES.every((n) => n.startsWith('caf-')));
   assert.equal(SKILLS_DIR, '.claude/skills');
   const files = buildSkillFiles(SHAPES.single);
@@ -67,15 +67,15 @@ test('skill set: seven caf- prefixed skills under .claude/skills, in a fixed ord
 });
 
 test('mapping (D7): exact table, caf-piv mapped to no kind, restricted kinds get nothing', () => {
-  const impl = ['caf-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate'];
+  const impl = ['caf-self-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate'];
   const writer = ['caf-scope-discipline', 'caf-no-guess'];
   assert.deepEqual(
     Object.fromEntries([...KNOWN_KINDS, 'implementation'].map((k) => [k, skillsForKind(k)])),
     {
       planner: [...writer, 'caf-spec', 'caf-traceability'], architect: writer,
       frontend: [...impl, 'caf-traceability'], backend: [...impl, 'caf-traceability'], implementer: impl,
-      qa: ['caf-verify', 'caf-no-guess'], reviewer: writer, documentation: writer,
-      validator: ['caf-verify', 'caf-no-guess', 'caf-traceability'],
+      qa: ['caf-self-verify', 'caf-no-guess'], reviewer: writer, documentation: writer,
+      validator: ['caf-self-verify', 'caf-no-guess', 'caf-traceability'],
       auditor: [], pm: [], 'ux-designer': [], devops: [], implementation: impl,
     }
   );
@@ -87,7 +87,7 @@ test('mapping (D7): exact table, caf-piv mapped to no kind, restricted kinds get
   }
   assert.deepEqual(skillsForKind('some-custom-agent'), []);
   skillsForKind('qa').push('x');
-  assert.deepEqual(skillsForKind('qa'), ['caf-verify', 'caf-no-guess'], 'callers get a copy');
+  assert.deepEqual(skillsForKind('qa'), ['caf-self-verify', 'caf-no-guess'], 'callers get a copy');
 });
 
 test('deterministic: same input → same bytes; app order does not matter', () => {
@@ -106,7 +106,7 @@ test('AC-8: no generate-time placeholder in any skill, for every repo shape', ()
   }
 });
 
-test('caf-verify: MONOREPO commands are scoped per workspace, grouped per app path', () => {
+test('caf-self-verify: MONOREPO commands are scoped per workspace, grouped per app path', () => {
   const md = buildVerifySkill(SHAPES.mono);
   assert.match(md, /#### apps\/api\n[\s\S]*`pnpm --filter @mono\/api run typecheck`/);
   assert.match(md, /#### apps\/web\n[\s\S]*`pnpm --filter @mono\/web run lint`/);
@@ -115,17 +115,17 @@ test('caf-verify: MONOREPO commands are scoped per workspace, grouped per app pa
   assert.match(md, /repo mode `MONOREPO`/);
 });
 
-test('caf-verify: SINGLE_REPO commands are the unscoped root scripts', () => {
+test('caf-self-verify: SINGLE_REPO commands are the unscoped root scripts', () => {
   const md = buildVerifySkill(SHAPES.single);
   assert.match(md, /- \[ \] `pnpm run lint`/);
   assert.match(md, /- \[ \] `pnpm run typecheck`/);
   assert.ok(!/--filter/.test(md));
 });
 
-test('caf-verify: a slot without a script is a TODO line and makes the skill a DRAFT; a full set does not', () => {
+test('caf-self-verify: a slot without a script is a TODO line and makes the skill a DRAFT; a full set does not', () => {
   // single-nuxt has no test script; mono apps/web has no typecheck.
   for (const label of ['single', 'mono', 'empty']) {
-    const verify = byName(buildSkillFiles(SHAPES[label]), 'caf-verify');
+    const verify = byName(buildSkillFiles(SHAPES[label]), 'caf-self-verify');
     assert.equal(verify.draft, true, label);
     assert.ok(hasSkillDraftBanner(verify.content), label);
     assert.ok(countOpenSkillTodos(verify.content) > 0, label);
@@ -133,7 +133,7 @@ test('caf-verify: a slot without a script is a TODO line and makes the skill a D
   assert.equal(countOpenSkillTodos(buildVerifySkill(SHAPES.empty)), 4);
   assert.match(buildVerifySkill(SHAPES.single), /- \[ \] TODO: no test script detected/);
 
-  const complete = byName(buildSkillFiles(SHAPES.complete), 'caf-verify');
+  const complete = byName(buildSkillFiles(SHAPES.complete), 'caf-self-verify');
   assert.equal(complete.draft, false);
   assert.ok(!hasSkillDraftBanner(complete.content));
   assert.equal(countOpenSkillTodos(complete.content), 0);
@@ -192,7 +192,7 @@ test('DRAFT banner: the DRAFT sentence is unchanged and is followed directly by 
     // still detected as a DRAFT, by the same predicate as before
     assert.ok(hasSkillDraftBanner(md), label);
     assert.ok(hasSkillDraftAgentNotice(md), label);
-    assert.equal(byName(buildSkillFiles(SHAPES[label]), 'caf-verify').draft, true, label);
+    assert.equal(byName(buildSkillFiles(SHAPES[label]), 'caf-self-verify').draft, true, label);
     // the banner must not be counted as an open TODO line
     assert.equal(countOpenSkillTodos(md.split('\n').filter((l) => l.startsWith('>')).join('\n')), 0, label);
   }

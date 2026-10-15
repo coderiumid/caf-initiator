@@ -20,7 +20,7 @@ import { makeRepo, snapshotTree } from './helpers/make-repo.js';
 
 const AGENT_DIR = '.claude/agents';
 const KINDS = ['planner', 'frontend', 'qa', 'reviewer', 'auditor'];
-const CONSTANT = SKILL_NAMES.filter((n) => n !== 'caf-verify');
+const CONSTANT = SKILL_NAMES.filter((n) => n !== 'caf-self-verify');
 
 function agentsOf() {
   return Object.fromEntries(
@@ -32,7 +32,7 @@ function agentsOf() {
 }
 
 // A repo with agents, then `scaffold skills` with every pointer accepted. `scripts` decides
-// whether caf-verify is a DRAFT (default: yes — only `lint` exists).
+// whether caf-self-verify is a DRAFT (default: yes — only `lint` exists).
 async function repoWithSkills({ scripts = { lint: 'x' }, pointers = true } = {}) {
   const dir = makeRepo({ 'package.json': { name: 'r', scripts }, 'pnpm-lock.yaml': '', ...(pointers ? agentsOf() : {}) }, 'caf-skills-check-');
   prompts.inject([true, true, true, true]);
@@ -76,7 +76,7 @@ test('AC-10: generator output — constant skills give 0 WARN and no TODO count;
 
 test('a DRAFT skill is reported: its open TODO lines are counted (INFO), by line start only', async () => {
   const dir = await repoWithSkills();
-  const rel = skillPath('caf-verify');
+  const rel = skillPath('caf-self-verify');
   assert.ok(hasSkillDraftBanner(fs.readFileSync(path.join(dir, rel), 'utf8')));
   const { findings } = await check(dir);
   assert.deepEqual(about(findings, rel).map((f) => f.level), ['INFO']);
@@ -84,11 +84,11 @@ test('a DRAFT skill is reported: its open TODO lines are counted (INFO), by line
   assert.match(about(findings, rel)[0].message, /^3 TODO\(s\) still open — DRAFT/);
 });
 
-test('a finished caf-verify gives no finding at all', async () => {
+test('a finished caf-self-verify gives no finding at all', async () => {
   const dir = await repoWithSkills({ scripts: { lint: 'x', typecheck: 'x', test: 'x', build: 'x' } });
   const { findings, fails } = await check(dir);
   assert.equal(fails, 0);
-  assert.deepEqual(about(findings, skillPath('caf-verify')), []);
+  assert.deepEqual(about(findings, skillPath('caf-self-verify')), []);
 });
 
 test('the ## Skills section does not inflate an agent\'s TODO count', async () => {
@@ -121,7 +121,7 @@ test('AC-6: a pointer at a DRAFT skill is a WARN, not a FAIL', async () => {
   const dir = await repoWithSkills();
   const rel = `${AGENT_DIR}/caf-qa.md`;
   // the generator never writes this pointer — a human added it by hand
-  edit(dir, rel, (s) => s.replace('- `.claude/skills/caf-no-guess/SKILL.md`', '- `.claude/skills/caf-verify/SKILL.md`\n- `.claude/skills/caf-no-guess/SKILL.md`'));
+  edit(dir, rel, (s) => s.replace('- `.claude/skills/caf-no-guess/SKILL.md`', '- `.claude/skills/caf-self-verify/SKILL.md`\n- `.claude/skills/caf-no-guess/SKILL.md`'));
   const before = snapshotTree(dir);
   const result = await check(dir);
   assert.deepEqual(snapshotTree(dir), before);
@@ -129,12 +129,12 @@ test('AC-6: a pointer at a DRAFT skill is a WARN, not a FAIL', async () => {
   assert.equal(result.fails, 0);
   const warns = about(result.findings, rel, 'WARN').filter((f) => /## Skills/.test(f.message));
   assert.equal(warns.length, 1);
-  assert.match(warns[0].message, /caf-verify\/SKILL\.md`, which still has its DRAFT banner — the agent will skip it/);
+  assert.match(warns[0].message, /caf-self-verify\/SKILL\.md`, which still has its DRAFT banner — the agent will skip it/);
 });
 
 test('a skill with open TODO lines but no DRAFT banner is a WARN (agents would apply it)', async () => {
   const dir = await repoWithSkills();
-  const rel = skillPath('caf-verify');
+  const rel = skillPath('caf-self-verify');
   edit(dir, rel, (s) => s.replace(/^> .*\n/gm, ''));
   const result = await check(dir);
   assert.equal(result.fails, 0);
@@ -149,7 +149,7 @@ test('a skill with open TODO lines but no DRAFT banner is a WARN (agents would a
 
 test('a skill left with only the "Agents: this skill is NOT ready" line is a WARN, and the check writes nothing', async () => {
   const dir = await repoWithSkills();
-  const rel = skillPath('caf-verify');
+  const rel = skillPath('caf-self-verify');
   // the human resolved the TODO lines but removed only the DRAFT sentence of the banner
   edit(dir, rel, (s) => s.replace(/^> DRAFT .*\n> line below.*\n/m, '').replace(/^- \[ \] TODO.*$/gm, '- no script for this check in this repo'));
   const content = fs.readFileSync(path.join(dir, rel), 'utf8');
@@ -184,7 +184,7 @@ test('skills without any agent definition are still checked', async () => {
   const dir = await repoWithSkills({ pointers: false });
   const result = await check(dir);
   assert.equal(result.fails, 0);
-  assert.equal(about(result.findings, skillPath('caf-verify'), 'INFO').length, 1);
+  assert.equal(about(result.findings, skillPath('caf-self-verify'), 'INFO').length, 1);
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -207,6 +207,6 @@ test('/caf-complete-drafts: skills are globbed at run time, only DRAFT ones are 
     assert.ok(md.includes(`**Do NOT change** ${tracked}`), mode);
     assert.ok(!tracked.includes('Skills'));
     // a skill that existed at generation time is not baked in as the source of truth
-    assert.ok(!md.includes('caf-verify/SKILL.md'));
+    assert.ok(!md.includes('caf-self-verify/SKILL.md'));
   }
 });

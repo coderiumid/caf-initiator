@@ -330,8 +330,8 @@ for (const fixture of FIXTURE_NAMES) {
 // ---------------------------------------------------------------------------------------------
 
 test('AC-7: validator maps to the skills of qa plus caf-traceability', () => {
-  assert.deepEqual(skillsForKind('qa'), ['caf-verify', 'caf-no-guess']);
-  assert.deepEqual(skillsForKind('validator'), ['caf-verify', 'caf-no-guess', 'caf-traceability']);
+  assert.deepEqual(skillsForKind('qa'), ['caf-self-verify', 'caf-no-guess']);
+  assert.deepEqual(skillsForKind('validator'), ['caf-self-verify', 'caf-no-guess', 'caf-traceability']);
 });
 
 for (const fixture of FIXTURE_NAMES) {

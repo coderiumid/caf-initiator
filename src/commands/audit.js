@@ -12,6 +12,7 @@ import { hashSection, compareSection, SECTION_STATUS } from '../utils/section-di
 import { readManifest, getBaselineHash } from '../utils/generate-manifest.js';
 import { buildBatasanSection, templateToolsForKind } from '../templates/agent-md.js';
 import { usableSkillPaths } from './skills.js';
+import { RENAMED_SKILLS, skillPath } from '../templates/skill-md.js';
 
 const SYMBOL = { ok: '✓', gap: '✗', declined: '⊘', warn: '!' };
 const COLOR = { ok: kleur.green, gap: kleur.red, declined: kleur.yellow, warn: kleur.yellow };
@@ -207,7 +208,21 @@ function rolloutWarnings(dir, relPath, raw, kind, lines, sections) {
 
   const skillsSection = sections.find((s) => s.header === 'Skills');
   const pointedAt = skillsSection ? sectionBody(lines, skillsSection) : '';
-  const missing = usableSkillPaths(dir, kind).filter((p) => !pointedAt.includes(p));
+  const usable = usableSkillPaths(dir, kind);
+  // CAF-SDD-03c2d: an agent that still points at a skill under its old name gets one warning about
+  // the rename, in place of "no pointer" for the same path (it does have a pointer, a stale one).
+  const renamed = Object.entries(RENAMED_SKILLS).filter(
+    ([oldName, newName]) => pointedAt.includes(skillPath(oldName)) && usable.includes(skillPath(newName)) && !pointedAt.includes(skillPath(newName))
+  );
+  for (const [oldName, newName] of renamed) {
+    warn(
+      'skill-renamed',
+      `\`## Skills\` points at \`${skillPath(oldName)}\`, the skill is now \`${skillPath(newName)}\` ` +
+        '(warning — `curate sync` and `caf-init scaffold skills` never edit `## Skills`: change the pointer by hand, or leave it if the old folder is kept on purpose)'
+    );
+  }
+  const renamedTo = renamed.map(([, newName]) => skillPath(newName));
+  const missing = usable.filter((p) => !pointedAt.includes(p) && !renamedTo.includes(p));
   if (missing.length > 0) {
     const list = missing.map((p) => `\`${p}\``).join(', ');
     const what = `no pointer to ${list}, ${missing.length === 1 ? 'an active skill' : 'active skills'} of kind \`${kind}\``;

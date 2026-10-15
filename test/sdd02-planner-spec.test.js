@@ -400,11 +400,11 @@ test('AC-8: caf-traceability maps to planner, frontend, backend and validator, a
   assert.deepEqual(mapped.sort(), ['backend', 'frontend', 'planner', 'validator']);
   assert.deepEqual(skillsForKind('planner'), ['caf-scope-discipline', 'caf-no-guess', 'caf-spec', 'caf-traceability']);
   for (const kind of ['frontend', 'backend']) {
-    assert.deepEqual(skillsForKind(kind), ['caf-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate', 'caf-traceability']);
+    assert.deepEqual(skillsForKind(kind), ['caf-self-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate', 'caf-traceability']);
   }
   // the kinds that share the implementation list are untouched
   for (const kind of ['implementer', 'implementation']) {
-    assert.deepEqual(skillsForKind(kind), ['caf-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate']);
+    assert.deepEqual(skillsForKind(kind), ['caf-self-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate']);
   }
   for (const names of Object.values(SKILLS_BY_KIND)) assert.deepEqual(names, SKILL_NAMES.filter((n) => names.includes(n)));
 });

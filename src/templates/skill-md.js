@@ -6,7 +6,7 @@ import { buildVerifyChecklist } from './agent-md.js';
 // in agent-md.js for why it is a pointer and not a `skills:` key or the `Skill` tool).
 //
 // Universal on purpose: no framework convention library ships here — that goes stale and is a
-// guess about the target repo. Only `caf-verify` carries project data, and only what detection
+// guess about the target repo. Only `caf-self-verify` carries project data, and only what detection
 // found.
 //
 // This file is the single source for the skill names, the kind → skills table, the DRAFT banner
@@ -17,9 +17,9 @@ export const SKILLS_DIR = '.claude/skills';
 
 // Display/write order. Every name is `caf-`-prefixed so a generated skill can't collide with one
 // the team wrote themselves.
-export const SKILL_NAMES = ['caf-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate', 'caf-piv', 'caf-spec', 'caf-traceability'];
+export const SKILL_NAMES = ['caf-self-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate', 'caf-piv', 'caf-spec', 'caf-traceability'];
 
-const IMPLEMENTATION_SKILLS = ['caf-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate'];
+const IMPLEMENTATION_SKILLS = ['caf-self-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate'];
 const ARTIFACT_WRITER_SKILLS = ['caf-scope-discipline', 'caf-no-guess'];
 
 // Which skills an agent of each kind points at. A kind that is absent gets none (auditor, devops,
@@ -39,13 +39,18 @@ export const SKILLS_BY_KIND = {
   backend: [...IMPLEMENTATION_SKILLS, 'caf-traceability'],
   implementer: IMPLEMENTATION_SKILLS,
   implementation: IMPLEMENTATION_SKILLS,
-  qa: ['caf-verify', 'caf-no-guess'],
-  validator: ['caf-verify', 'caf-no-guess', 'caf-traceability'],
+  qa: ['caf-self-verify', 'caf-no-guess'],
+  validator: ['caf-self-verify', 'caf-no-guess', 'caf-traceability'],
   planner: [...ARTIFACT_WRITER_SKILLS, 'caf-spec', 'caf-traceability'],
   reviewer: ARTIFACT_WRITER_SKILLS,
   architect: ARTIFACT_WRITER_SKILLS,
   documentation: ARTIFACT_WRITER_SKILLS,
 };
+
+// Skills that were renamed (CAF-SDD-03c2d): old name -> current name. A repo scaffolded earlier
+// keeps the old folder and the `## Skills` pointers at it; nothing here is ever written, it only
+// lets `scaffold skills` and `curate audit` recognize that situation.
+export const RENAMED_SKILLS = { 'caf-verify': 'caf-self-verify' };
 
 export function skillsForKind(kind) {
   return [...(SKILLS_BY_KIND[kind] || [])];
@@ -87,7 +92,7 @@ export function hasSkillDraftBanner(content) {
 
 // An open TODO in a skill is a line that STARTS with `TODO`, after an optional list marker and
 // checkbox (`- [ ] TODO: ...`). The word inside a sentence is not counted: caf-no-guess and
-// caf-verify have to mention it, and counting those would report a finished skill as unfinished
+// caf-self-verify have to mention it, and counting those would report a finished skill as unfinished
 // forever.
 const OPEN_TODO_LINE = /^\s*(?:(?:[-*+]|\d+\.)\s+)?(?:\[[ xX]\]\s+)?TODO\b/;
 
@@ -110,7 +115,7 @@ ${body}
 }
 
 /**
- * caf-verify — the only skill built from detection. `verifyApps` is the same shape
+ * caf-self-verify — the only skill built from detection. `verifyApps` is the same shape
  * buildVerifyChecklist() takes for an agent's `## Verify Checklist`
  * (`{ scripts, packageManager, packageName, appPath }` per app), so the commands here and in the
  * agent definitions come out of one function. Sorted by path: detection does not guarantee an
@@ -121,7 +126,7 @@ export function buildVerifySkill({ mode = 'SINGLE_REPO', verifyApps = [] } = {})
   const sorted = [...verifyApps].sort((a, b) => String(a.appPath).localeCompare(String(b.appPath)));
   const checklist = buildVerifyChecklist(sorted);
   return skillMd({
-    name: 'caf-verify',
+    name: 'caf-self-verify',
     description:
       'Verification commands for this repo (lint, typecheck, test, build). Use before claiming any code change is done, and whenever asked to verify, test or check work.',
     title: 'Verify before you claim done',
@@ -238,7 +243,7 @@ apply this in an agent or headless run.
    spelled out (a typo, a one-line fix) needs only a one-line plan.
 2. IMPLEMENT — only what the plan says. If the plan turns out wrong, go back to PLAN and tell the
    user. Apply the \`caf-scope-discipline\` and \`caf-no-guess\` skills.
-3. VERIFY — run the commands in the \`caf-verify\` skill and report the real results. The work is
+3. VERIFY — run the commands in the \`caf-self-verify\` skill and report the real results. The work is
    not done until verification ran, or you said explicitly what could not be run and why.
 
 Do not commit or push unless the user asks.`,
@@ -407,7 +412,7 @@ Rules:
  */
 export function buildSkillFiles({ mode, verifyApps } = {}) {
   const builders = {
-    'caf-verify': () => buildVerifySkill({ mode, verifyApps }),
+    'caf-self-verify': () => buildVerifySkill({ mode, verifyApps }),
     'caf-scope-discipline': buildScopeDisciplineSkill,
     'caf-no-guess': buildNoGuessSkill,
     'caf-escalate': buildEscalateSkill,
