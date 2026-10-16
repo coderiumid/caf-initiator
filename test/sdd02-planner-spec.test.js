@@ -324,7 +324,8 @@ test('AC-7: caf-traceability is the ticket source verbatim, at most 90 lines, re
 
   assert.equal(skillPath('caf-traceability'), TRACE_REL);
   assert.equal(SKILL_NAMES.filter((n) => n === 'caf-traceability').length, 1);
-  assert.equal(SKILL_NAMES[SKILL_NAMES.length - 1], 'caf-traceability', 'appended: the order of the older skills is unchanged');
+  // CAF-SDD-05a appended caf-design after it; the order of the older skills is unchanged.
+  assert.equal(SKILL_NAMES[SKILL_NAMES.length - 2], 'caf-traceability', 'appended: the order of the older skills is unchanged');
   for (const mode of ['SINGLE_REPO', 'MONOREPO']) {
     const file = buildSkillFiles({ mode, verifyApps: [] }).find((f) => f.name === 'caf-traceability');
     assert.equal(file.content, md);
@@ -398,7 +399,7 @@ for (const fixture of FIXTURE_NAMES) {
 test('AC-8: caf-traceability maps to planner, frontend, backend and validator, and to nothing else', () => {
   const mapped = [...KNOWN_KINDS, 'implementation'].filter((kind) => skillsForKind(kind).includes('caf-traceability'));
   assert.deepEqual(mapped.sort(), ['backend', 'frontend', 'planner', 'validator']);
-  assert.deepEqual(skillsForKind('planner'), ['caf-scope-discipline', 'caf-no-guess', 'caf-spec', 'caf-traceability']);
+  assert.deepEqual(skillsForKind('planner'), ['caf-scope-discipline', 'caf-no-guess', 'caf-spec', 'caf-traceability', 'caf-design']);
   for (const kind of ['frontend', 'backend']) {
     assert.deepEqual(skillsForKind(kind), ['caf-self-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate', 'caf-traceability']);
   }

@@ -29,6 +29,7 @@ import { copyFixture, snapshotTree } from './helpers/make-repo.js';
 import { silenced } from './helpers/mono-snapshot.js';
 import { makeOldRepo } from './helpers/old-repo.js';
 import { sinceSdd03c2c } from './helpers/since-03c2c.js';
+import { sinceSdd05aFiles } from './helpers/since-05a.js';
 import { CONTENT_VARIANTS, renderScaffoldContents } from './helpers/scaffold-contents.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir } from './helpers/frozen-kinds.js';
 
@@ -121,6 +122,8 @@ for (const { id } of CONTENT_VARIANTS) {
     const after = now[id];
     // CAF-SDD-03c2c: /caf-plan-ticket is not written and /caf-run-pipeline is /caf-run.
     before.files = sinceSdd03c2c(before.files, after.files);
+    // CAF-SDD-05a: the golden through that ticket's three text changes (helpers/since-05a.js).
+    before.files = sinceSdd05aFiles(before.files);
     assert.deepEqual(Object.keys(after.files).sort(), Object.keys(before.files).sort());
     assert.deepEqual(after.agents, before.agents);
 

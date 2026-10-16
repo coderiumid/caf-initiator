@@ -21,6 +21,7 @@ import { skillsTarget } from '../src/commands/skills.js';
 import { detectStack } from '../src/steps/02-detect-stack.js';
 import { buildPlanMd } from '../src/templates/plan-command.js';
 import { buildRunPipelineMd } from '../src/templates/run-pipeline-command.js';
+import { sinceSdd05a } from './helpers/since-05a.js';
 import { parseSections, sectionBody } from '../src/utils/agent-sections.js';
 import { setSectionBaseline, writeManifest } from '../src/utils/generate-manifest.js';
 import { hashSection, SECTION_STATUS } from '../src/utils/section-diff.js';
@@ -260,7 +261,8 @@ for (const [name, { input, content }] of Object.entries(PIPELINE)) {
   test(`AC-6: ${name} — roster with qa: the golden plus the spec status section only`, () => {
     for (const md of [buildRunPipelineMd(input), buildRunPipelineMd({ ...input, gate: 'qa' })]) {
       // CAF-SDD-03c2c: the command is /caf-run now; the golden is read with that one name changed.
-      assert.equal(withoutSpecSection(md), content.replaceAll('/caf-run-pipeline', '/caf-run'));
+      // CAF-SDD-05a changed the Architect stage; the golden is read through helpers/since-05a.js.
+      assert.equal(withoutSpecSection(md), sinceSdd05a(content.replaceAll('/caf-run-pipeline', '/caf-run')));
       assert.match(md, /caf-qa/);
       assert.match(md, /qa-report\.md/);
     }

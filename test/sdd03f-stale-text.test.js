@@ -33,6 +33,7 @@ import { makeOldRepo } from './helpers/old-repo.js';
 import { swapConstraints } from './helpers/swap-constraints.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir, renderAgents, trackedSections } from './helpers/frozen-kinds.js';
 import { withLiveInput } from './helpers/swap-input.js';
+import { sinceSdd05a } from './helpers/since-05a.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const GOLDEN = path.join(ROOT, 'test', 'fixtures', 'pre-sdd03f');
@@ -69,7 +70,8 @@ const renderPiv = (name) => buildPivWorkflowMd({ agentDir: '.claude/agents', qaR
 const SPEC_STATUS_03C2 = /## Spec Status Check[\s\S]*?(?=## 3\. Implementation)/;
 // CAF-SDD-03c2c: the command is /caf-run now; the golden is read with that one name changed.
 const renderPipeline = (name) => buildRunPipelineMd(OLD_PIPELINE[name].input).replace(SPEC_STATUS_03C2, '');
-const renamed = (text) => text.replaceAll('/caf-run-pipeline', '/caf-run');
+// CAF-SDD-05a: also through the Architect stage change (helpers/since-05a.js).
+const renamed = (text) => sinceSdd05a(text.replaceAll('/caf-run-pipeline', '/caf-run'));
 
 /** `## <header>` of a Markdown file, up to the next `## ` heading. */
 function mdSection(md, header) {
@@ -315,7 +317,8 @@ for (const fixture of FIXTURE_NAMES) {
     const now = outputOf(fixture);
     const flat = now.replace(/\s+/g, ' ');
     assert.match(flat, /It is never written in the outcome, the scope, the decisions or the `When \.\.\. then` sentence of an AC\./);
-    const old = OLD_PLANNER[fixture].sections.Output;
+    // CAF-SDD-05a replaced three lines of the Plan step; the golden is read through it.
+    const old = sinceSdd05a(OLD_PLANNER[fixture].sections.Output);
     // CAF-SDD-03c2b, after this ticket, replaced the four lines of the ticket-run rule of Clarify
     // (test/sdd03c2b-planner-clarify.test.js holds the new text)
     assert.deepEqual(added(now, old), [...EXCEPTION_RULE, ...TICKET_RUN_NEW]);
