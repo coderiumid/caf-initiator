@@ -986,3 +986,27 @@ or the README with their own goldens read those goldens through `test/helpers/si
   not change.
 - Out of scope: any orchestrator change (including creating tickets from a ticket run), sizes or
   estimates per item, closing or changing the parent ticket, removing `architect`.
+
+## Artifact contract and the outline line (CAF-SDD-06)
+
+Text made consistent after `caf-design` (05a) and `caf-breakdown` (05b). Nothing else changed: no
+new skill, no orchestrator change. `test/sdd06-artifact-contract.test.js` holds the ticket against
+`test/fixtures/pre-sdd06/` (the planner and the default `agent-handoff.md` of both fixtures,
+recorded by `test/helpers/record-sdd06.mjs` from main before any change — never regenerate it).
+Older tests that compare a planner or `agent-handoff.md` with their own goldens read those goldens
+through `test/helpers/since-06.js`; the goldens are untouched.
+- **One source.** `ARTIFACT_BY_ROLE.planner` is now `` `requirements.md`, `tasks.md` (and `design.md`
+  or `breakdown.md` when the request needs one) ``. It is the only text: the first sentence of the
+  planner's `## Output` (`buildOutputSection`) and the Planner row of the `agent-handoff.md` roster
+  table (`agent-handoff-md.js`) both render it. Don't write a second copy in either file. Other
+  roles' values did not change.
+- **Specify line.** One new line in `### 1. Specify` of `PLANNER_SPEC_WORKFLOW`, directly after
+  "An AC that holds more than one behavior is split into one AC per behavior.": a `requirements.md`
+  written as an outline for a split request has no acceptance criteria, and `Tidak ada` goes under
+  that section. It is a line of its own and not an exception inside "Number every acceptance
+  criterion ...", because a test holds that numbering line verbatim. No new `###` heading, no `TODO`.
+- **Rollout.** `curate sync` carries the planner's `## Output` as ordinary `DRIFT` (an edited one is a
+  `CONFLICT` and is left alone). `agent-handoff.md` has no sync (`writeIfAbsent`): a repo scaffolded
+  earlier keeps its old roster row until the file is deleted and `scaffold workflow` is run again.
+- `mono-pnpm.json` was regenerated for this, two entries changed (`caf-planner.md`,
+  `agent-handoff.md`). `frozen-kinds` did not change. Not a precedent.
