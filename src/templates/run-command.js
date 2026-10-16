@@ -337,7 +337,7 @@ function commitScopeList(implementationRoles, appPaths, hasDocumentation) {
 }
 
 /**
- * run-pipeline.md
+ * run.md
  *
  * @param {object} opts
  * @param {string} opts.agentDir            relative path to the agent folder (e.g. `.claude/agents`)
@@ -350,7 +350,7 @@ function commitScopeList(implementationRoles, appPaths, hasDocumentation) {
  * @param {boolean} opts.hasDocumentation
  * @param {'qa'|'validator'} [opts.gate]  which quality gate the roster has (default `qa`)
  */
-export function buildRunPipelineMd({
+export function buildRunMd({
   agentDir = '.claude/agents',
   implementationRoles = [],
   appPaths = {},
