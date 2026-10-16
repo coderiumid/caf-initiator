@@ -898,7 +898,7 @@ Documentation / gate combination, the tasks README, recorded by `test/helpers/re
 from before it — never regenerate it). Older tests that compare a whole planner, `/caf-run` or the
 README with their own goldens read those goldens through `test/helpers/since-05a.js`; the goldens
 are untouched.
-- **Skill.** `caf-design` (`buildDesignSkill`, last of `SKILL_NAMES`) is the text of
+- **Skill.** `caf-design` (`buildDesignSkill`, last of `SKILL_NAMES` until CAF-SDD-05b appended `caf-breakdown`) is the text of
   `.ai/tasks/CAF-SDD-05a/caf-design.skill.md` verbatim, held by sha256 in the test — never reword it
   in `skill-md.js`. It is born a DRAFT with the same 3-line banner as `caf-traceability` (no `TODO`
   line), mapped to `planner` only, after `caf-traceability`. Third narrow exception to "a skill never
@@ -930,5 +930,59 @@ are untouched.
   synced.
 - `mono-pnpm.json` was regenerated for this, three entries changed (`caf-planner.md`, `caf-run.md`,
   `.caf/tasks/README.md`). Not a precedent. `frozen-kinds` did not change.
-- Out of scope: removing `architect`, `caf-breakdown` (CAF-SDD-05b), `ARTIFACT_BY_ROLE.planner` and
-  the roster of `agent-handoff.md`, `caf-spec` v4.
+- Out of scope: removing `architect`, `ARTIFACT_BY_ROLE.planner` and the roster of
+  `agent-handoff.md`, `caf-spec` v4. (`caf-breakdown` was done in CAF-SDD-05b, below.)
+
+## The skill `caf-breakdown` and `breakdown.md` from the Planner (CAF-SDD-05b)
+
+The Planner splits a request that holds more than one outcome that could ship and be used on its
+own into `breakdown.md`, a proposal of tickets (item, order, dependencies, AC outline), and stops.
+One outcome reached in many steps is not split: its steps go to `tasks.md`.
+`test/sdd05b-caf-breakdown.test.js` holds the ticket against `test/fixtures/pre-sdd05b/` (both
+planners, `/caf-plan`, the tasks README, recorded by `test/helpers/record-sdd05b.mjs` from the HEAD
+of 05a, before any change — never regenerate it). Older tests that compare a whole planner, `/caf-plan`
+or the README with their own goldens read those goldens through `test/helpers/since-05b.js`
+(applied after `since-05a.js` where both apply); the goldens are untouched.
+- **Skill.** `caf-breakdown` (`buildBreakdownSkill`, last of `SKILL_NAMES`) is the text of
+  `.ai/tasks/CAF-SDD-05b/caf-breakdown.skill.md` verbatim, held by sha256 in the test — never reword
+  it in `skill-md.js`. Born a DRAFT with the same 3-line banner as `caf-design` (no `TODO` line),
+  mapped to `planner` only, after `caf-design`. Fourth narrow exception to "a skill never redefines
+  a report file": it defines the format of the artifact `breakdown.md` only, and names no status or
+  verdict word. `breakdown.md` has no `Status:` line.
+- **Rule in `## Output`.** Two bullets (eight source lines) in `### 1. Specify`, right after the
+  bullet about reading the task folder (`PLANNER_SPEC_WORKFLOW`): the check "one deliverable or
+  several", and the split rule. No new `###` heading, no `TODO`, no new status value. The rule is in
+  `## Output` (tracked, synced) and the format in the skill, because a skill is not synced and this
+  one is still a DRAFT. Everything else in the planner is byte-identical to the golden.
+- **The stop reuses Clarify.** A split writes `requirements.md` for the whole request as an outline
+  with `Status: NEEDS_CLARIFICATION` and one `BLOCKING` question (split as in `breakdown.md`, or
+  continue as one spec), no `tasks.md`. Once that question has an `Answer:` the Planner does not
+  split again. On a ticket run this is the existing stop of CAF-SDD-03c2b: no orchestrator change.
+  `breakdown.md` rides the spec Draft PR because `parkSpecOnBranch` commits the working tree. The
+  orchestrator reads no AC at that stop (`stopForSpecIfNeeded`), so an outline without ACs is fine.
+- **Tickets are never created by the Planner** (no tracker tool, none to be added). Only
+  `/caf-plan`, in a chat session, may create them: step 5 (the `NEEDS_CLARIFICATION` branch, when
+  `breakdown.md` exists) shows the items and, only when a tracker tool is connected, offers to create
+  the tickets one at a time, each with its own answer (yes / edit / skip). A ticket is created only
+  after an explicit yes for that ticket; never several in one step, never on silence; IDs and titles
+  are reported in chat and nothing is written back to `breakdown.md`. Without a tracker tool the
+  command names the file and creates nothing. `allowed-tools` of the command is unchanged (the
+  tracker is an MCP tool, as in step 1).
+- **Relaxed `/caf-plan` constraint.** "NEVER posts to the tracker or to a PR" became: never changes
+  the status of an existing ticket, never posts to a PR, never runs `git`, never writes application
+  code; it writes to the tracker only to create a ticket from `breakdown.md` after an explicit yes.
+  Only step 5 and `## Constraints` of the command changed; it still carries no Planner rule text.
+- **Tasks README.** One line for `breakdown.md` in `.caf/tasks/README.md`, before `tasks.md`.
+- **Rollout.** `curate sync` carries the planner's `## Output` as ordinary `DRIFT` (an edited one is
+  a `CONFLICT` and is left alone). `/caf-plan` and the README are written once and are not synced;
+  a repo scaffolded earlier keeps the old ones until the file is deleted and scaffolded again. The
+  skill is written by `scaffold skills`; after a real dispatch test (a multi-outcome request that
+  must write `breakdown.md` and stop, and a one-outcome many-step request that must stay one spec) a
+  human removes the banner from `.claude/skills/caf-breakdown/SKILL.md` and adds the pointer to the
+  planner's `## Skills` by hand (`curate audit` then warns with `skill-pointer`). `## Skills` and
+  `tools:` are not synced.
+- `mono-pnpm.json` was regenerated for this, two entries changed (`caf-planner.md`,
+  `.caf/tasks/README.md`). `/caf-plan` is not in the snapshot. Not a precedent. `frozen-kinds` did
+  not change.
+- Out of scope: any orchestrator change (including creating tickets from a ticket run), sizes or
+  estimates per item, closing or changing the parent ticket, removing `architect`.
