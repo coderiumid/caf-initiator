@@ -1010,3 +1010,34 @@ through `test/helpers/since-06.js`; the goldens are untouched.
   earlier keeps its old roster row until the file is deleted and `scaffold workflow` is run again.
 - `mono-pnpm.json` was regenerated for this, two entries changed (`caf-planner.md`,
   `agent-handoff.md`). `frozen-kinds` did not change. Not a precedent.
+
+## Agent text clarified (CAF-SDD-07)
+
+Four text changes, all in the tracked `## Output` of existing kinds (`src/templates/agent-md.js`).
+Nothing else moved: no skill, no command, no orchestrator change, no new `###` heading, no `TODO`,
+no new status or verdict value. `test/sdd07-agent-clarity.test.js` holds the ticket against
+`test/fixtures/pre-sdd07/` (frontend, backend, implementer, reviewer and validator on the fixtures
+they exist in, recorded by `test/helpers/record-sdd07.mjs` from the HEAD before any change — never
+regenerate it).
+- **Coverage** (`IMPLEMENTATION_SPEC_WORKFLOW`, `### 1. Read`, frontend/backend/implementer): two
+  lines after the `tasks.md` bullet. `## Coverage` at the end of `tasks.md` is a map of AC → tasks,
+  not a task. The `implementation` kind (per-app agent) and every other kind keep their `Output`.
+- **Reviewer verdict** (`REVIEWER_SPEC_WORKFLOW`, `### Where the findings go`): five lines replace
+  the "A blocking finding rules out ..." bullet. A finding only a human can settle takes the value
+  `## Retry Logic` gives for a blocked review; any other blocking finding takes the remaining
+  non-approving value. The text names no verdict value (a test rejects `APPROVE`, `CHANGES
+  REQUESTED`, `DEFER`): it refers to Retry Logic and to Report Format, which stays the single source.
+- **Validator checklist scope** (`VALIDATOR_WORKFLOW`, `### 2. Run the repo verification gate`): the
+  commands run are those of the apps the tasks of `tasks.md` name (by path or name), else the apps
+  the change touches; a checklist line of an app not run is not a gap. `## Verify Checklist` is
+  still built for every app and is byte-identical.
+- **Validator pipes** (`### 3. Judge every AC`): a `|` that belongs to a command or observed output
+  goes inside backticks in the `validate-report.md` table. Backticks only, one way: caf-orchestrator's
+  `ac-summary.ts` does also accept `\|`, but the text does not offer it.
+- **Rollout.** All four are `## Output` text, so they reach a repo scaffolded earlier through `curate
+  sync` as an ordinary `DRIFT` (an edited `## Output` is a `CONFLICT` and is left alone). No new
+  write path.
+- **Goldens.** None was edited, `frozen-kinds/implementer.single-nuxt.json` included. Older tests
+  read their golden through `test/helpers/since-07.js` (applied after `since-06.js`). `mono-pnpm.json`
+  was regenerated for this, four entries changed (`caf-frontend.md`, `caf-backend.md`,
+  `caf-validator.md`, `caf-reviewer.md`). Not a precedent.
