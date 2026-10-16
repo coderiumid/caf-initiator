@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Release helper: bump version, tag, push, publish to npm, create GitHub release.
+# Release helper: bump version, tag, push, create GitHub release.
+# npm publish is NOT run here: creating the release triggers
+# .github/workflows/npm-publish.yml, which runs `npm test` and then `npm publish`.
 # Usage: scripts/release.sh [patch|minor|major]  (default: patch)
 set -euo pipefail
 
@@ -29,8 +31,6 @@ echo "Bumped to $NEW_VERSION"
 git push
 git push origin "$NEW_VERSION"
 
-npm publish
-
 gh release create "$NEW_VERSION" --title "$NEW_VERSION" --generate-notes
 
-echo "Released $NEW_VERSION: npm + GitHub"
+echo "Released $NEW_VERSION on GitHub. npm publish is run by the npm-publish workflow (check the Actions tab)."
