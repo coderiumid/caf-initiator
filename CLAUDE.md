@@ -1041,3 +1041,21 @@ regenerate it).
   read their golden through `test/helpers/since-07.js` (applied after `since-06.js`). `mono-pnpm.json`
   was regenerated for this, four entries changed (`caf-frontend.md`, `caf-backend.md`,
   `caf-validator.md`, `caf-reviewer.md`). Not a precedent.
+
+## Builder of `/caf-run` renamed (CAF-SDD-08)
+
+Names only. The builder of `/caf-run` is `buildRunMd` in `src/templates/run-command.js`, matching
+`plan-command.js`, `review-command.js` and `fix-review-command.js`. It was `buildRunPipelineMd` in
+`src/templates/run-pipeline-command.js`; the file was moved with `git mv` and there is no alias
+export of the old name (`src/templates/*` is not a public path: `package.json` has no `exports`).
+The prompt key in `agents.js` is `generateRun` (was `generateRunPipeline`). `test/sdd08-rename.test.js`
+holds the ticket: the old file is gone, the new module exports `buildRunMd` only, the module differs
+from the commit before the rename only on lines that named the old file or function, and the count of
+`/caf-run-pipeline` in `src/` and `README.md` is unchanged.
+- No generated text, golden or snapshot changed. `test/fixtures/` was not touched and `mono-pnpm.json`
+  was not regenerated; every file a scaffold writes is byte-identical, `caf-run.md` included. The
+  golden file names `run-pipeline.json` stay as they are.
+- `/caf-run-pipeline` in the older sections above and in migration notes is the **old command name**,
+  not the old code name. Those sections are history and were not rewritten.
+- The line in the CAF-SDD-03c2c section, "the builder keeps its name and file", is history superseded
+  by this ticket: the builder now has the new name and file.
