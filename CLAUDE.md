@@ -624,7 +624,8 @@ and eight commands (`caf-discovery-start`, `caf-discovery-to-ticket`, `caf-audit
   the file is audited as before: the file was only ever checked for existing.
 - `implementer` is dropped by the design too but was **not** hidden: it was SINGLE_REPO's only
   implementation agent. CAF-SDD-03c3 replaced it (see the end of this file). `architect` and `qa`
-  stay until `caf-design` and the connected validator exist.
+  stay: `caf-design` exists since CAF-SDD-05a but is a DRAFT, so `architect` waits for its dispatch
+  test; `qa` waits for the connected validator.
 - Derived output changed although no template did: a new repo has no Documentation agent, so
   `/caf-run-pipeline` is always rendered with `hasDocumentation: false` (the branch it always
   had), `/caf-complete-drafts` lists fewer agent files, and `piv-workflow.md`/`agent-handoff.md`
@@ -886,3 +887,48 @@ regenerate it).
   `sdd03d-implementation-spec` (name the app slug), `sdd02d-planner-audit` (an unknown file now has
   its own warning), `skills-pointer` H10 (unknown file not asked; per-app agent default Yes).
 - Scaffold output, `frozen-kinds` and `mono-pnpm.json` did not change.
+
+## The skill `caf-design` and `design.md` from the Planner (CAF-SDD-05a)
+
+The Planner writes `design.md` itself when a ticket needs a technical design: more than one app or
+service, a new or changed schema or migration, or a new or changed contract between layers. None of
+the three means no `design.md` at all (no empty file). `test/sdd05a-caf-design.test.js` holds the
+ticket against `test/fixtures/pre-sdd05a/` (both planners, `/caf-run` for every Architect /
+Documentation / gate combination, the tasks README, recorded by `test/helpers/record-sdd05a.mjs`
+from before it — never regenerate it). Older tests that compare a whole planner, `/caf-run` or the
+README with their own goldens read those goldens through `test/helpers/since-05a.js`; the goldens
+are untouched.
+- **Skill.** `caf-design` (`buildDesignSkill`, last of `SKILL_NAMES`) is the text of
+  `.ai/tasks/CAF-SDD-05a/caf-design.skill.md` verbatim, held by sha256 in the test — never reword it
+  in `skill-md.js`. It is born a DRAFT with the same 3-line banner as `caf-traceability` (no `TODO`
+  line), mapped to `planner` only, after `caf-traceability`. Third narrow exception to "a skill never
+  redefines a report file": it defines the format of the artifact `design.md` only, and names no
+  status or verdict word.
+- **Rule in `## Output`.** The core rule (the three criteria, `design.md` before `tasks.md`, none
+  otherwise, no design inside `requirements.md` or `tasks.md`) is in the planner's tracked
+  `## Output`, in place of the three old lines of `### 3. Plan` (`PLANNER_SPEC_WORKFLOW`), not only in
+  the skill: a skill is not synced and this one is still a DRAFT. The skill holds the format and the
+  detail. No new `###` heading, no `TODO`; everything else in the planner is byte-identical to the
+  golden. The Specify line that names `design.md` is unchanged.
+- **Rides the spec gate.** `design.md` has no `Status:` and no approval of its own. caf-orchestrator
+  has no reference to `design.md` or `caf-architect`; `parkSpecOnBranch` commits the working tree, so
+  `design.md` goes into the Draft PR spec with `requirements.md` and `tasks.md`. No orchestrator
+  change. The implementation agents, the reviewer and the validator already read it "if present".
+- **`/caf-run`.** With an Architect in the roster, the Architect stage is skipped when
+  `.caf/tasks/{TICKET-ID}/design.md` exists (the criteria for spawning are kept). Without one, the
+  stop paragraph says `design.md` is written by the Planner and the run stops only when the ticket
+  meets the criteria and none exists. Commands are untracked: this does not reach a repo scaffolded
+  earlier through `curate sync`. The README line for `design.md` in `.caf/tasks/README.md` changed the
+  same way (also written once, never synced).
+- **`architect` stays**, offered by the picker and not in `SUPERSEDED_CANDIDATE_KINDS` or
+  `HIDDEN_CANDIDATE_KINDS`, until a real dispatch test of `caf-design` (a follow-up ticket).
+- **Rollout.** `curate sync` carries the planner's `## Output` as ordinary `DRIFT` (an edited one is a
+  `CONFLICT` and is left alone). The skill is written by `scaffold skills`; after a real dispatch test
+  (a multi-app ticket and a single-app one) a human removes the banner from
+  `.claude/skills/caf-design/SKILL.md` and adds the pointer to the planner's `## Skills` by hand
+  (`curate audit` then warns with `skill-pointer` until it is added). `## Skills` and `tools:` are not
+  synced.
+- `mono-pnpm.json` was regenerated for this, three entries changed (`caf-planner.md`, `caf-run.md`,
+  `.caf/tasks/README.md`). Not a precedent. `frozen-kinds` did not change.
+- Out of scope: removing `architect`, `caf-breakdown` (CAF-SDD-05b), `ARTIFACT_BY_ROLE.planner` and
+  the roster of `agent-handoff.md`, `caf-spec` v4.
