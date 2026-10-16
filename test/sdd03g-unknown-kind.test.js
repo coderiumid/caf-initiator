@@ -29,6 +29,7 @@ import { silenced } from './helpers/mono-snapshot.js';
 import { makeRepo, snapshotTree } from './helpers/make-repo.js';
 import { AGENT_DIR } from './helpers/frozen-kinds.js';
 import { sinceSdd05aFiles } from './helpers/since-05a.js';
+import { sinceSdd05bFiles } from './helpers/since-05b.js';
 import { CONTENT_VARIANTS, renderScaffoldContents } from './helpers/scaffold-contents.js';
 import { APP_AGENT, CUSTOM_AGENT, STALE_OUTPUT, makeDrift, makeKindsRepo, relativeTo, reportKindsRepo } from './helpers/sdd03g-repo.js';
 
@@ -370,7 +371,7 @@ test('AC-10: the default scaffold of every variant is the recorded one', async (
     const now = await renderScaffoldContents(variant);
     const recorded = golden(`scaffold.${variant.id}.json`);
     // CAF-SDD-05a changed three texts of the scaffold (helpers/since-05a.js); the golden is not touched.
-    recorded.files = sinceSdd05aFiles(recorded.files);
+    recorded.files = sinceSdd05bFiles(sinceSdd05aFiles(recorded.files)); // CAF-SDD-05b: planner Specify, helpers/since-05b.js
     assert.deepEqual(now.offered, recorded.offered, variant.id);
     assert.deepEqual(now.agents, recorded.agents, variant.id);
     assert.deepEqual(now.commands, recorded.commands, variant.id);

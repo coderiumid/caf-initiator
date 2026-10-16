@@ -73,7 +73,7 @@ for (const [name, fixture] of Object.entries(FIXTURE)) {
     const dry = await run({ dir, dryRun: true });
     const real = await run({ dir });
     assert.deepEqual(dry.drafts, real.drafts);
-    assert.deepEqual(real.drafts, ['caf-self-verify', 'caf-traceability', 'caf-design']);
+    assert.deepEqual(real.drafts, ['caf-self-verify', 'caf-traceability', 'caf-design', 'caf-breakdown']);
     // the DRAFT skill on disk carries both banner lines, exactly as the dry run announced it
     const verify = read(dir, skillPath('caf-self-verify'));
     assert.ok(hasSkillDraftBanner(verify));
@@ -107,7 +107,7 @@ test('a repo with all four scripts gets a caf-self-verify that is not a DRAFT', 
     'caf-skills-full-'
   );
   const result = await run({ dir });
-  assert.deepEqual(result.drafts, ['caf-traceability', 'caf-design']);
+  assert.deepEqual(result.drafts, ['caf-traceability', 'caf-design', 'caf-breakdown']);
   assert.ok(!hasSkillDraftBanner(read(dir, skillPath('caf-self-verify'))));
   assert.match(read(dir, skillPath('caf-self-verify')), /- \[ \] `pnpm run test`/);
 });

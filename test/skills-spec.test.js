@@ -182,7 +182,7 @@ for (const [name, fixture] of Object.entries(FIXTURE)) {
 }
 
 test('AC-4: the planner maps to caf-spec, and only the planner', () => {
-  assert.deepEqual(skillsForKind('planner'), ['caf-scope-discipline', 'caf-no-guess', 'caf-spec', 'caf-traceability', 'caf-design']);
+  assert.deepEqual(skillsForKind('planner'), ['caf-scope-discipline', 'caf-no-guess', 'caf-spec', 'caf-traceability', 'caf-design', 'caf-breakdown']);
   for (const kind of Object.keys(SKILLS_BY_KIND)) {
     assert.equal(skillsForKind(kind).includes('caf-spec'), kind === 'planner', kind);
   }

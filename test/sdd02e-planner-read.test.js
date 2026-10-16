@@ -28,6 +28,7 @@ import { copyFixture, snapshotTree } from './helpers/make-repo.js';
 import { silenced } from './helpers/mono-snapshot.js';
 import { withLiveInput } from './helpers/swap-input.js';
 import { sinceSdd05a } from './helpers/since-05a.js';
+import { BREAKDOWN_LINES, sinceSdd05b } from './helpers/since-05b.js';
 import { swapConstraints } from './helpers/swap-constraints.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir, frontmatterTools, renderAgents, trackedSections } from './helpers/frozen-kinds.js';
 
@@ -327,7 +328,8 @@ for (const fixture of FIXTURE_NAMES) {
     const old = { ...OLD_PLANNER[fixture], sections: { ...OLD_PLANNER[fixture].sections } };
     // CAF-SDD-05a replaced three lines of the Plan step (test/sdd05a-caf-design.test.js holds the new
     // text); the golden's Output is read through it, so this comparison still holds the 02e text.
-    old.sections.Output = sinceSdd05a(old.sections.Output);
+    old.sections.Output = sinceSdd05b(sinceSdd05a(old.sections.Output));
+    // CAF-SDD-05b, after this ticket, added two bullets to Specify (helpers/since-05b.js); the golden is read through them.
     // CAF-SDD-03f added one rule after this ticket (test/sdd03f-stale-text.test.js holds its text);
     // it is taken out here so this comparison still holds the 02e text line for line.
     // CAF-SDD-03c2b replaced the four lines of the ticket-run rule; same treatment.

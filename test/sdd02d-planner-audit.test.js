@@ -29,9 +29,12 @@ import { hashSection, SECTION_STATUS } from '../src/utils/section-diff.js';
 import { copyFixture, snapshotTree } from './helpers/make-repo.js';
 import { silenced } from './helpers/mono-snapshot.js';
 import { makeOldRepo } from './helpers/old-repo.js';
+import { BREAKDOWN_LINES } from './helpers/since-05b.js';
 import { constraintsBody, swapConstraints } from './helpers/swap-constraints.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir, frontmatterTools, renderAgents, trackedSections } from './helpers/frozen-kinds.js';
 
+// CAF-SDD-05b put two bullets (8 lines, helpers/since-05b.js) in front of this rule in Specify.
+const SDD05B_SPECIFY_LINES = BREAKDOWN_LINES.length;
 const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures');
 const PLANNER_REL = path.join(AGENT_DIR, 'caf-planner.md');
 const SPEC_REL = skillPath('caf-spec');
@@ -191,7 +194,7 @@ for (const fixture of FIXTURE_NAMES) {
     assertBlock(specify, RULE_READ_FACTS);
     // what is left of it since CAF-SDD-02e: a fact is still read first, in the same place
     const live = stepLines(outputOf(fixture), '### 1. Specify');
-    assert.equal(live.indexOf('- A fact about the repo that `Read`, `Glob` or `Grep` can answer is read before any artifact is'), specify.indexOf(RULE_READ_FACTS[0]));
+    assert.equal(live.indexOf('- A fact about the repo that `Read`, `Glob` or `Grep` can answer is read before any artifact is'), specify.indexOf(RULE_READ_FACTS[0]) + SDD05B_SPECIFY_LINES);
     const text = flat(RULE_READ_FACTS);
     assert.match(text, /`Read`, `Glob` or `Grep` can answer is read before it is written down/);
     assert.match(text, /Never leave a note in an artifact that says something was not read yet/);

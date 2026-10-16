@@ -16,6 +16,7 @@ consistent with the branch name \`ai-agent/{{TICKET-ID}}\`.
 .caf/tasks/{{TICKET-ID}}/
   requirements.md    ← Planner Agent: what's requested, acceptance criteria
   design.md          ← Planner Agent (skill caf-design): technical approach, only when the change meets the design criteria
+  breakdown.md       ← Planner Agent (skill caf-breakdown): proposed tickets, only for a request with several independent outcomes
   tasks.md           ← Planner Agent: concrete task breakdown
   verify-report.md   ← implementation agent: implementation + verify results
   qa-report.md       ← QA Agent: deep test results

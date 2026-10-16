@@ -40,6 +40,7 @@ import { copyFixture, snapshotTree } from './helpers/make-repo.js';
 import { silenced } from './helpers/mono-snapshot.js';
 import { makeOldRepo } from './helpers/old-repo.js';
 import { PLAN_NEW, PLAN_OLD } from './helpers/since-05a.js';
+import { sinceSdd05b } from './helpers/since-05b.js';
 import { AGENT_DIR, FIXTURE_NAMES, GOLDEN_DIR, fixtureDir, renderAgents, trackedSections } from './helpers/frozen-kinds.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -112,7 +113,8 @@ async function auditOnly(dir) {
 // ---------------------------------------------------------------------------------------------
 
 test('AC-1: caf-design is the last of SKILL_NAMES, born a DRAFT with the 3-line banner and no open to-do line', () => {
-  assert.equal(SKILL_NAMES[SKILL_NAMES.length - 1], 'caf-design');
+  // CAF-SDD-05b appended caf-breakdown after it.
+  assert.equal(SKILL_NAMES[SKILL_NAMES.length - 2], 'caf-design');
   assert.equal(SKILL_NAMES.filter((n) => n === 'caf-design').length, 1);
   const file = buildSkillFiles({ mode: 'SINGLE_REPO', verifyApps: [] }).find((f) => f.name === 'caf-design');
   assert.equal(file.relPath, DESIGN_REL);
@@ -154,7 +156,7 @@ test('AC-2: the skill without its banner is the ticket source, verbatim (sha256)
 test('AC-3: caf-design is mapped to planner and to no other kind; the planner keeps the order of its older skills', () => {
   const mapped = [...Object.keys(SKILLS_BY_KIND), ...KNOWN_KINDS, 'implementation'].filter((kind) => skillsForKind(kind).includes('caf-design'));
   assert.deepEqual([...new Set(mapped)], ['planner']);
-  assert.deepEqual(skillsForKind('planner'), ['caf-scope-discipline', 'caf-no-guess', 'caf-spec', 'caf-traceability', 'caf-design']);
+  assert.deepEqual(skillsForKind('planner'), ['caf-scope-discipline', 'caf-no-guess', 'caf-spec', 'caf-traceability', 'caf-design', 'caf-breakdown']);
   assert.ok(SKILLS_BY_KIND.planner.includes('caf-traceability'));
 });
 
@@ -200,7 +202,8 @@ for (const fixture of FIXTURE_NAMES) {
     const md = rendered[fixture].planner.content;
     const old = OLD_PLANNER[fixture];
     assert.equal(md.split(PLAN_NEW).length, 2);
-    assert.equal(md.replace(PLAN_NEW, PLAN_OLD), old.content);
+    // CAF-SDD-05b added two bullets to Specify; the golden is read through helpers/since-05b.js.
+    assert.equal(md.replace(PLAN_NEW, PLAN_OLD), sinceSdd05b(old.content));
     // frontmatter, Input, Constraints and Allowed Tools, on their own too
     assert.equal(md.match(/^tools: \[.*\]$/m)[0], old.content.match(/^tools: \[.*\]$/m)[0]);
     assert.equal(md.split('\n').slice(0, 8).join('\n'), old.content.split('\n').slice(0, 8).join('\n'));
@@ -289,7 +292,7 @@ for (const fixture of FIXTURE_NAMES) {
 
     const now = read(dir, PLANNER_REL);
     assert.equal(now, rendered[fixture].planner.content);
-    assert.equal(now.replace(PLAN_NEW, PLAN_OLD), old, 'only the Plan step differs');
+    assert.equal(now.replace(PLAN_NEW, PLAN_OLD), sinceSdd05b(old), 'only the Plan step differs (and the 05b bullets, helpers/since-05b.js)');
     assert.equal(now.replace(bodyOf(now, 'Output'), bodyOf(old, 'Output')), old, 'only inside ## Output');
     const after = agentTree(dir);
     for (const [rel, content] of Object.entries(before)) if (rel !== 'caf-planner.md') assert.equal(after[rel], content, rel);
@@ -423,6 +426,7 @@ test('AC-15: the tasks README names the Planner as the writer of design.md, only
     const at = old.findIndex((l) => l.includes('design.md'));
     assert.match(old[at], /Architect Agent/, `precondition: ${id} golden`);
     old[at] = DESIGN_LINE;
-    assert.equal(md, old.join('\n'), id);
+    // CAF-SDD-05b added the breakdown.md line; the golden is read through helpers/since-05b.js.
+    assert.equal(md, sinceSdd05b(old.join('\n')), id);
   }
 });

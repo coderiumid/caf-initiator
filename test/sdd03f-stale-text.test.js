@@ -34,6 +34,7 @@ import { swapConstraints } from './helpers/swap-constraints.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir, renderAgents, trackedSections } from './helpers/frozen-kinds.js';
 import { withLiveInput } from './helpers/swap-input.js';
 import { sinceSdd05a } from './helpers/since-05a.js';
+import { sinceSdd05b } from './helpers/since-05b.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const GOLDEN = path.join(ROOT, 'test', 'fixtures', 'pre-sdd03f');
@@ -318,7 +319,8 @@ for (const fixture of FIXTURE_NAMES) {
     const flat = now.replace(/\s+/g, ' ');
     assert.match(flat, /It is never written in the outcome, the scope, the decisions or the `When \.\.\. then` sentence of an AC\./);
     // CAF-SDD-05a replaced three lines of the Plan step; the golden is read through it.
-    const old = sinceSdd05a(OLD_PLANNER[fixture].sections.Output);
+    // CAF-SDD-05b added two bullets to Specify (helpers/since-05b.js); same treatment.
+    const old = sinceSdd05b(sinceSdd05a(OLD_PLANNER[fixture].sections.Output));
     // CAF-SDD-03c2b, after this ticket, replaced the four lines of the ticket-run rule of Clarify
     // (test/sdd03c2b-planner-clarify.test.js holds the new text)
     assert.deepEqual(added(now, old), [...EXCEPTION_RULE, ...TICKET_RUN_NEW]);

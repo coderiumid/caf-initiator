@@ -19,6 +19,7 @@ import { detectStack } from '../src/steps/02-detect-stack.js';
 import { buildPlanTicketMd } from '../src/templates/ticket-preview-commands.js';
 import { buildRunPipelineMd } from '../src/templates/run-pipeline-command.js';
 import { sinceSdd05a } from './helpers/since-05a.js';
+import { sinceSdd05b } from './helpers/since-05b.js';
 import { VARIANTS, variantName, renderDefaultFileSet } from './helpers/default-file-set.js';
 import { COMMAND_DIR, renderCommands } from './helpers/commands-render.js';
 import { fixtureDir } from './helpers/frozen-kinds.js';
@@ -34,7 +35,8 @@ const ANSI = /\u001b\[[0-9;]*m/g;
 const OLD_NAME = 'caf-run-pipeline.md';
 const NEW_NAME = 'caf-run.md';
 // CAF-SDD-05a: the golden is also read through its three text changes (helpers/since-05a.js).
-const rename = (text) => sinceSdd05a(text.replaceAll('/caf-run-pipeline', '/caf-run'));
+// CAF-SDD-05b: and through its /caf-plan, planner and README changes (helpers/since-05b.js).
+const rename = (text) => sinceSdd05b(sinceSdd05a(text.replaceAll('/caf-run-pipeline', '/caf-run')));
 
 const COMMANDS = [
   ['mono-pnpm', undefined, 'commands.mono-pnpm'],
