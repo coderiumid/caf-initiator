@@ -218,7 +218,7 @@ for (const fixture of FIXTURE_NAMES) {
   test(`AC-4: validator on ${fixture} — runs the repo gate, judges every AC with three statuses and five evidence kinds`, () => {
     const output = flat(sectionOf(fixture, 'Output'));
     assert.match(output, /### 2\. Run the repo verification gate/);
-    assert.match(output, /Run every command of the Verify Checklist of this file/);
+    assert.match(output, /Run the commands of the Verify Checklist of this file/); // CAF-SDD-07: was "Run every command of ..."
     assert.match(output, /### 3\. Judge every AC/);
     assert.match(output, /One row per AC of `requirements\.md`, none skipped/);
     for (const status of ['`PASS`', '`FAIL`', '`UNVERIFIED`']) assert.ok(output.includes(status), status);

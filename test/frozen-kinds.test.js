@@ -25,6 +25,7 @@ import {
 import { readManifest, getBaselineHash, setSectionBaseline, writeManifest } from '../src/utils/generate-manifest.js';
 import { hashSection, compareSection, SECTION_STATUS } from '../src/utils/section-diff.js';
 import { copyFixture } from './helpers/make-repo.js';
+import { sinceSdd07 } from './helpers/since-07.js';
 import { silenced } from './helpers/mono-snapshot.js';
 import {
   FROZEN,
@@ -106,6 +107,8 @@ for (const { kind, fixture } of FROZEN) {
     const agent = rendered[fixture][kind];
     assert.ok(agent, `${kind} is no longer rendered for ${fixture}. ${FROZEN_MESSAGE}`);
     const golden = JSON.parse(fs.readFileSync(goldenPath(kind, fixture), 'utf8'));
+    // CAF-SDD-07: the golden is never edited; it is read through helpers/since-07.js.
+    for (const header of Object.keys(golden.sections)) golden.sections[header] = sinceSdd07(golden.sections[header]);
     assert.deepEqual(goldenOf({ kind, fixture, ...agent }), golden, `${agent.file} (${fixture}): ${FROZEN_MESSAGE}`);
   });
 }

@@ -32,6 +32,7 @@ import { makeOldRepo } from './helpers/old-repo.js';
 import { BREAKDOWN_LINES } from './helpers/since-05b.js';
 import { constraintsBody, swapConstraints } from './helpers/swap-constraints.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir, frontmatterTools, renderAgents, trackedSections } from './helpers/frozen-kinds.js';
+import { sinceSdd06 } from './helpers/since-06.js';
 
 // CAF-SDD-05b put two bullets (8 lines, helpers/since-05b.js) in front of this rule in Specify.
 const SDD05B_SPECIFY_LINES = BREAKDOWN_LINES.length;
@@ -327,7 +328,7 @@ for (const fixture of FIXTURE_NAMES) {
     // rule CAF-SDD-03c2b replaced
     const live = outputOf(fixture).split('\n');
     assert.deepEqual(blockLines.filter((l) => !live.includes(l)).sort(), [...RULE_READ_FACTS, ...RULE_TICKET_RUN].sort());
-    assert.equal(outputOf(fixture).split('\n')[0], old.sections.Output.split('\n')[0], 'the artifact contract line');
+    assert.equal(outputOf(fixture).split('\n')[0], sinceSdd06(old.sections.Output.split('\n')[0]), 'the artifact contract line');
 
     // `## Input`: three lines, the ones that named the status as a heading, in the 02d render ...
     const input02d = SDD02D_PLANNER[fixture].sections.Input;

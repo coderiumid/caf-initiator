@@ -19,7 +19,7 @@ import { checkDrafts } from '../src/commands/check-drafts.js';
 import { curate } from '../src/commands/curate.js';
 import { skillsTarget, usableSkillPaths } from '../src/commands/skills.js';
 import { buildAgentMd } from '../src/templates/agent-md.js';
-import { buildRunPipelineMd } from '../src/templates/run-pipeline-command.js';
+import { buildRunMd } from '../src/templates/run-command.js';
 import {
   SKILLS_BY_KIND,
   SKILL_NAMES,
@@ -42,6 +42,7 @@ import { makeOldRepo } from './helpers/old-repo.js';
 import { PLAN_NEW, PLAN_OLD } from './helpers/since-05a.js';
 import { sinceSdd05b } from './helpers/since-05b.js';
 import { AGENT_DIR, FIXTURE_NAMES, GOLDEN_DIR, fixtureDir, renderAgents, trackedSections } from './helpers/frozen-kinds.js';
+import { sinceSdd06 } from './helpers/since-06.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const GOLDEN = path.join(ROOT, 'test', 'fixtures', 'pre-sdd05a');
@@ -203,7 +204,7 @@ for (const fixture of FIXTURE_NAMES) {
     const old = OLD_PLANNER[fixture];
     assert.equal(md.split(PLAN_NEW).length, 2);
     // CAF-SDD-05b added two bullets to Specify; the golden is read through helpers/since-05b.js.
-    assert.equal(md.replace(PLAN_NEW, PLAN_OLD), sinceSdd05b(old.content));
+    assert.equal(md.replace(PLAN_NEW, PLAN_OLD), sinceSdd06(sinceSdd05b(old.content)));
     // frontmatter, Input, Constraints and Allowed Tools, on their own too
     assert.equal(md.match(/^tools: \[.*\]$/m)[0], old.content.match(/^tools: \[.*\]$/m)[0]);
     assert.equal(md.split('\n').slice(0, 8).join('\n'), old.content.split('\n').slice(0, 8).join('\n'));
@@ -292,7 +293,7 @@ for (const fixture of FIXTURE_NAMES) {
 
     const now = read(dir, PLANNER_REL);
     assert.equal(now, rendered[fixture].planner.content);
-    assert.equal(now.replace(PLAN_NEW, PLAN_OLD), sinceSdd05b(old), 'only the Plan step differs (and the 05b bullets, helpers/since-05b.js)');
+    assert.equal(now.replace(PLAN_NEW, PLAN_OLD), sinceSdd06(sinceSdd05b(old)), 'only the Plan step differs (and the 05b bullets, helpers/since-05b.js)');
     assert.equal(now.replace(bodyOf(now, 'Output'), bodyOf(old, 'Output')), old, 'only inside ## Output');
     const after = agentTree(dir);
     for (const [rel, content] of Object.entries(before)) if (rel !== 'caf-planner.md') assert.equal(after[rel], content, rel);
@@ -364,7 +365,7 @@ const NO_ARCHITECT_NEW = [
 test('AC-12: /caf-run with an Architect skips the stage when design.md exists, and keeps the spawn criteria', () => {
   for (const [id, { input, content }] of Object.entries(PIPELINE)) {
     if (!input.hasArchitect) continue;
-    const md = buildRunPipelineMd(input);
+    const md = buildRunMd(input);
     assert.equal(md.split(SKIP_SENTENCE).length, 2, id);
     assert.ok(md.indexOf(SKIP_SENTENCE) < md.indexOf('Spawn Architect ('), `${id}: before the spawn criteria`);
     // the previous criteria and closing text are all still there
@@ -384,7 +385,7 @@ test('AC-12: /caf-run with an Architect skips the stage when design.md exists, a
 test('AC-13: /caf-run without an Architect says design.md is the Planner’s and stops only when the ticket meets the criteria and none exists', () => {
   for (const [id, { input, content }] of Object.entries(PIPELINE)) {
     if (input.hasArchitect) continue;
-    const md = buildRunPipelineMd(input);
+    const md = buildRunMd(input);
     assert.ok(content.includes('go through Architect first'), `precondition: ${id} golden`);
     assert.ok(!md.includes('Architect first'), id);
     assert.ok(!/should\s+go through Architect/.test(md), id);
@@ -395,7 +396,7 @@ test('AC-13: /caf-run without an Architect says design.md is the Planner’s and
 
 test('AC-14: outside the two Architect-stage paragraphs /caf-run is the pre-ticket golden, byte for byte', () => {
   for (const [id, { input, content }] of Object.entries(PIPELINE)) {
-    const md = buildRunPipelineMd(input);
+    const md = buildRunMd(input);
     const expected = input.hasArchitect
       ? content.replace('Spawn Architect (`', `${SKIP_SENTENCE}\n\nSpawn Architect (\``)
       : content.replace(

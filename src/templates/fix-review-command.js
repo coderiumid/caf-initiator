@@ -2,7 +2,7 @@
 // Checkpoint A). Unlike the 4 commands in ticket-preview-commands.js (Planner/Architect/QA/
 // Reviewer preview): this command is NOT a read-only preview — it actually spawns
 // `caf-reviewer.md` via the Task tool and writes back to GitHub (reply comment + summary
-// comment). Its spawn pattern therefore follows run-pipeline-command.js (Task tool, isolated
+// comment). Its spawn pattern therefore follows run-command.js (Task tool, isolated
 // subagent), NOT ticket-preview-commands.js (main-thread wrapper that mimics its own role).
 //
 // This command does NOT follow the PREVIEW_COMMANDS pattern in agents.js (auto-generate once
@@ -17,7 +17,7 @@ const DRAFT_BANNER =
 // Tools needed by the main thread: Task to spawn caf-reviewer.md, Read to read the resulting
 // fix-review-log.md, Bash for git branch (auto-detect PR) and gh (comment fetch,
 // permission check, reply, post summary). `Bash(gh api:*)` is deliberately broad (not split
-// per endpoint like run-pipeline-command.js) because this command calls many different gh api
+// per endpoint like run-command.js) because this command calls many different gh api
 // endpoints (permission, pulls/comments, issues/comments, replies) that are all read-OR-write
 // to GitHub — none of them destructive (no delete/force) among them.
 const ALLOWED_TOOLS = [
@@ -37,12 +37,12 @@ function roleLine(role, agentDir) {
 }
 
 // Spawn prohibition SPECIFIC to this command — not a reuse of PUSH_PR_PROHIBITION from
-// run-pipeline-command.js. That sentence refers to "section 7 in the main thread" (commit/push/PR),
+// run-command.js. That sentence refers to "section 7 in the main thread" (commit/push/PR),
 // which does NOT EXIST in this command — this command never commits/pushes/opens a PR at all.
 // The contract is completely different (the subagent here only writes fix-review-log.md,
 // communication back to GitHub is entirely the main thread's job via gh api in step 5), so the
 // sentence needs to come from a separate source too — so it doesn't accidentally change if
-// run-pipeline-command.js is edited later for reasons irrelevant here.
+// run-command.js is edited later for reasons irrelevant here.
 const FIX_REVIEW_PROHIBITION =
   'Do not `git push`, do not call any `gh api` against GitHub, do not change ticket status in the ' +
   'tracker — only write `fix-review-log.md`. Communicating back to GitHub is the main thread\'s ' +

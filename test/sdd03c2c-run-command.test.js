@@ -17,7 +17,7 @@ import prompts from 'prompts';
 import { agents, buildCandidates, buildSingleRepoCandidates, HIDDEN_COMMAND_FILES, isOfferedCandidate } from '../src/commands/agents.js';
 import { detectStack } from '../src/steps/02-detect-stack.js';
 import { buildPlanTicketMd } from '../src/templates/ticket-preview-commands.js';
-import { buildRunPipelineMd } from '../src/templates/run-pipeline-command.js';
+import { buildRunMd } from '../src/templates/run-command.js';
 import { sinceSdd05a } from './helpers/since-05a.js';
 import { sinceSdd05b } from './helpers/since-05b.js';
 import { VARIANTS, variantName, renderDefaultFileSet } from './helpers/default-file-set.js';
@@ -111,7 +111,7 @@ test('AC-2: the builder, with the golden inputs, equals the golden /caf-run-pipe
   const g = golden('run-pipeline');
   for (const id of ['mono.qa', 'mono.validator', 'single-frontend.validator', 'single-backend.validator']) {
     const { input, content } = g[id];
-    assert.equal(buildRunPipelineMd(input), rename(content), id);
+    assert.equal(buildRunMd(input), rename(content), id);
   }
 });
 
@@ -161,7 +161,7 @@ test('AC-3: single-nuxt default — the routing step names the tasks.md sections
 test('AC-3: the builder gives the section routing only to two agents that both cover the whole repo', () => {
   const base = { agentDir: '.claude/agents', hasArchitect: true, gate: 'validator' };
   const two = (paths) =>
-    buildRunPipelineMd({ ...base, implementationRoles: ['caf-frontend', 'caf-backend'], appPaths: { 'caf-frontend': paths[0], 'caf-backend': paths[1] } });
+    buildRunMd({ ...base, implementationRoles: ['caf-frontend', 'caf-backend'], appPaths: { 'caf-frontend': paths[0], 'caf-backend': paths[1] } });
 
   assert.match(flat(routing(two([['.'], ['.']]))), /## Frontend Tasks/);
   // scoped by --scope, or by app in a monorepo: the scope match stays
@@ -170,7 +170,7 @@ test('AC-3: the builder gives the section routing only to two agents that both c
   }
   // one agent only: nothing to choose between
   for (const role of ['caf-frontend', 'caf-backend']) {
-    const md = buildRunPipelineMd({ ...base, implementationRoles: [role], appPaths: { [role]: ['.'] } });
+    const md = buildRunMd({ ...base, implementationRoles: [role], appPaths: { [role]: ['.'] } });
     assert.ok(!/## Frontend Tasks/.test(routing(md)), role);
   }
 });

@@ -22,7 +22,7 @@ import { curate } from '../src/commands/curate.js';
 import { detectStack } from '../src/steps/02-detect-stack.js';
 import { generateDrafts } from '../src/steps/04-generate-drafts.js';
 import { buildPivWorkflowMd } from '../src/templates/piv-workflow-md.js';
-import { buildRunPipelineMd } from '../src/templates/run-pipeline-command.js';
+import { buildRunMd } from '../src/templates/run-command.js';
 import { buildSpecSkill } from '../src/templates/skill-md.js';
 import { parseSections, sectionBody } from '../src/utils/agent-sections.js';
 import { setSectionBaseline, writeManifest } from '../src/utils/generate-manifest.js';
@@ -35,6 +35,7 @@ import { AGENT_DIR, FIXTURE_NAMES, fixtureDir, renderAgents, trackedSections } f
 import { withLiveInput } from './helpers/swap-input.js';
 import { sinceSdd05a } from './helpers/since-05a.js';
 import { sinceSdd05b } from './helpers/since-05b.js';
+import { sinceSdd06 } from './helpers/since-06.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const GOLDEN = path.join(ROOT, 'test', 'fixtures', 'pre-sdd03f');
@@ -70,7 +71,7 @@ const renderPiv = (name) => buildPivWorkflowMd({ agentDir: '.claude/agents', qaR
 // test/sdd03c2-validator-default.test.js); this ticket's relation to its golden is about the rest.
 const SPEC_STATUS_03C2 = /## Spec Status Check[\s\S]*?(?=## 3\. Implementation)/;
 // CAF-SDD-03c2c: the command is /caf-run now; the golden is read with that one name changed.
-const renderPipeline = (name) => buildRunPipelineMd(OLD_PIPELINE[name].input).replace(SPEC_STATUS_03C2, '');
+const renderPipeline = (name) => buildRunMd(OLD_PIPELINE[name].input).replace(SPEC_STATUS_03C2, '');
 // CAF-SDD-05a: also through the Architect stage change (helpers/since-05a.js).
 const renamed = (text) => sinceSdd05a(text.replaceAll('/caf-run-pipeline', '/caf-run'));
 
@@ -320,7 +321,7 @@ for (const fixture of FIXTURE_NAMES) {
     assert.match(flat, /It is never written in the outcome, the scope, the decisions or the `When \.\.\. then` sentence of an AC\./);
     // CAF-SDD-05a replaced three lines of the Plan step; the golden is read through it.
     // CAF-SDD-05b added two bullets to Specify (helpers/since-05b.js); same treatment.
-    const old = sinceSdd05b(sinceSdd05a(OLD_PLANNER[fixture].sections.Output));
+    const old = sinceSdd06(sinceSdd05b(sinceSdd05a(OLD_PLANNER[fixture].sections.Output))); // CAF-SDD-06: helpers/since-06.js
     // CAF-SDD-03c2b, after this ticket, replaced the four lines of the ticket-run rule of Clarify
     // (test/sdd03c2b-planner-clarify.test.js holds the new text)
     assert.deepEqual(added(now, old), [...EXCEPTION_RULE, ...TICKET_RUN_NEW]);

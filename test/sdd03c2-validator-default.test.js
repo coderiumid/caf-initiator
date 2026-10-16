@@ -20,7 +20,7 @@ import { curateBaseline } from '../src/commands/curate-baseline.js';
 import { skillsTarget } from '../src/commands/skills.js';
 import { detectStack } from '../src/steps/02-detect-stack.js';
 import { buildPlanMd } from '../src/templates/plan-command.js';
-import { buildRunPipelineMd } from '../src/templates/run-pipeline-command.js';
+import { buildRunMd } from '../src/templates/run-command.js';
 import { sinceSdd05a } from './helpers/since-05a.js';
 import { parseSections, sectionBody } from '../src/utils/agent-sections.js';
 import { setSectionBaseline, writeManifest } from '../src/utils/generate-manifest.js';
@@ -30,12 +30,19 @@ import { renderCommands } from './helpers/commands-render.js';
 import { copyFixture, snapshotTree } from './helpers/make-repo.js';
 import { silenced } from './helpers/mono-snapshot.js';
 import { swapConstraints } from './helpers/swap-constraints.js';
+import { sinceSdd07 } from './helpers/since-07.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir, renderAgents } from './helpers/frozen-kinds.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const GOLDEN = path.join(ROOT, 'test', 'fixtures', 'pre-sdd03c2');
 const golden = (name) => JSON.parse(fs.readFileSync(path.join(GOLDEN, name), 'utf8'));
 const read = (dir, rel) => fs.readFileSync(path.join(dir, rel), 'utf8');
+
+// CAF-SDD-07 changed the reviewer's Output; the golden is not edited, so it is read through helpers/since-07.js.
+const goldenReviewer = (fixture) => {
+  const g = golden(`reviewer.${fixture}.json`);
+  return { ...g, content: sinceSdd07(g.content) };
+};
 
 const PIPELINE = golden('run-pipeline.json');
 const ANSI = /\u001b\[[0-9;]*m/g;
@@ -248,7 +255,7 @@ function withoutSpecSection(md) {
 
 for (const [name, { input, content }] of Object.entries(PIPELINE)) {
   test(`AC-6: ${name} — roster with validator: the gate is caf-validator and validate-report.md, nothing of caf-qa`, () => {
-    const md = buildRunPipelineMd({ ...input, gate: 'validator' });
+    const md = buildRunMd({ ...input, gate: 'validator' });
     assert.match(md, /caf-validator/);
     assert.match(md, /validate-report\.md/);
     assert.ok(!/caf-qa/.test(md), 'no caf-qa');
@@ -259,7 +266,7 @@ for (const [name, { input, content }] of Object.entries(PIPELINE)) {
   });
 
   test(`AC-6: ${name} — roster with qa: the golden plus the spec status section only`, () => {
-    for (const md of [buildRunPipelineMd(input), buildRunPipelineMd({ ...input, gate: 'qa' })]) {
+    for (const md of [buildRunMd(input), buildRunMd({ ...input, gate: 'qa' })]) {
       // CAF-SDD-03c2c: the command is /caf-run now; the golden is read with that one name changed.
       // CAF-SDD-05a changed the Architect stage; the golden is read through helpers/since-05a.js.
       assert.equal(withoutSpecSection(md), sinceSdd05a(content.replaceAll('/caf-run-pipeline', '/caf-run')));
@@ -280,7 +287,7 @@ test('AC-6: a scaffold with the default roster writes /caf-run with the validato
 
 test('AC-7: /caf-run-pipeline states the spec status rules, for both gates', () => {
   for (const gate of ['qa', 'validator']) {
-    const md = buildRunPipelineMd({ ...PIPELINE['mono-pnpm.with-documentation'].input, gate });
+    const md = buildRunMd({ ...PIPELINE['mono-pnpm.with-documentation'].input, gate });
     const section = sectionOf(md, SPEC_SECTION).body;
     // read the spec first, before the implementation agent
     assert.match(section, /requirements\.md/);
@@ -333,7 +340,7 @@ test('AC-8: /caf-plan stops for NEEDS_CLARIFICATION and NEEDS_HUMAN, and reports
 
 for (const fixture of FIXTURE_NAMES) {
   test(`AC-9: ${fixture} — reviewer Input names validate-report.md and qa-report.md; the rest is the golden`, async () => {
-    const old = golden(`reviewer.${fixture}.json`);
+    const old = goldenReviewer(fixture);
     const now = (await renderAgents(fixture)).reviewer;
     const before = mdSections(old.content);
     const after = mdSections(now.content);
@@ -408,7 +415,7 @@ for (const fixture of FIXTURE_NAMES) {
   test(`AC-10: ${fixture} — pre-ticket planner and reviewer: curate sync writes only their Input (the planner's Output too since CAF-SDD-03c2b)`, async () => {
     const files = {
       'caf-planner.md': golden(`planner.${fixture}.json`).content,
-      'caf-reviewer.md': golden(`reviewer.${fixture}.json`).content,
+      'caf-reviewer.md': goldenReviewer(fixture).content,
     };
     const dir = baselined(fixture, files);
     const before = snapshotTree(dir);
@@ -440,10 +447,10 @@ for (const fixture of FIXTURE_NAMES) {
 
   test(`AC-10: ${fixture} — a customized Input is not overwritten`, async () => {
     const planner = golden(`planner.${fixture}.json`).content.replace('Ticket description from the tracker (required).', 'Ticket description from OUR tracker (required).');
-    const reviewer = golden(`reviewer.${fixture}.json`).content.replace('(required).', '(required) — and ask Sam.');
+    const reviewer = goldenReviewer(fixture).content.replace('(required).', '(required) — and ask Sam.');
     assert.notEqual(planner, golden(`planner.${fixture}.json`).content);
-    assert.notEqual(reviewer, golden(`reviewer.${fixture}.json`).content);
-    const dir = baselined(fixture, { 'caf-planner.md': golden(`planner.${fixture}.json`).content, 'caf-reviewer.md': golden(`reviewer.${fixture}.json`).content });
+    assert.notEqual(reviewer, goldenReviewer(fixture).content);
+    const dir = baselined(fixture, { 'caf-planner.md': golden(`planner.${fixture}.json`).content, 'caf-reviewer.md': goldenReviewer(fixture).content });
     // edit after the baseline: current != baseline
     fs.writeFileSync(path.join(dir, AGENT_DIR, 'caf-planner.md'), planner);
     fs.writeFileSync(path.join(dir, AGENT_DIR, 'caf-reviewer.md'), reviewer);

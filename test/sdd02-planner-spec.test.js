@@ -28,6 +28,7 @@ import { copyFixture, makeRepo, snapshotTree } from './helpers/make-repo.js';
 import { silenced, renderMonoSnapshot } from './helpers/mono-snapshot.js';
 import { constraintsBody, swapConstraints } from './helpers/swap-constraints.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir, frontmatterTools, renderAgents, trackedSections } from './helpers/frozen-kinds.js';
+import { sinceSdd06 } from './helpers/since-06.js';
 
 const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures');
 // The planner's spec workflow lives in its tracked `## Output`, after the artifact contract line.
@@ -123,7 +124,8 @@ for (const fixture of FIXTURE_NAMES) {
     assert.match(md, /^tools: \[Read, Write, Glob, Grep\]$/m);
 
     for (const literal of [
-      'Produces `requirements.md`, `tasks.md` in `.caf/tasks/{TICKET-ID}/` for the next agent to read.',
+      // CAF-SDD-06 added the parenthesis about `design.md`/`breakdown.md`; nothing was dropped.
+      'Produces `requirements.md`, `tasks.md` (and `design.md` or `breakdown.md` when the request needs one) in `.caf/tasks/{TICKET-ID}/` for the next agent to read.',
       'Write for artifacts in `.caf/tasks/{TICKET-ID}/`',
       // CAF-SDD-03c2 removed the "Fallback — Discovery draft without a ticket" flow from Input, and
       // with it five literals this list held: the `.caf/discovery/{TICKET-ID}/prd.md` path, the two
@@ -145,7 +147,7 @@ for (const fixture of FIXTURE_NAMES) {
     // which CAF-SDD-02d changed (test/sdd02d-planner-audit.test.js holds its three lines).
     const old = OLD_PLANNER[fixture];
     assert.deepEqual(frontmatterTools(old.content), ['Read', 'Write']);
-    assert.equal(specOf(fixture).split('\n')[0], old.sections[SPEC]);
+    assert.equal(specOf(fixture).split('\n')[0], sinceSdd06(old.sections[SPEC]));
     assert.notEqual(specOf(fixture), old.sections[SPEC]);
     const restored = md
       .replace(NEW_TOOLS_LINE, OLD_TOOLS_LINE)

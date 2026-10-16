@@ -12,7 +12,7 @@ import { REPO_MODE } from '../utils/repo-context.js';
 import { usableSkillPaths, collectVerifyApps } from './skills.js';
 import { buildPmAgentMd, buildUxDesignerAgentMd } from '../templates/discovery-commands.js';
 import { buildPlanTicketMd } from '../templates/ticket-preview-commands.js';
-import { buildRunPipelineMd } from '../templates/run-pipeline-command.js';
+import { buildRunMd } from '../templates/run-command.js';
 import { buildFixReviewMd } from '../templates/fix-review-command.js';
 import { buildReviewMd } from '../templates/review-command.js';
 import { buildPlanMd } from '../templates/plan-command.js';
@@ -665,15 +665,15 @@ export async function agents({
     );
     console.log('');
 
-    const { generateRunPipeline } = await prompts({
+    const { generateRun } = await prompts({
       type: 'confirm',
-      name: 'generateRunPipeline',
+      name: 'generateRun',
       message: 'Generate /caf-run?',
       initial: false,
     });
 
-    if (generateRunPipeline) {
-      const content = buildRunPipelineMd({
+    if (generateRun) {
+      const content = buildRunMd({
         agentDir: relativeAgentDir,
         implementationRoles,
         appPaths,
