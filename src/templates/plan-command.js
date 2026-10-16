@@ -111,6 +111,16 @@ Read what the planner left in \`.caf/tasks/<ID-or-slug>/\`, starting with the \`
   tell them to answer or decide and then run this command again with the same argument. Then
   **STOP**. Do not run any other agent: a \`tasks.md\` written next to such a status is not ready
   to be worked from.
+  - **\`breakdown.md\` exists in the folder** and the status is \`NEEDS_CLARIFICATION\` (the planner split the request) → also show the user
+    its items (id, title, outcome, dependencies) next to the planner's question. Only when a tracker
+    tool is connected in this session (an MCP Linear/Jira/GitHub Issues, as in step 1), offer to
+    create the tickets one at a time. For each item ask one question of its own, with three
+    answers: **yes** (create it), **edit** (the user changes the title or the description, then ask
+    again for that item) or **skip** (create nothing for it). A ticket is created only after an
+    explicit **yes** for that ticket: never several in one step, and never on silence. Report the ID
+    and title of each ticket created in chat. This command does not write them back into
+    \`breakdown.md\`. With no tracker tool connected, name the file and create nothing. Then
+    **STOP** as above.
 - **\`tasks.md\` is written** (any other status) → show the user a brief summary: the folder, the
   status of \`requirements.md\`, how many acceptance criteria and tasks, and the assumptions or
   open questions the planner recorded. When the status is \`Status: APPROVED\`, say that the spec is
@@ -161,8 +171,9 @@ ${stopSection()}
 
 ## Constraints
 
-- This command NEVER writes or edits application code, NEVER runs \`git\`, NEVER changes ticket
-  status in the tracker and NEVER posts to the tracker or to a PR.
+- This command NEVER writes or edits application code, NEVER runs \`git\`, NEVER changes the status
+  of an existing ticket in the tracker and NEVER posts to a PR. It writes to the tracker only to
+  create a ticket from \`breakdown.md\`, and only after an explicit yes for that ticket (step 5).
 - One source for the planning rules: ${roleLine('caf-planner', agentDir)}. If that file doesn't
   exist, **STOP** and tell the user to generate it with \`caf-init scaffold agents\` — don't plan
   from memory.

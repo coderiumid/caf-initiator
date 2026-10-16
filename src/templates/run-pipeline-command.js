@@ -213,11 +213,14 @@ function architectSection(hasArchitect, agentDir) {
 
 If, after reading \`tasks.md\`, it turns out this ticket clearly needs an architecture decision
 (new schema, cross-service change, a layer contract that doesn't exist yet), don't make up
-\`design.md\` yourself in the main thread. STOP and report to the user that this ticket should
-go through Architect first — they can run \`caf-init scaffold agents\` to add that role, or
-decide to proceed without a formal design.`;
+\`design.md\` yourself in the main thread. \`design.md\` is written by the Planner. If the ticket
+meets those criteria and \`.caf/tasks/{TICKET-ID}/design.md\` does not exist, STOP and report that
+to the user so the Planner can be run again.`;
   }
   return `This stage is **conditional** — don't always spawn it.
+
+If \`design.md\` already exists in the ticket folder (\`.caf/tasks/{TICKET-ID}/design.md\`, written by
+Planner), **skip** this stage and note the reason in the final summary.
 
 Spawn Architect (\`${agentDir}/caf-architect.md\`) ONLY if either is true:
 

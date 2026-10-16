@@ -74,7 +74,7 @@ const OLD_FRONTEND_SKILLS = [OLD_PATH, ...skillsForKind('frontend').map(skillPat
 test('AC-1: the names and the kind table carry caf-self-verify and no caf-verify, in the same order', () => {
   assert.ok(SKILL_NAMES.includes(NEW));
   assert.ok(!SKILL_NAMES.includes(OLD));
-  assert.deepEqual(SKILL_NAMES, ['caf-self-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate', 'caf-piv', 'caf-spec', 'caf-traceability']);
+  assert.deepEqual(SKILL_NAMES, ['caf-self-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate', 'caf-piv', 'caf-spec', 'caf-traceability', 'caf-design', 'caf-breakdown']);
   for (const [kind, names] of Object.entries(SKILLS_BY_KIND)) assert.ok(!names.includes(OLD), kind);
   assert.deepEqual(skillsForKind('qa'), [NEW, 'caf-no-guess']);
   assert.deepEqual(skillsForKind('validator'), [NEW, 'caf-no-guess', 'caf-traceability']);
@@ -86,6 +86,9 @@ for (const fixture of SKILL_FIXTURES) {
   test(`AC-1: scaffold skills writes the pre-ticket files with the name changed and nothing else — ${fixture}`, async () => {
     const before = golden(`skills.${fixture}`).files;
     const now = await renderSkillFiles(fixture);
+    // CAF-SDD-05a added caf-design; it is not in this golden, which is about the rename.
+    delete now['.claude/skills/caf-design/SKILL.md'];
+    delete now['.claude/skills/caf-breakdown/SKILL.md']; // CAF-SDD-05b, same reason
     assert.ok(OLD_PATH in before, 'the golden holds the old skill');
     assert.ok(NEW_PATH in now);
     assert.ok(!Object.keys(now).some((rel) => rel.includes(`/${OLD}/`)), 'no caf-verify folder');

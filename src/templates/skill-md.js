@@ -17,7 +17,7 @@ export const SKILLS_DIR = '.claude/skills';
 
 // Display/write order. Every name is `caf-`-prefixed so a generated skill can't collide with one
 // the team wrote themselves.
-export const SKILL_NAMES = ['caf-self-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate', 'caf-piv', 'caf-spec', 'caf-traceability'];
+export const SKILL_NAMES = ['caf-self-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate', 'caf-piv', 'caf-spec', 'caf-traceability', 'caf-design', 'caf-breakdown'];
 
 const IMPLEMENTATION_SKILLS = ['caf-self-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate'];
 const ARTIFACT_WRITER_SKILLS = ['caf-scope-discipline', 'caf-no-guess'];
@@ -34,6 +34,8 @@ const ARTIFACT_WRITER_SKILLS = ['caf-scope-discipline', 'caf-no-guess'];
 // no agent gets a pointer to it until a human removes its banner.
 // `validator` (CAF-SDD-03b1) reads those evidence lines, so it gets `caf-traceability` on top of
 // what `qa` has.
+// `caf-design` (CAF-SDD-05a) is the planner's only and is born a DRAFT, like `caf-traceability`.
+// `caf-breakdown` (CAF-SDD-05b) is the planner's only, after `caf-design`, and born a DRAFT too.
 export const SKILLS_BY_KIND = {
   frontend: [...IMPLEMENTATION_SKILLS, 'caf-traceability'],
   backend: [...IMPLEMENTATION_SKILLS, 'caf-traceability'],
@@ -41,7 +43,7 @@ export const SKILLS_BY_KIND = {
   implementation: IMPLEMENTATION_SKILLS,
   qa: ['caf-self-verify', 'caf-no-guess'],
   validator: ['caf-self-verify', 'caf-no-guess', 'caf-traceability'],
-  planner: [...ARTIFACT_WRITER_SKILLS, 'caf-spec', 'caf-traceability'],
+  planner: [...ARTIFACT_WRITER_SKILLS, 'caf-spec', 'caf-traceability', 'caf-design', 'caf-breakdown'],
   reviewer: ARTIFACT_WRITER_SKILLS,
   architect: ARTIFACT_WRITER_SKILLS,
   documentation: ARTIFACT_WRITER_SKILLS,
@@ -406,6 +408,129 @@ Rules:
 `;
 }
 
+// caf-design (CAF-SDD-05a): when a ticket needs a technical design and how `design.md` is written.
+// Born a DRAFT with the same 3-line banner as caf-traceability (it waits for a real dispatch
+// test), so no agent gets a pointer to it yet. Content is taken verbatim from the ticket
+// (`.ai/tasks/CAF-SDD-05a/caf-design.skill.md`) — don't reword it here.
+//
+// Third narrow exception to "a skill never redefines a report file": it defines the format of
+// the artifact `design.md` only. It names no status or verdict word and defines no report.
+export function buildDesignSkill() {
+  return `---
+name: caf-design
+description: Rules for deciding when a ticket needs a technical design and for writing design.md. Use after requirements.md is written and before tasks.md, when the change spans more than one app, adds a schema or migration, or changes a contract between layers.
+---
+
+${SPEC_DRAFT_BANNER}
+
+# caf-design — when and how to write design.md
+
+design.md answers HOW, at the level of components, contracts and order. It does not repeat the WHAT (requirements.md) and it is not a task list (tasks.md).
+If the agent definition conflicts with this skill, the agent definition wins.
+
+## When to write one
+Write design.md only when at least one of these is true:
+- the change touches more than one app or service;
+- it adds or changes a database schema or a migration;
+- it adds or changes a contract between layers (an API shape, an event, a shared type, the props of a shared component).
+
+If none is true, write no design.md and no empty file. Say in the final message that no design was needed and which of the three you checked. "It touches several files" is not a criterion.
+Write it only when no BLOCKING question is open, after requirements.md and before tasks.md.
+
+## Before writing
+- Read requirements.md, then the code the change touches, then the files that exist among \`docs/architecture/system-overview.md\`, \`docs/api-contract.md\`, \`docs/schema/erd.md\` and the ADRs whose name relates to the ticket.
+- Only a file opened in this run is a source. A summary elsewhere is a pointer, not a fact.
+- If design.md already exists, read it first. Keep its decisions; change only what the spec now requires.
+
+## Format
+Write these sections in this order. A section with nothing to say is written \`Tidak ada\`.
+1. \`## Context\` — what exists today, as \`Finding:\` lines from files you read, and which of the three criteria applies.
+2. \`## Approach\` — the components or layers involved and the flow between them, in order. Say which agent or app owns each part (Frontend or Backend).
+3. \`## Contracts\` — each API, event, type or schema before and after. Names and shapes only, no function bodies.
+4. \`## Data and migration\` — the schema change, compatibility with existing data, and the order of deploy.
+5. \`## Decisions\` — \`D-n:\` the choice, the alternative you did not take, and why.
+6. \`## Risks\` — what can break, and how a test or the validator would show it.
+7. \`## Order\` — what must land first. tasks.md follows this order.
+
+Rules:
+- Every line under Contracts and Decisions ends with the AC ids it serves, for example \`(AC-2, AC-4)\`. A line that serves no AC is dropped.
+- Paths and symbol names belong here, not in requirements.md.
+- Do not copy ACs and do not add new ones. If the design shows that an AC cannot be met, write it as an open question in requirements.md and do not write tasks.md.
+- design.md has no \`Status:\` line and defines no report.
+
+## Check before finishing
+1. One of the three criteria is named in Context.
+2. All seven sections are present.
+3. Every Contracts and Decisions line carries AC ids.
+4. tasks.md follows the Order section.
+5. No code bodies and no unlabeled guess.
+`;
+}
+
+// caf-breakdown (CAF-SDD-05b): when a request is too big for one spec and how `breakdown.md`, a
+// proposal of tickets, is written. Born a DRAFT with the same 3-line banner as caf-design (it waits
+// for a real dispatch test), so no agent gets a pointer to it yet. Content is taken verbatim from
+// the ticket (`.ai/tasks/CAF-SDD-05b/caf-breakdown.skill.md`) — don't reword it here.
+//
+// Fourth narrow exception to "a skill never redefines a report file": it defines the format of
+// the artifact `breakdown.md` only. It names no status or verdict word and defines no report.
+export function buildBreakdownSkill() {
+  return `---
+name: caf-breakdown
+description: Rules for deciding when a request is too big for one spec and for writing breakdown.md, a proposal of tickets. Use at the start of Specify, when a request holds more than one outcome that could ship and be used on its own.
+---
+
+${SPEC_DRAFT_BANNER}
+
+# caf-breakdown — when and how to propose several tickets
+
+breakdown.md is a proposal. It lists the tickets a large request should become, in order. It is not a spec (requirements.md) and not a task list (tasks.md).
+If the agent definition conflicts with this skill, the agent definition wins.
+
+## When to break a request down
+Break it down only when the request holds more than one outcome that could be merged and used on its own.
+Do not break it down when:
+- it is one outcome reached in many steps. The steps go to tasks.md;
+- it is long, or touches many files, but ships as one thing;
+- a question about scope can settle it. Ask that question instead.
+
+Do this check before writing the spec. Once the question that asks about the split has an \`Answer:\`, do not break the request down again.
+
+## Before writing
+- Read the request, then the code and the docs it points at. Only a file opened in this run is a source.
+- If breakdown.md already exists, read it first and keep the items and order a human has already accepted.
+
+## Format
+Write these parts in this order.
+1. \`# Breakdown — <request title>\` and one line saying where the request came from (ticket id or free text).
+2. \`## Why split\` — two or three lines: which outcomes are independent, as \`Finding:\` lines.
+3. \`## Items\` — one block per item, numbered \`B-1\`, \`B-2\`, and so on:
+   - \`Title:\` a short title a tracker could use.
+   - \`Outcome:\` one sentence a user could observe once this item alone is done.
+   - \`Apps:\` the apps or services it touches.
+   - \`Depends on:\` the B-ids it needs first, or \`none\`.
+   - \`AC outline:\` two to five lines in the shape \`When ..., then ...\`. They are an outline for the future spec, not final acceptance criteria, and they carry no \`Verify:\`.
+   - \`Ticket:\` \`-\` until a human creates it.
+4. \`## Order\` — the order to build, and what can go in parallel.
+5. \`## Left out\` — what the request mentioned that no item covers, and why.
+
+Rules:
+- Each item ships and is used on its own. Do not split by layer (one item for the API, another for the screen) unless each of them alone gives a user something.
+- Dependencies point one way. No item depends on a later one, and none depends on itself.
+- Every part of the request is in an item or in Left out.
+- Keep the number of items small. Merge two items that cannot ship apart.
+- Do not guess sizes, dates or owners.
+- Do not create tickets, and do not write to a tracker. A human creates them, or the user is asked in chat, one ticket at a time.
+- breakdown.md has no \`Status:\` line and defines no report.
+
+## Check before finishing
+1. Each item has Title, Outcome, Apps, Depends on, AC outline and Ticket.
+2. No item depends on a later one.
+3. Every part of the request is in an item or in Left out.
+4. No item is only a layer or only a step.
+5. No ticket was created.`;
+}
+
 /**
  * Every skill file `caf-init scaffold skills` writes, in SKILL_NAMES order:
  * `[{ name, relPath, content, draft }]`. Pure — no filesystem, no clock.
@@ -419,6 +544,8 @@ export function buildSkillFiles({ mode, verifyApps } = {}) {
     'caf-piv': buildPivSkill,
     'caf-spec': buildSpecSkill,
     'caf-traceability': buildTraceabilitySkill,
+    'caf-design': buildDesignSkill,
+    'caf-breakdown': buildBreakdownSkill,
   };
   return SKILL_NAMES.map((name) => {
     const content = builders[name]();

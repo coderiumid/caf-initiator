@@ -45,12 +45,12 @@ const SHAPES = {
 
 // caf-spec (CAF-SDD-01) and caf-traceability (CAF-SDD-02) are constant too, but born a DRAFT —
 // covered in skills-spec.test.js and sdd02-planner-spec.test.js.
-const BORN_DRAFT = ['caf-spec', 'caf-traceability'];
+const BORN_DRAFT = ['caf-spec', 'caf-traceability', 'caf-design', 'caf-breakdown'];
 const CONSTANT = SKILL_NAMES.filter((n) => n !== 'caf-self-verify' && !BORN_DRAFT.includes(n));
 const byName = (files, name) => files.find((f) => f.name === name);
 
-test('skill set: seven caf- prefixed skills under .claude/skills, in a fixed order', () => {
-  assert.deepEqual(SKILL_NAMES, ['caf-self-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate', 'caf-piv', 'caf-spec', 'caf-traceability']);
+test('skill set: eight caf- prefixed skills under .claude/skills, in a fixed order', () => {
+  assert.deepEqual(SKILL_NAMES, ['caf-self-verify', 'caf-scope-discipline', 'caf-no-guess', 'caf-escalate', 'caf-piv', 'caf-spec', 'caf-traceability', 'caf-design', 'caf-breakdown']);
   assert.ok(SKILL_NAMES.every((n) => n.startsWith('caf-')));
   assert.equal(SKILLS_DIR, '.claude/skills');
   const files = buildSkillFiles(SHAPES.single);
@@ -72,7 +72,7 @@ test('mapping (D7): exact table, caf-piv mapped to no kind, restricted kinds get
   assert.deepEqual(
     Object.fromEntries([...KNOWN_KINDS, 'implementation'].map((k) => [k, skillsForKind(k)])),
     {
-      planner: [...writer, 'caf-spec', 'caf-traceability'], architect: writer,
+      planner: [...writer, 'caf-spec', 'caf-traceability', 'caf-design', 'caf-breakdown'], architect: writer,
       frontend: [...impl, 'caf-traceability'], backend: [...impl, 'caf-traceability'], implementer: impl,
       qa: ['caf-self-verify', 'caf-no-guess'], reviewer: writer, documentation: writer,
       validator: ['caf-self-verify', 'caf-no-guess', 'caf-traceability'],

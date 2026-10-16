@@ -32,6 +32,8 @@ import { buildRunPipelineMd } from '../src/templates/run-pipeline-command.js';
 import { readAgentRoster } from '../src/utils/read-agent-roster.js';
 import { renderDefaultFileSet } from './helpers/default-file-set.js';
 import { sinceSdd03c2c } from './helpers/since-03c2c.js';
+import { sinceSdd05aFiles } from './helpers/since-05a.js';
+import { sinceSdd05bFiles } from './helpers/since-05b.js';
 import { copyFixture, snapshotTree } from './helpers/make-repo.js';
 import { silenced } from './helpers/mono-snapshot.js';
 import { CONTENT_VARIANTS, renderScaffoldContents } from './helpers/scaffold-contents.js';
@@ -40,11 +42,11 @@ import { AGENT_DIR, fixtureDir } from './helpers/frozen-kinds.js';
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const GOLDEN = path.join(ROOT, 'test', 'fixtures', 'pre-sdd03c3');
 // CAF-SDD-03c2c: the golden read through the ticket (no /caf-plan-ticket, /caf-run for /caf-run-pipeline);
-// the file itself is not touched.
+// CAF-SDD-05a: and through that ticket's three text changes (helpers/since-05a.js) and 05b's (helpers/since-05b.js); the file itself is not touched.
 const golden = (id) => {
   const raw = JSON.parse(fs.readFileSync(path.join(GOLDEN, `${id}.json`), 'utf8'));
   const rename = (f) => f.replace('caf-run-pipeline.md', 'caf-run.md');
-  return { ...raw, commands: raw.commands.filter((f) => f !== 'caf-plan-ticket.md').map(rename).sort(), files: sinceSdd03c2c(raw.files) };
+  return { ...raw, commands: raw.commands.filter((f) => f !== 'caf-plan-ticket.md').map(rename).sort(), files: sinceSdd05bFiles(sinceSdd05aFiles(sinceSdd03c2c(raw.files))) };
 };
 const ANSI = /\u001b\[[0-9;]*m/g;
 
