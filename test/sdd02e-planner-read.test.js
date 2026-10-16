@@ -31,6 +31,7 @@ import { sinceSdd05a } from './helpers/since-05a.js';
 import { BREAKDOWN_LINES, sinceSdd05b } from './helpers/since-05b.js';
 import { swapConstraints } from './helpers/swap-constraints.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir, frontmatterTools, renderAgents, trackedSections } from './helpers/frozen-kinds.js';
+import { OUTLINE_LINES, sinceSdd06 } from './helpers/since-06.js';
 
 const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures');
 const PLANNER_REL = path.join(AGENT_DIR, 'caf-planner.md');
@@ -328,20 +329,21 @@ for (const fixture of FIXTURE_NAMES) {
     const old = { ...OLD_PLANNER[fixture], sections: { ...OLD_PLANNER[fixture].sections } };
     // CAF-SDD-05a replaced three lines of the Plan step (test/sdd05a-caf-design.test.js holds the new
     // text); the golden's Output is read through it, so this comparison still holds the 02e text.
-    old.sections.Output = sinceSdd05b(sinceSdd05a(old.sections.Output));
+    old.sections.Output = sinceSdd06(sinceSdd05b(sinceSdd05a(old.sections.Output))); // CAF-SDD-06: the contract sentence
     // CAF-SDD-05b, after this ticket, added two bullets to Specify (helpers/since-05b.js); the golden is read through them.
     // CAF-SDD-03f added one rule after this ticket (test/sdd03f-stale-text.test.js holds its text);
     // it is taken out here so this comparison still holds the 02e text line for line.
     // CAF-SDD-03c2b replaced the four lines of the ticket-run rule; same treatment.
-    const later = (l) => !SDD03F_EXCEPTION.includes(l) && !SDD03C2B_TICKET_RUN_NEW.includes(l);
+    // CAF-SDD-06 added the outline line (helpers/since-06.js) after this ticket; same treatment.
+    const later = (l) => !SDD03F_EXCEPTION.includes(l) && !SDD03C2B_TICKET_RUN_NEW.includes(l) && !OUTLINE_LINES.includes(l);
     const newLines = added(outputOf(fixture), old.sections.Output).filter(later);
     assert.deepEqual(newLines, NEW_OUTPUT_BLOCKS.flat());
     assert.deepEqual(added(old.sections.Output, outputOf(fixture)).sort(), [...OLD_OUTPUT_LINES, ...SDD03C2B_TICKET_RUN_OLD].sort());
-    assert.equal(outputOf(fixture).split('\n')[0], old.sections.Output.split('\n')[0], 'the artifact contract line');
+    assert.equal(outputOf(fixture).split('\n')[0], sinceSdd06(old.sections.Output.split('\n')[0]), 'the artifact contract line');
     // every other line is where it was, in the same order
     const kept = (text, gone) => text.split('\n').filter((l) => !gone.includes(l));
     assert.deepEqual(
-      kept(outputOf(fixture), [...NEW_OUTPUT_BLOCKS.flat(), ...SDD03F_EXCEPTION, ...SDD03C2B_TICKET_RUN_NEW]),
+      kept(outputOf(fixture), [...NEW_OUTPUT_BLOCKS.flat(), ...SDD03F_EXCEPTION, ...SDD03C2B_TICKET_RUN_NEW, ...OUTLINE_LINES]),
       kept(old.sections.Output, [...OLD_OUTPUT_LINES, ...SDD03C2B_TICKET_RUN_OLD])
     );
   });

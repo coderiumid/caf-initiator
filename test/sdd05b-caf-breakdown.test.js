@@ -40,6 +40,7 @@ import { silenced } from './helpers/mono-snapshot.js';
 import { makeOldRepo } from './helpers/old-repo.js';
 import { BREAKDOWN_LINES, PLAN_CONSTRAINT_NEW, PLAN_CONSTRAINT_OLD, PLAN_STEP5_ANCHOR, PLAN_STEP5_NEW, README_LINE, sinceSdd05b } from './helpers/since-05b.js';
 import { AGENT_DIR, FIXTURE_NAMES, GOLDEN_DIR, fixtureDir, renderAgents, trackedSections } from './helpers/frozen-kinds.js';
+import { sinceSdd06 } from './helpers/since-06.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const GOLDEN = path.join(ROOT, 'test', 'fixtures', 'pre-sdd05b');
@@ -211,8 +212,9 @@ for (const fixture of FIXTURE_NAMES) {
   test(`AC-7: planner on ${fixture} — outside the two bullets the file is the pre-ticket golden, byte for byte`, () => {
     const md = rendered[fixture].planner.content;
     const old = OLD_PLANNER[fixture];
-    assert.equal(md.replace(`${SPLIT_LINES.join('\n')}\n`, ''), old.content);
-    assert.equal(md, sinceSdd05b(old.content));
+    // CAF-SDD-06 changed the contract sentence and added a Specify line (helpers/since-06.js).
+    assert.equal(md.replace(`${SPLIT_LINES.join('\n')}\n`, ''), sinceSdd06(old.content));
+    assert.equal(md, sinceSdd06(sinceSdd05b(old.content)));
     assert.equal(md.match(/^tools: \[.*\]$/m)[0], old.content.match(/^tools: \[.*\]$/m)[0]);
     assert.equal(md.split('\n').slice(0, 8).join('\n'), old.content.split('\n').slice(0, 8).join('\n'));
     const now = trackedSections(md);
@@ -270,7 +272,7 @@ for (const fixture of FIXTURE_NAMES) {
 
     const now = read(dir, PLANNER_REL);
     assert.equal(now, rendered[fixture].planner.content);
-    assert.equal(now.replace(`${SPLIT_LINES.join('\n')}\n`, ''), old, 'only the two bullets differ');
+    assert.equal(now.replace(`${SPLIT_LINES.join('\n')}\n`, ''), sinceSdd06(old), 'only the two bullets differ (and the 06 text)');
     assert.equal(now.replace(bodyOf(now, 'Output'), bodyOf(old, 'Output')), old, 'only inside ## Output');
     const after = agentTree(dir);
     for (const [rel, content] of Object.entries(before)) if (rel !== 'caf-planner.md') assert.equal(after[rel], content, rel);

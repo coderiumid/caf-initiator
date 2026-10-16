@@ -27,6 +27,7 @@ import { copyFixture, makeRepo, snapshotTree } from './helpers/make-repo.js';
 import { silenced } from './helpers/mono-snapshot.js';
 import { constraintsBody, swapConstraints } from './helpers/swap-constraints.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir, frontmatterTools, renderAgents, trackedSections } from './helpers/frozen-kinds.js';
+import { sinceSdd06 } from './helpers/since-06.js';
 
 const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures');
 const SPEC_REL = skillPath('caf-spec');
@@ -316,7 +317,7 @@ for (const fixture of FIXTURE_NAMES) {
 
     const output = outputOf(fixture);
     assert.notEqual(without(without(output, RULE_READ_FIRST), RULE_APPROVED_SPEC), output);
-    assert.equal(output.split('\n')[0], old.sections.Output.split('\n')[0]);
+    assert.equal(output.split('\n')[0], sinceSdd06(old.sections.Output.split('\n')[0]));
 
     // `## Allowed Tools`: the list line and the rationale line, nothing else
     const tools = trackedSections(md)['Allowed Tools'].split('\n');

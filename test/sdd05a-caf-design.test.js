@@ -42,6 +42,7 @@ import { makeOldRepo } from './helpers/old-repo.js';
 import { PLAN_NEW, PLAN_OLD } from './helpers/since-05a.js';
 import { sinceSdd05b } from './helpers/since-05b.js';
 import { AGENT_DIR, FIXTURE_NAMES, GOLDEN_DIR, fixtureDir, renderAgents, trackedSections } from './helpers/frozen-kinds.js';
+import { sinceSdd06 } from './helpers/since-06.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const GOLDEN = path.join(ROOT, 'test', 'fixtures', 'pre-sdd05a');
@@ -203,7 +204,7 @@ for (const fixture of FIXTURE_NAMES) {
     const old = OLD_PLANNER[fixture];
     assert.equal(md.split(PLAN_NEW).length, 2);
     // CAF-SDD-05b added two bullets to Specify; the golden is read through helpers/since-05b.js.
-    assert.equal(md.replace(PLAN_NEW, PLAN_OLD), sinceSdd05b(old.content));
+    assert.equal(md.replace(PLAN_NEW, PLAN_OLD), sinceSdd06(sinceSdd05b(old.content)));
     // frontmatter, Input, Constraints and Allowed Tools, on their own too
     assert.equal(md.match(/^tools: \[.*\]$/m)[0], old.content.match(/^tools: \[.*\]$/m)[0]);
     assert.equal(md.split('\n').slice(0, 8).join('\n'), old.content.split('\n').slice(0, 8).join('\n'));
@@ -292,7 +293,7 @@ for (const fixture of FIXTURE_NAMES) {
 
     const now = read(dir, PLANNER_REL);
     assert.equal(now, rendered[fixture].planner.content);
-    assert.equal(now.replace(PLAN_NEW, PLAN_OLD), sinceSdd05b(old), 'only the Plan step differs (and the 05b bullets, helpers/since-05b.js)');
+    assert.equal(now.replace(PLAN_NEW, PLAN_OLD), sinceSdd06(sinceSdd05b(old)), 'only the Plan step differs (and the 05b bullets, helpers/since-05b.js)');
     assert.equal(now.replace(bodyOf(now, 'Output'), bodyOf(old, 'Output')), old, 'only inside ## Output');
     const after = agentTree(dir);
     for (const [rel, content] of Object.entries(before)) if (rel !== 'caf-planner.md') assert.equal(after[rel], content, rel);

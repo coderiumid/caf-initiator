@@ -761,6 +761,8 @@ const PLANNER_SPEC_WORKFLOW = [
   '  (a deterministic command from the verify checklist of the repo), or `manual:` and the steps',
   '  when neither of the other two is possible. One observable behavior per AC.',
   '- An AC that holds more than one behavior is split into one AC per behavior.',
+  '- A `requirements.md` written as an outline for a split request has no acceptance criteria:',
+  '  write `Tidak ada` under that section.',
   '- An AC with `Verify: automated test` names the test file, or the task in `tasks.md` that',
   '  creates that file.',
   '- The full format and its rules are the `caf-spec` skill; follow it when it is listed under',

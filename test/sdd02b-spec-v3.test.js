@@ -26,6 +26,7 @@ import { copyFixture, makeRepo, snapshotTree } from './helpers/make-repo.js';
 import { silenced, renderMonoSnapshot } from './helpers/mono-snapshot.js';
 import { constraintsBody, swapConstraints } from './helpers/swap-constraints.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir, renderAgents, trackedSections } from './helpers/frozen-kinds.js';
+import { sinceSdd06 } from './helpers/since-06.js';
 
 const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures');
 const SPEC_REL = skillPath('caf-spec');
@@ -370,7 +371,7 @@ for (const fixture of FIXTURE_NAMES) {
     };
     assert.deepEqual(parseSections(md).sections.map((s) => s.header), parseSections(old.content).sections.map((s) => s.header));
     // inside Output: same contract line, same steps
-    assert.equal(output.split('\n')[0], old.sections.Output.split('\n')[0]);
+    assert.equal(output.split('\n')[0], sinceSdd06(old.sections.Output.split('\n')[0]));
     const headings = (text) => text.split('\n').filter((l) => l.startsWith('### '));
     assert.deepEqual(headings(output), headings(old.sections.Output));
     assert.ok(!/^## /m.test(output) && !/\bTODO\b/.test(output));
