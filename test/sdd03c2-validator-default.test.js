@@ -20,7 +20,7 @@ import { curateBaseline } from '../src/commands/curate-baseline.js';
 import { skillsTarget } from '../src/commands/skills.js';
 import { detectStack } from '../src/steps/02-detect-stack.js';
 import { buildPlanMd } from '../src/templates/plan-command.js';
-import { buildRunPipelineMd } from '../src/templates/run-pipeline-command.js';
+import { buildRunMd } from '../src/templates/run-command.js';
 import { sinceSdd05a } from './helpers/since-05a.js';
 import { parseSections, sectionBody } from '../src/utils/agent-sections.js';
 import { setSectionBaseline, writeManifest } from '../src/utils/generate-manifest.js';
@@ -255,7 +255,7 @@ function withoutSpecSection(md) {
 
 for (const [name, { input, content }] of Object.entries(PIPELINE)) {
   test(`AC-6: ${name} — roster with validator: the gate is caf-validator and validate-report.md, nothing of caf-qa`, () => {
-    const md = buildRunPipelineMd({ ...input, gate: 'validator' });
+    const md = buildRunMd({ ...input, gate: 'validator' });
     assert.match(md, /caf-validator/);
     assert.match(md, /validate-report\.md/);
     assert.ok(!/caf-qa/.test(md), 'no caf-qa');
@@ -266,7 +266,7 @@ for (const [name, { input, content }] of Object.entries(PIPELINE)) {
   });
 
   test(`AC-6: ${name} — roster with qa: the golden plus the spec status section only`, () => {
-    for (const md of [buildRunPipelineMd(input), buildRunPipelineMd({ ...input, gate: 'qa' })]) {
+    for (const md of [buildRunMd(input), buildRunMd({ ...input, gate: 'qa' })]) {
       // CAF-SDD-03c2c: the command is /caf-run now; the golden is read with that one name changed.
       // CAF-SDD-05a changed the Architect stage; the golden is read through helpers/since-05a.js.
       assert.equal(withoutSpecSection(md), sinceSdd05a(content.replaceAll('/caf-run-pipeline', '/caf-run')));
@@ -287,7 +287,7 @@ test('AC-6: a scaffold with the default roster writes /caf-run with the validato
 
 test('AC-7: /caf-run-pipeline states the spec status rules, for both gates', () => {
   for (const gate of ['qa', 'validator']) {
-    const md = buildRunPipelineMd({ ...PIPELINE['mono-pnpm.with-documentation'].input, gate });
+    const md = buildRunMd({ ...PIPELINE['mono-pnpm.with-documentation'].input, gate });
     const section = sectionOf(md, SPEC_SECTION).body;
     // read the spec first, before the implementation agent
     assert.match(section, /requirements\.md/);

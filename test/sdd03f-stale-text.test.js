@@ -22,7 +22,7 @@ import { curate } from '../src/commands/curate.js';
 import { detectStack } from '../src/steps/02-detect-stack.js';
 import { generateDrafts } from '../src/steps/04-generate-drafts.js';
 import { buildPivWorkflowMd } from '../src/templates/piv-workflow-md.js';
-import { buildRunPipelineMd } from '../src/templates/run-pipeline-command.js';
+import { buildRunMd } from '../src/templates/run-command.js';
 import { buildSpecSkill } from '../src/templates/skill-md.js';
 import { parseSections, sectionBody } from '../src/utils/agent-sections.js';
 import { setSectionBaseline, writeManifest } from '../src/utils/generate-manifest.js';
@@ -71,7 +71,7 @@ const renderPiv = (name) => buildPivWorkflowMd({ agentDir: '.claude/agents', qaR
 // test/sdd03c2-validator-default.test.js); this ticket's relation to its golden is about the rest.
 const SPEC_STATUS_03C2 = /## Spec Status Check[\s\S]*?(?=## 3\. Implementation)/;
 // CAF-SDD-03c2c: the command is /caf-run now; the golden is read with that one name changed.
-const renderPipeline = (name) => buildRunPipelineMd(OLD_PIPELINE[name].input).replace(SPEC_STATUS_03C2, '');
+const renderPipeline = (name) => buildRunMd(OLD_PIPELINE[name].input).replace(SPEC_STATUS_03C2, '');
 // CAF-SDD-05a: also through the Architect stage change (helpers/since-05a.js).
 const renamed = (text) => sinceSdd05a(text.replaceAll('/caf-run-pipeline', '/caf-run'));
 

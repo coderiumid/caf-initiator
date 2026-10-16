@@ -16,7 +16,7 @@ import { agentsSync } from '../src/commands/agents-sync.js';
 import { buildPlanMd, PLAN_COMMAND_NAME } from '../src/templates/plan-command.js';
 import { buildFixReviewMd } from '../src/templates/fix-review-command.js';
 import { buildReviewMd } from '../src/templates/review-command.js';
-import { buildRunPipelineMd } from '../src/templates/run-pipeline-command.js';
+import { buildRunMd } from '../src/templates/run-command.js';
 import { SKILL_NAMES } from '../src/templates/skill-md.js';
 import { writeIfAbsent } from '../src/util.js';
 import { readManifest } from '../src/utils/generate-manifest.js';
@@ -109,7 +109,7 @@ const SINCE_03C1 = {
   },
   'caf-run.md': (old, fixture) => {
     assert.match(old, /caf-qa/, 'the golden is the one recorded with the qa gate');
-    return buildRunPipelineMd({ agentDir: AGENT_DIR, ...PIPELINE_ROLES[fixture], hasArchitect: true, hasDocumentation: false, gate: 'validator' });
+    return buildRunMd({ agentDir: AGENT_DIR, ...PIPELINE_ROLES[fixture], hasArchitect: true, hasDocumentation: false, gate: 'validator' });
   },
 };
 

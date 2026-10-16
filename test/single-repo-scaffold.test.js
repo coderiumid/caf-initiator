@@ -20,7 +20,7 @@ import { taskCompletion } from '../src/commands/task-completion.js';
 import { workflow } from '../src/commands/workflow.js';
 import { agentSlug, buildAgentMd, buildInputSection, buildOutputSection, buildToolsSection } from '../src/templates/agent-md.js';
 import { buildClaudeMd } from '../src/templates/claude-md.js';
-import { buildRunPipelineMd } from '../src/templates/run-pipeline-command.js';
+import { buildRunMd } from '../src/templates/run-command.js';
 import { KNOWN_KINDS, detectKind, parseSections, sectionBody } from '../src/utils/agent-sections.js';
 import {
   RUNTIME_TOKENS,
@@ -322,7 +322,7 @@ test('templates render no unresolved placeholder in either mode', () => {
   const rendered = [
     buildClaudeMd({ mode: 'SINGLE_REPO', isMonorepo: false, monorepoTool: null, packageManager: null, apps: [SINGLE_APP], database: [], tracker: null }),
     buildClaudeMd({ mode: 'MONOREPO', isMonorepo: true, monorepoTool: 'Turborepo', packageManager: 'pnpm', apps: [], database: [], tracker: 'Linear' }),
-    buildRunPipelineMd({ implementationRoles: ['caf-implementer'], appPaths: { 'caf-implementer': ['.'] } }),
+    buildRunMd({ implementationRoles: ['caf-implementer'], appPaths: { 'caf-implementer': ['.'] } }),
     ...KNOWN_KINDS.filter((k) => k !== 'pm' && k !== 'ux-designer').map((kind) =>
       buildAgentMd({ name: kind, role: 'r', scope: 's', scripts: null, packageManager: null, kind, appNames: [], slug: `caf-${kind}` })
     ),

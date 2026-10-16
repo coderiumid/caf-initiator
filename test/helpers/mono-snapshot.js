@@ -15,7 +15,7 @@ import { buildAgentMd, agentSlug } from '../../src/templates/agent-md.js';
 import { buildClaudeMd } from '../../src/templates/claude-md.js';
 import { buildAgentsMd } from '../../src/templates/agents-md.js';
 import { buildTasksReadme } from '../../src/templates/tasks-readme.js';
-import { buildRunPipelineMd } from '../../src/templates/run-pipeline-command.js';
+import { buildRunMd } from '../../src/templates/run-command.js';
 import { buildTaskCompletionMd } from '../../src/templates/task-completion-md.js';
 import { buildPivWorkflowMd } from '../../src/templates/piv-workflow-md.js';
 import { buildAgentHandoffMd } from '../../src/templates/agent-handoff-md.js';
@@ -97,7 +97,7 @@ export async function renderMonoSnapshot(detectOpts = {}) {
       'CLAUDE.md': buildClaudeMd({ ...legacyStack, tracker: 'Linear' }),
       'AGENTS.md': buildAgentsMd({ tracker: 'Linear' }),
       '.caf/tasks/README.md': buildTasksReadme({ tracker: 'Linear' }),
-      '.claude/commands/caf-run.md': buildRunPipelineMd({
+      '.claude/commands/caf-run.md': buildRunMd({
         agentDir: '.claude/agents',
         implementationRoles: ['caf-frontend', 'caf-backend'],
         appPaths: { 'caf-frontend': ['apps/web'], 'caf-backend': ['apps/api'] },

@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { buildRunPipelineMd } from '../../src/templates/run-pipeline-command.js';
+import { buildRunMd } from '../../src/templates/run-command.js';
 import { buildTasksReadme } from '../../src/templates/tasks-readme.js';
 import { FIXTURE_NAMES, renderAgents } from './frozen-kinds.js';
 
@@ -28,7 +28,7 @@ for (const [fixture, roles] of Object.entries(ROLES)) {
       for (const hasDocumentation of [true, false]) {
         const input = { agentDir: '.claude/agents', ...roles, hasArchitect, hasDocumentation, gate };
         const id = `${fixture}.${gate}.${hasArchitect ? 'architect' : 'no-architect'}.${hasDocumentation ? 'docs' : 'no-docs'}`;
-        pipeline[id] = { input, content: buildRunPipelineMd(input) };
+        pipeline[id] = { input, content: buildRunMd(input) };
       }
     }
   }

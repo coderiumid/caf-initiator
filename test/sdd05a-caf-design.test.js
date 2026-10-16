@@ -19,7 +19,7 @@ import { checkDrafts } from '../src/commands/check-drafts.js';
 import { curate } from '../src/commands/curate.js';
 import { skillsTarget, usableSkillPaths } from '../src/commands/skills.js';
 import { buildAgentMd } from '../src/templates/agent-md.js';
-import { buildRunPipelineMd } from '../src/templates/run-pipeline-command.js';
+import { buildRunMd } from '../src/templates/run-command.js';
 import {
   SKILLS_BY_KIND,
   SKILL_NAMES,
@@ -365,7 +365,7 @@ const NO_ARCHITECT_NEW = [
 test('AC-12: /caf-run with an Architect skips the stage when design.md exists, and keeps the spawn criteria', () => {
   for (const [id, { input, content }] of Object.entries(PIPELINE)) {
     if (!input.hasArchitect) continue;
-    const md = buildRunPipelineMd(input);
+    const md = buildRunMd(input);
     assert.equal(md.split(SKIP_SENTENCE).length, 2, id);
     assert.ok(md.indexOf(SKIP_SENTENCE) < md.indexOf('Spawn Architect ('), `${id}: before the spawn criteria`);
     // the previous criteria and closing text are all still there
@@ -385,7 +385,7 @@ test('AC-12: /caf-run with an Architect skips the stage when design.md exists, a
 test('AC-13: /caf-run without an Architect says design.md is the Planner’s and stops only when the ticket meets the criteria and none exists', () => {
   for (const [id, { input, content }] of Object.entries(PIPELINE)) {
     if (input.hasArchitect) continue;
-    const md = buildRunPipelineMd(input);
+    const md = buildRunMd(input);
     assert.ok(content.includes('go through Architect first'), `precondition: ${id} golden`);
     assert.ok(!md.includes('Architect first'), id);
     assert.ok(!/should\s+go through Architect/.test(md), id);
@@ -396,7 +396,7 @@ test('AC-13: /caf-run without an Architect says design.md is the Planner’s and
 
 test('AC-14: outside the two Architect-stage paragraphs /caf-run is the pre-ticket golden, byte for byte', () => {
   for (const [id, { input, content }] of Object.entries(PIPELINE)) {
-    const md = buildRunPipelineMd(input);
+    const md = buildRunMd(input);
     const expected = input.hasArchitect
       ? content.replace('Spawn Architect (`', `${SKIP_SENTENCE}\n\nSpawn Architect (\``)
       : content.replace(

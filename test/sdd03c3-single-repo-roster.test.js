@@ -28,7 +28,7 @@ import { skillsTarget } from '../src/commands/skills.js';
 import { workflow } from '../src/commands/workflow.js';
 import { runScaffoldTarget } from '../src/commands/scaffold.js';
 import { detectStack } from '../src/steps/02-detect-stack.js';
-import { buildRunPipelineMd } from '../src/templates/run-pipeline-command.js';
+import { buildRunMd } from '../src/templates/run-command.js';
 import { readAgentRoster } from '../src/utils/read-agent-roster.js';
 import { renderDefaultFileSet } from './helpers/default-file-set.js';
 import { sinceSdd03c2c } from './helpers/since-03c2c.js';
@@ -247,7 +247,7 @@ test('AC-6: /caf-run of the default roster names caf-frontend and caf-backend, n
 
 test('AC-6: /caf-run rendered for a roster with implementer is byte-for-byte the golden', () => {
   const old = golden('single-nuxt.default').files[RUN_PIPELINE];
-  const content = buildRunPipelineMd({
+  const content = buildRunMd({
     agentDir: AGENT_DIR,
     implementationRoles: ['caf-implementer'],
     appPaths: { 'caf-implementer': ['.'] },
