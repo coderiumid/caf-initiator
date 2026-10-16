@@ -1,4 +1,4 @@
-# CAF-SDD: progres dan backlog (per 16 Okt 2026, malam, setelah 07)
+# CAF-SDD: progres dan backlog (per 16 Okt 2026, malam, setelah 08)
 
 Konteks: adopsi Spec-Driven Development di CAF mengikuti CAF-SDD-SUMMARY.md. Eksekusi per tiket: requirements.md dan tasks.md ditulis konsultan, Claude Code mengeksekusi di `caf-initiator` (atau `caf-orchestrator`), Ganjar mereview, push, dan merge.
 
@@ -6,7 +6,7 @@ Konteks: adopsi Spec-Driven Development di CAF mengikuti CAF-SDD-SUMMARY.md. Eks
 - Semua tiket SDD di initiator (sampai 03g) dan CHORE-01/02 sudah di main; orchestrator sampai 04d sudah di main dan di-deploy ke VPS (16 Okt, ±10:14).
 - caf-initiator 0.1.10 sudah terbit di npm (diverifikasi: `latest` = 0.1.10). Alur rilis: `scripts/release.sh` tidak lagi menjalankan `npm publish`; workflow `npm-publish.yml` (saat release dibuat, menjalankan `npm test`, memakai `secrets.npm_token`) yang menerbitkan.
 - **05a (`caf-design`) dan 05b (`caf-breakdown`) sudah di main** (PR #39, merge 2d3adab, satu PR untuk dua tiket sesuai keputusan Ganjar). Kedua skill masih DRAFT, planner-only, tanpa pointer di `## Skills`.
-- **06 (konsistensi 05a/05b) dan 07 (penegasan agent) selesai dieksekusi (SUCCESS; 949 dan 985 test), baru commit lokal di `ai-agent/CAF-SDD-06` (07 ditumpuk di branch yang sama).** Belum direview, di-push, atau di-merge.
+- **06 (konsistensi 05a/05b), 07 (penegasan agent), dan 08 (rename builder `/caf-run`) selesai dieksekusi (SUCCESS; 949, 985, 989 test), baru commit lokal di `ai-agent/CAF-SDD-06` (07 dan 08 ditumpuk di branch yang sama).** Belum direview, di-push, atau di-merge.
 - umkm-pos: `curate` sudah dijalankan dan semua commit sudah di-push (lihat "Status umkm-pos").
 - Salinan `CAF.md` di dokumen Project ini sudah disegarkan dengan versi repo (bahasa Inggris).
 - Smoke test belum jalan: quota model di VPS habis. Dua ticket Linear (jelas dan ambigu) sudah dibuat.
@@ -42,6 +42,7 @@ Konteks: adopsi Spec-Driven Development di CAF mengikuti CAF-SDD-SUMMARY.md. Eks
 | 05b | skill `caf-breakdown` (lahir DRAFT, hanya planner); planner memeriksa di awal Specify apakah permintaan satu atau beberapa hasil mandiri, dan bila beberapa menulis `breakdown.md` (usulan tiket: item, hasil, dependensi, garis besar AC, urutan) lalu berhenti lewat `requirements.md` garis besar `Status: NEEDS_CLARIFICATION` + satu pertanyaan BLOCKING; `/caf-plan` langkah 5 menampilkan `breakdown.md` dan, bila tool tracker terhubung, menawarkan membuat tiket satu per satu (ya / ubah / lewati); `## Constraints` `/caf-plan` dilonggarkan secukupnya; README tugas menyebut `breakdown.md` | dieksekusi 16 Okt malam (SUCCESS, 927 test, 21 test baru); selesai, di main (PR #39, satu PR dengan 05a). Snapshot 2 entri (`caf-planner.md`, README tugas); helper `since-05b.js` dipakai 8 berkas test lama |
 | 06 | konsistensi 05a/05b: `ARTIFACT_BY_ROLE.planner` kini `` `requirements.md`, `tasks.md` (and `design.md` or `breakdown.md` when the request needs one) `` (satu sumber untuk kalimat kontrak `## Output` planner dan baris Planner di roster `agent-handoff.md`); satu baris baru di `### 1. Specify`: `requirements.md` garis besar untuk permintaan yang dipecah tidak punya AC, tulis `Tidak ada` (baris penomoran AC tidak diubah) | dieksekusi 16 Okt malam (SUCCESS, 949 test; AC-1..7 lulus, AC-8 manual UNVERIFIED); 5 commit lokal di `ai-agent/CAF-SDD-06`, belum di-push/merge. Snapshot 2 entri (`caf-planner.md`, `agent-handoff.md`); 11 test lama disesuaikan lewat `since-06.js` |
 | 07 | penegasan agent, empat perubahan teks `## Output` di `agent-md.js`: (1) agent implementasi (frontend, backend, implementer) tahu `## Coverage` di `tasks.md` adalah peta AC ke task, bukan task; (2) reviewer: temuan blocking ⇒ verdict non-approve, temuan yang hanya bisa diputuskan manusia memakai nilai yang diberi Retry Logic untuk review terblokir, lainnya memakai nilai non-approve yang tersisa, tanpa menyebut nilai verdict; (3) validator di monorepo menjalankan checklist hanya untuk app yang disebut `tasks.md` (atau app yang disentuh perubahan bila tak ada), checklist app yang tidak dijalankan bukan gap; (4) pipa dari perintah atau output di tabel `validate-report.md` ditulis di dalam backtick | dieksekusi 16 Okt malam (SUCCESS, 985 test; AC-9 manual UNVERIFIED); 7 commit lokal di `ai-agent/CAF-SDD-06` (dddb1e8 tiket, 1c48501 golden `pre-sdd07/`, 0a09efa teks, 5c6c8ca test lama + snapshot, 4c7574d test baru, 8d3f253 `CLAUDE.md`, bc02881 verify-report). Snapshot 4 entri (`caf-frontend.md`, `caf-backend.md`, `caf-validator.md`, `caf-reviewer.md`); 8 test lama diubah lewat `since-07.js` |
+| 08 | kosmetik: `src/templates/run-pipeline-command.js` → `run-command.js` (`git mv`), `buildRunPipelineMd` → `buildRunMd`, kunci prompt `generateRunPipeline` → `generateRun`; hanya nama, keluaran scaffold dan golden tidak berubah; tanpa alias ekspor lama (modul internal, `package.json` tanpa `exports`) | dieksekusi 16 Okt malam (SUCCESS, 989 test; AC-4 dan AC-7 manual); 5 commit lokal di `ai-agent/CAF-SDD-06` (0a50f87 tiket, cb3f2b6 rename, 595dad5 pemakai, 8e1e9ae test, f8e2dea `CLAUDE.md`). 12 berkas pemakai (3 di `src/`, 9 di `test/`); `test/fixtures/` tanpa diff; test baru `sdd08-rename.test.js` (membaca riwayat git, skip bila tak ada). `verify-report.md` belum di-commit |
 
 ## Tiket di caf-orchestrator
 | Tiket | Isi | Status |
@@ -177,10 +178,16 @@ Dikerjakan di SDD-04d (selesai): ringkasan/Q-1 hanya untuk validator; DRAFT + BL
 - Belum teruji: apakah reviewer dan validator sungguh berperilaku benar. Test hanya menahan teksnya; perilaku baru terlihat di dispatch nyata.
 - Rollout: keempat perubahan ada di `## Output`, jadi sampai ke repo lama lewat `curate sync` sebagai DRIFT biasa.
 
+## Penilaian laporan 08 (16 Okt malam)
+- Diterima: SUCCESS, 989 test (985 + 4 test baru), 5 commit lokal. T1 tanpa kontradiksi: `scripts/` dan `.github/` tidak menyebut nama lama (A-1 benar); satu-satunya tambahan adalah `.claude/settings.local.json` (di-gitignore) dan section `CLAUDE.md` lama, dibiarkan sebagai riwayat.
+- Di dalam modul hanya baris ekspor dan satu baris JSDoc yang berubah. Jumlah `/caf-run-pipeline` di `src/` dan `README.md` tidak berubah; `test/fixtures/` tanpa diff.
+- Test baru bergantung pada riwayat git untuk menemukan commit sebelum rename dan di-skip bila riwayat tidak ada (mis. checkout dangkal di CI): di CI dengan `fetch-depth` default AC-3 dan AC-5 bisa ter-skip diam-diam. Periksa `npm-publish.yml`/CI saat merge.
+- `verify-report.md` 08 masih untracked (tidak diminta di-commit).
+
 ## Tiket berikutnya
 | Tiket | Isi |
 |---|---|
-| review 06 dan 07 | Ganjar membaca nilai `ARTIFACT_BY_ROLE.planner`, baris Specify baru, section `CLAUDE.md` 06 (AC-8 manual) dan 07 (AC-9 manual), lalu push dan merge branch `ai-agent/CAF-SDD-06` (memuat keduanya). Bila belum pernah dilakukan untuk 05a/05b: bandingkan skill hasil scaffold dengan `caf-design.skill.md` dan `caf-breakdown.skill.md` (abaikan banner) |
+| review 06, 07, dan 08 | Ganjar membaca nilai `ARTIFACT_BY_ROLE.planner`, baris Specify baru, section `CLAUDE.md` 06 (AC-8 manual), 07 (AC-9 manual), dan 08 (AC-4 diff dan AC-7 manual), lalu push dan merge branch `ai-agent/CAF-SDD-06` (memuat keduanya). Bila belum pernah dilakukan untuk 05a/05b: bandingkan skill hasil scaffold dengan `caf-design.skill.md` dan `caf-breakdown.skill.md` (abaikan banner) |
 | dispatch test 05a/05b | di salinan umkm-pos (atau repo uji): jalankan `caf-init` dari clone lokal, hapus banner `caf-design` dan `caf-breakdown` hanya di repo uji, tambah pointer di `## Skills` planner; empat kasus: tiket multi-app → ada `design.md`; tiket satu-app → tanpa `design.md`; permintaan beberapa hasil mandiri → `breakdown.md` + `NEEDS_CLARIFICATION` + satu pertanyaan BLOCKING; satu hasil banyak langkah → satu spec tanpa `breakdown.md`; plus `/caf-plan` dengan Linear terhubung (ya / ubah / lewati). Hasilnya menentukan pencabutan banner dan nasib `architect` |
 | smoke test | orchestrator sudah di-deploy dan planner umkm-pos sudah di-sync lokal; menunggu quota model: (1) gate caf-qa tanpa Q-1 (ticket jelas); (2) jalur Clarify (ticket ambigu, pertanyaan BLOCKING); (3) jalur gerbang + `/caf-approve-spec`, lalu cek PR menjadi Ready (menguji A-2); (4) `/caf-approve-spec` pada ticket yang sudah SUCCESS, baris dashboard tidak berubah (tanpa model, bisa lebih dulu); (5) komentar status orchestrator tidak ikut terbaca sebagai jawaban Clarify; (6) payload label/komentar Linear dan GitHub |
 | 02f (hanya bila perlu) | sisa kelemahan planner dari Uji 7 |
@@ -212,6 +219,7 @@ Rincian tiket yang sudah selesai (hash spec dan keputusan Q-n):
 - 04d: ringkasan/Q-1 hanya gate `caf-validator`; `DRAFT` + BLOCKING tanpa Answer → Clarify di atas gerbang label; `APPROVED` dengan BLOCKING tanpa Answer tetap lanjut (tidak diubah); run lanjutan sukses menandai PR Ready (tidak pernah melempar); resume yang ditolak tidak menyentuh baris dashboard.
 - 05a (Ganjar, 16 Okt): `caf-design` dan `caf-breakdown` dua tiket terpisah; planner memutuskan sendiri apakah menulis `design.md` lewat kriteria (lebih dari satu app/service, schema/migration, kontrak antar-layer; selain itu tidak ada `design.md`); `design.md` tidak punya gerbang persetujuan sendiri, ia ikut gerbang spec dan masuk Draft PR yang sama; tanpa perubahan orchestrator. Keputusan konsultan: `architect` tetap ada dan tetap ditawarkan sampai dispatch test `caf-design` terbukti.
 - 05b (Ganjar, 16 Okt): planner menulis `breakdown.md` sebagai usulan lalu berhenti; tiket dibuat manusia atau satu per satu di chat dengan konfirmasi per tiket; tanpa perubahan orchestrator. Keputusan konsultan (Ganjar boleh mengubah): pemicu pemecahan = lebih dari satu hasil yang bisa dirilis dan dipakai sendiri-sendiri (bukan hitungan AC); stop memakai `NEEDS_CLARIFICATION` + satu pertanyaan BLOCKING, setelah dijawab planner tidak memecah lagi; `/caf-plan` boleh membuat tiket setelah "ya" per tiket (kelonggaran Constraints).
+- 08 (Ganjar, 16 Okt): kosmetik digabung ke branch yang sama. Keputusan konsultan: nama `run-command.js`/`buildRunMd` (selaras `plan-command.js`, `review-command.js`), tanpa alias lama, nama golden `run-pipeline.json` dibiarkan.
 - 07 (Ganjar, 16 Okt): lanjut di branch yang sama dengan 06. Keputusan konsultan: reviewer dipertegas tanpa menyebut nilai verdict (aturan 03b2); pipa di tabel validator hanya lewat backtick (satu cara); `## Coverage` ditegaskan sebagai peta, bukan task.
 - 06 (Ganjar, 16 Okt): tiket konsistensi hanya memuat kelompok "konsistensi 05a/05b"; penegasan agent, kosmetik, dan `caf-spec` v4 tetap backlog. Keputusan konsultan: satu nilai `ARTIFACT_BY_ROLE.planner` untuk kalimat kontrak dan roster; pengecualian AC ditulis sebagai baris baru, bukan dengan mengubah baris penomoran yang ditahan test.
 - Alur rilis (CHORE-01): publish hanya lewat workflow `npm-publish.yml` saat release dibuat.
@@ -219,7 +227,7 @@ Rincian tiket yang sudah selesai (hash spec dan keputusan Q-n):
 - Rollout umkm-pos: `curate sync` 4 section DRIFT (02d), lalu `## Output` planner (02e), lalu `## Output` planner 03f (semua sudah ter-sync).
 
 ## Urutan berikutnya
-1. Ganjar: review 06 dan 07 (satu branch: nilai `ARTIFACT_BY_ROLE.planner`, baris Specify baru, empat perubahan teks 07, section `CLAUDE.md` keduanya), push dan merge. (05a+05b sudah di-merge, PR #39.)
+1. Ganjar: review 06, 07, dan 08 (satu branch; 08 hanya nama, baca per commit: nilai `ARTIFACT_BY_ROLE.planner`, baris Specify baru, empat perubahan teks 07, section `CLAUDE.md` keduanya), push dan merge. (05a+05b sudah di-merge, PR #39.)
 2. Ganjar (orchestrator): commit `.ai/tasks/CAF-SDD-04d/`; hapus `CAF-TEST` dari working tree umkm-pos bila masih ada.
 3. Tanpa model, sekarang: smoke test 4 (`/caf-approve-spec` pada ticket SUCCESS), cek `/health` dan log orchestrator; verifikasi secret GitHub `npm_token` ada.
 4. Setelah quota pulih: smoke test 1, 2, 3 (ticket sudah ada di Linear).
@@ -244,7 +252,7 @@ Rincian tiket yang sudah selesai (hash spec dan keputusan Q-n):
 - Reviewer menyalin usulan spec ke `### For Developer` di `review-notes.md` (bukan `## Proposed Spec Changes`); pertimbangkan satu tempat yang sama dengan validator/fix-review dan pastikan `readFixReviewLog` dan prompt fix-review membacanya.
 - `agent-handoff.md` ikut berubah di snapshot 03c2 (daftar agent); tidak ter-sync, hapus lalu scaffold ulang di repo lama.
 - (Selesai di 07: Coverage agent implementasi, verdict reviewer, cakupan checklist validator, pipa di tabel validator; perilaku nyata dicek di dispatch.)
-- Kosmetik: rename builder `buildRunPipelineMd` dan `run-pipeline-command.js`.
+- (Selesai di 08: rename builder `/caf-run`.)
 
 ## Catatan rollout repo lama
 - `agent-handoff.md` tanpa sync (`writeIfAbsent`): hapus lalu `caf-init scaffold workflow`. Sama untuk `piv-workflow.md` dan `/caf-run-pipeline` (teks 03f).
@@ -267,6 +275,7 @@ Rincian tiket yang sudah selesai (hash spec dan keputusan Q-n):
 - (05a) Folder artefak tiket di repo initiator sendiri adalah `.ai/tasks/<ID>/`; `.caf/tasks/` adalah konvensi repo target. Prompt eksekusi untuk tiket initiator harus menyebut `.ai/tasks/`. Setelah .gitignore initiator dilepas (Ganjar), `git add -f` tidak lagi dibutuhkan.
 - (05a) Gerbang hash untuk berkas yang dikirim lewat chat terus gagal karena newline akhir (keenam kalinya) dan mahal untuk dicari penyebabnya. Untuk berkas yang sudah ada di repo dan akan direview manusia, prompt cukup menyebut lokasinya dan melarang mengubah isinya; hash dipertahankan hanya bila berkas dikirim ulang lewat tempel.
 - (04d) Membaca kode sebelum menulis spec menemukan penyebab sebenarnya (F-4: `recordPipelineStarted` untuk semua job), bukan hanya gejala yang dilaporkan. Tulis Finding dari kode, bukan dari ingatan.
+- (08) Rename murni: AC "byte-identik" dijaga dengan larangan menyentuh `test/fixtures/` dan test pembanding terhadap commit sebelum rename; test yang bergantung riwayat git rentan ter-skip di checkout dangkal.
 - (07) Klaim lintas-repo (perilaku orchestrator) ditulis sebagai Assumption dan diverifikasi T1 dengan STOP bila bertentangan; hasilnya benar (A-1) dan meleset sebagian (A-2, tidak mengubah AC).
 - (06) AC dokumentasi yang `Verify:`-nya manual dilaporkan UNVERIFIED oleh eksekutor; `Status: SUCCESS` tetap sah bila semua AC otomatis lulus, dan manusia yang membaca bagian itu sebelum merge. Tulis di spec bahwa AC manual itu tugas reviewer, bukan celah.
 - (06) Backlog besar dipecah dengan memilih kelompok lewat pertanyaan multi-pilih sebelum menulis spec; tiket kecil yang saling lepas lebih cepat diselesaikan dan direview daripada satu tiket "semua sisa".
