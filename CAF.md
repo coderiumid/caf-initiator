@@ -50,11 +50,13 @@ NOT an error and NOT a gap** — it is `SINGLE_REPO` mode, a fully supported mod
   repo folder name), path `.`. Per-app placeholders are **not used at all** — don't leave them
   empty and don't fill them with guesses:
   - One `CLAUDE.md` at the root, no `{{APP_N}}/CLAUDE.md`.
-  - One implementation agent, `caf-implementer.md` (not `caf-frontend.md`/`caf-backend.md`).
-    Minimal roster: `caf-planner`, `caf-implementer`, `caf-qa`, `caf-reviewer`.
+  - Two whole-repo implementation agents, `caf-frontend.md` and `caf-backend.md` (not a single
+    `caf-implementer`; `--role frontend|backend` generates just one of them). Default roster:
+    `caf-planner`, `caf-frontend`, `caf-backend`, `caf-validator`, `caf-reviewer`
+    (`caf-validator` replaces `caf-qa`).
   - `.caf/knowledge/golden-examples/RULES.md` directly in that folder, with no app subfolder.
   - Quality gates use the non-monorepo form (`{{PKG_MANAGER}} run <script>`, no `--filter`).
-  - `caf-implementer`'s scope defaults to the whole repo. If the repo has clear directory
+  - The implementation agents' scope defaults to the whole repo. If the repo has clear directory
     boundaries (e.g. domain layers in a DDD repo), the scope may be written per directory — the
     directory list is decided by the user, not guessed.
 - `{{PKG_MANAGER}}`: the `packageManager` field in the root `package.json` first; if absent, from
@@ -63,14 +65,10 @@ NOT an error and NOT a gap** — it is `SINGLE_REPO` mode, a fully supported mod
 - If detection gets it wrong, the user can override the mode explicitly. In the CLI: `caf-init scaffold
   --mode single|mono` (per-directory scope: `--scope <dir...>`). The CLI flow and the "AI reads
   this document" flow must arrive at the same `{{REPO_MODE}}`.
-- Caveat: `caf-orchestrator` currently routes only `caf-frontend`/`caf-backend`. Until its
-  routing is updated, `caf-implementer` is used directly in Claude Code or through
-  `/caf-run`.
-- If this `SINGLE_REPO` project does run through `caf-orchestrator`, its single implementation
-  agent is written under a name the orchestrator routes: `caf-frontend.md` or
-  `caf-backend.md` (still one agent, scope still the whole repo / per directory). The role is
-  **asked of the user**, not guessed from the framework. In the CLI: `caf-init scaffold agents --role
-  frontend|backend` (default `implementer`).
+- The role of an implementation agent in `SINGLE_REPO` is **asked of the user**, not guessed from
+  the framework. In the CLI: `caf-init scaffold agents --role frontend|backend` for just one of
+  the two (default: both). The names `caf-frontend`/`caf-backend` are the ones `caf-orchestrator`
+  routes.
 
 **Also check for these optional Layer 1 documents** (they come from the Product/Design domain
 and are not created by CAF — CAF only reads them if present):
@@ -444,7 +442,7 @@ Store them in `.claude/agents/` (for Claude Code) or the equivalent folder for o
 ```
 
 **8 Specialist Agents (match the {{APP_1}}/{{APP_2}} names to the detection results; in `SINGLE_REPO`
-the two {{APP_1}}/{{APP_2}} rows are replaced by a single `caf-implementer` agent — see Step 2b):**
+the two {{APP_1}}/{{APP_2}} rows are replaced by whole-repo `caf-frontend` and `caf-backend` agents — see Step 2b; `caf-validator` is what `caf-init` scaffolds in place of the QA row):**
 
 | Agent | Phase | Output Artifact |
 |---|---|---|
@@ -775,7 +773,7 @@ project-root/
 │   │   ├── caf-architect.md         ← Layer 2
 │   │   ├── {{app_1}}.md             ← Layer 2 — NOT prefixed, see the note below
 │   │   ├── {{app_2}}.md             ← Layer 2 — NOT prefixed, see the note below
-│   │   ├── caf-qa.md                ← Layer 2
+│   │   ├── caf-validator.md         ← Layer 2 (replaces the earlier caf-qa.md)
 │   │   ├── caf-reviewer.md          ← Layer 2
 │   │   └── caf-documentation.md     ← Layer 2
 │   └── commands/
