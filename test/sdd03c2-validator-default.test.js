@@ -30,12 +30,19 @@ import { renderCommands } from './helpers/commands-render.js';
 import { copyFixture, snapshotTree } from './helpers/make-repo.js';
 import { silenced } from './helpers/mono-snapshot.js';
 import { swapConstraints } from './helpers/swap-constraints.js';
+import { sinceSdd07 } from './helpers/since-07.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir, renderAgents } from './helpers/frozen-kinds.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const GOLDEN = path.join(ROOT, 'test', 'fixtures', 'pre-sdd03c2');
 const golden = (name) => JSON.parse(fs.readFileSync(path.join(GOLDEN, name), 'utf8'));
 const read = (dir, rel) => fs.readFileSync(path.join(dir, rel), 'utf8');
+
+// CAF-SDD-07 changed the reviewer's Output; the golden is not edited, so it is read through helpers/since-07.js.
+const goldenReviewer = (fixture) => {
+  const g = golden(`reviewer.${fixture}.json`);
+  return { ...g, content: sinceSdd07(g.content) };
+};
 
 const PIPELINE = golden('run-pipeline.json');
 const ANSI = /\u001b\[[0-9;]*m/g;
@@ -333,7 +340,7 @@ test('AC-8: /caf-plan stops for NEEDS_CLARIFICATION and NEEDS_HUMAN, and reports
 
 for (const fixture of FIXTURE_NAMES) {
   test(`AC-9: ${fixture} — reviewer Input names validate-report.md and qa-report.md; the rest is the golden`, async () => {
-    const old = golden(`reviewer.${fixture}.json`);
+    const old = goldenReviewer(fixture);
     const now = (await renderAgents(fixture)).reviewer;
     const before = mdSections(old.content);
     const after = mdSections(now.content);
@@ -408,7 +415,7 @@ for (const fixture of FIXTURE_NAMES) {
   test(`AC-10: ${fixture} — pre-ticket planner and reviewer: curate sync writes only their Input (the planner's Output too since CAF-SDD-03c2b)`, async () => {
     const files = {
       'caf-planner.md': golden(`planner.${fixture}.json`).content,
-      'caf-reviewer.md': golden(`reviewer.${fixture}.json`).content,
+      'caf-reviewer.md': goldenReviewer(fixture).content,
     };
     const dir = baselined(fixture, files);
     const before = snapshotTree(dir);
@@ -440,10 +447,10 @@ for (const fixture of FIXTURE_NAMES) {
 
   test(`AC-10: ${fixture} — a customized Input is not overwritten`, async () => {
     const planner = golden(`planner.${fixture}.json`).content.replace('Ticket description from the tracker (required).', 'Ticket description from OUR tracker (required).');
-    const reviewer = golden(`reviewer.${fixture}.json`).content.replace('(required).', '(required) — and ask Sam.');
+    const reviewer = goldenReviewer(fixture).content.replace('(required).', '(required) — and ask Sam.');
     assert.notEqual(planner, golden(`planner.${fixture}.json`).content);
-    assert.notEqual(reviewer, golden(`reviewer.${fixture}.json`).content);
-    const dir = baselined(fixture, { 'caf-planner.md': golden(`planner.${fixture}.json`).content, 'caf-reviewer.md': golden(`reviewer.${fixture}.json`).content });
+    assert.notEqual(reviewer, goldenReviewer(fixture).content);
+    const dir = baselined(fixture, { 'caf-planner.md': golden(`planner.${fixture}.json`).content, 'caf-reviewer.md': goldenReviewer(fixture).content });
     // edit after the baseline: current != baseline
     fs.writeFileSync(path.join(dir, AGENT_DIR, 'caf-planner.md'), planner);
     fs.writeFileSync(path.join(dir, AGENT_DIR, 'caf-reviewer.md'), reviewer);

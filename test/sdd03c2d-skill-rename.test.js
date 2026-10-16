@@ -6,6 +6,7 @@
 // `curate` reports) — never regenerate it. Every scaffold below runs on a temp copy of a fixture.
 
 import test from 'node:test';
+import { sinceSdd07 } from './helpers/since-07.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -114,7 +115,7 @@ for (const fixture of SKILL_FIXTURES) {
     for (const kind of Object.keys(before)) {
       assert.ok(before[kind].content.includes(OLD_PATH), `${kind}: the golden points at the old skill`);
       assert.equal(now[kind].file, before[kind].file);
-      assert.equal(now[kind].content, rename(before[kind].content), kind);
+      assert.equal(now[kind].content, rename(sinceSdd07(before[kind].content)), kind); // CAF-SDD-07: helpers/since-07.js
       assert.ok(now[kind].content.includes(NEW_PATH) && !now[kind].content.includes(OLD), kind);
     }
   });

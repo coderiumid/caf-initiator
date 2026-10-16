@@ -39,6 +39,7 @@ import { silenced } from './helpers/mono-snapshot.js';
 import { CONTENT_VARIANTS, renderScaffoldContents } from './helpers/scaffold-contents.js';
 import { AGENT_DIR, fixtureDir } from './helpers/frozen-kinds.js';
 import { sinceSdd06Files } from './helpers/since-06.js';
+import { sinceSdd07Files } from './helpers/since-07.js'; // CAF-SDD-07
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const GOLDEN = path.join(ROOT, 'test', 'fixtures', 'pre-sdd03c3');
@@ -47,7 +48,7 @@ const GOLDEN = path.join(ROOT, 'test', 'fixtures', 'pre-sdd03c3');
 const golden = (id) => {
   const raw = JSON.parse(fs.readFileSync(path.join(GOLDEN, `${id}.json`), 'utf8'));
   const rename = (f) => f.replace('caf-run-pipeline.md', 'caf-run.md');
-  return { ...raw, commands: raw.commands.filter((f) => f !== 'caf-plan-ticket.md').map(rename).sort(), files: sinceSdd06Files(sinceSdd05bFiles(sinceSdd05aFiles(sinceSdd03c2c(raw.files)))) };
+  return { ...raw, commands: raw.commands.filter((f) => f !== 'caf-plan-ticket.md').map(rename).sort(), files: sinceSdd07Files(sinceSdd06Files(sinceSdd05bFiles(sinceSdd05aFiles(sinceSdd03c2c(raw.files))))) };
 };
 const ANSI = /\u001b\[[0-9;]*m/g;
 

@@ -28,11 +28,18 @@ import { silenced, renderMonoSnapshot } from './helpers/mono-snapshot.js';
 import { swapConstraints } from './helpers/swap-constraints.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir, frontmatterTools, renderAgents, trackedSections } from './helpers/frozen-kinds.js';
 import { withLiveInput } from './helpers/swap-input.js';
+import { sinceSdd07 } from './helpers/since-07.js';
 
 const PRE = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'pre-sdd03e');
 const golden = (name) => JSON.parse(fs.readFileSync(path.join(PRE, name), 'utf8'));
+// CAF-SDD-07 changed the Output of the reviewer and the validator; the golden is not edited, so it
+// is read through helpers/since-07.js.
+const readOld = (name) => {
+  const g = golden(name);
+  return { ...g, content: sinceSdd07(g.content) };
+};
 const OLD = Object.fromEntries(
-  ['validator', 'reviewer', 'planner'].map((kind) => [kind, Object.fromEntries(FIXTURE_NAMES.map((f) => [f, golden(`${kind}.${f}.json`)]))])
+  ['validator', 'reviewer', 'planner'].map((kind) => [kind, Object.fromEntries(FIXTURE_NAMES.map((f) => [f, readOld(`${kind}.${f}.json`)]))])
 );
 const OLD_WP = golden('working-pattern-by-kind.json');
 

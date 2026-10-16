@@ -34,6 +34,7 @@ import { sinceSdd05bFiles } from './helpers/since-05b.js';
 import { CONTENT_VARIANTS, renderScaffoldContents } from './helpers/scaffold-contents.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir } from './helpers/frozen-kinds.js';
 import { sinceSdd06Files } from './helpers/since-06.js';
+import { sinceSdd07Files } from './helpers/since-07.js'; // CAF-SDD-07
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const GOLDEN = path.join(ROOT, 'test', 'fixtures', 'pre-sdd03c2b');
@@ -125,7 +126,7 @@ for (const { id } of CONTENT_VARIANTS) {
     // CAF-SDD-03c2c: /caf-plan-ticket is not written and /caf-run-pipeline is /caf-run.
     before.files = sinceSdd03c2c(before.files, after.files);
     // CAF-SDD-05a: the golden through that ticket's three text changes (helpers/since-05a.js).
-    before.files = sinceSdd06Files(sinceSdd05bFiles(sinceSdd05aFiles(before.files))); // CAF-SDD-05b: helpers/since-05b.js; CAF-SDD-06: helpers/since-06.js
+    before.files = sinceSdd07Files(sinceSdd06Files(sinceSdd05bFiles(sinceSdd05aFiles(before.files)))); // CAF-SDD-05b: helpers/since-05b.js; CAF-SDD-06: helpers/since-06.js
     assert.deepEqual(Object.keys(after.files).sort(), Object.keys(before.files).sort());
     assert.deepEqual(after.agents, before.agents);
 
