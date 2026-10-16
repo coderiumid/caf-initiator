@@ -642,8 +642,8 @@ and eight commands (`caf-discovery-start`, `caf-discovery-to-ticket`, `caf-audit
   review commands, the note about the PM agent in `.caf/knowledge/INDEX.md`) was unchanged on purpose
   here. CAF-SDD-03c2 fixed all of them except the `.gitignore` lines (kept on purpose); every rename
   is 03c2b.
-- Do not publish a `caf-init` release with this change before caf-orchestrator handles a repo
-  without `caf-documentation` (CAF-SDD-04).
+- Release gate, now met: caf-orchestrator skips the docs step when a repo has no `caf-documentation`
+  agent (SDD-04a), and `caf-init` 0.1.10 shipped with this change.
 
 ## The final roster, and stale text aligned (CAF-SDD-03f)
 
