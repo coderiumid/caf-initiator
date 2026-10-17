@@ -19,6 +19,7 @@ import { SPEC_V3, SPEC_V3_TO_V4, sinceSdd10 } from './helpers/since-10.js';
 import { sinceSdd06 } from './helpers/since-06.js';
 import { SKILL_FIXTURES, renderSkillFiles } from './helpers/skills-render.js';
 import { sinceSdd11 } from './helpers/since-11.js';
+import { sinceSdd12 } from './helpers/since-12.js';
 
 const ROOT = path.join(path.dirname(new URL(import.meta.url).pathname), '..');
 const FIXTURES = path.join(ROOT, 'test', 'fixtures');
@@ -60,7 +61,7 @@ for (const fixture of FIXTURE_NAMES) {
   test(`AC-5: planner on ${fixture} is the planner of before this ticket`, async () => {
     const golden = JSON.parse(fs.readFileSync(path.join(FIXTURES, 'pre-sdd06', `planner.${fixture}.json`), 'utf8'));
     const rendered = await renderAgents(fixture);
-    assert.equal(rendered.planner.content, sinceSdd11(sinceSdd06(golden.content))); // CAF-SDD-11 added a rule to the planner
+    assert.equal(rendered.planner.content, sinceSdd12(sinceSdd11(sinceSdd06(golden.content)))); // CAF-SDD-11 added a rule to the planner
   });
 }
 

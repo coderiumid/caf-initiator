@@ -42,6 +42,7 @@ import { BREAKDOWN_LINES, PLAN_CONSTRAINT_NEW, PLAN_CONSTRAINT_OLD, PLAN_STEP5_A
 import { AGENT_DIR, FIXTURE_NAMES, GOLDEN_DIR, fixtureDir, renderAgents, trackedSections } from './helpers/frozen-kinds.js';
 import { sinceSdd06 } from './helpers/since-06.js';
 import { sinceSdd11 } from './helpers/since-11.js';
+import { sinceSdd12 } from './helpers/since-12.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const GOLDEN = path.join(ROOT, 'test', 'fixtures', 'pre-sdd05b');
@@ -214,8 +215,8 @@ for (const fixture of FIXTURE_NAMES) {
     const md = rendered[fixture].planner.content;
     const old = OLD_PLANNER[fixture];
     // CAF-SDD-06 changed the contract sentence and added a Specify line (helpers/since-06.js).
-    assert.equal(md.replace(`${SPLIT_LINES.join('\n')}\n`, ''), sinceSdd11(sinceSdd06(old.content))); // CAF-SDD-11: helpers/since-11.js
-    assert.equal(md, sinceSdd11(sinceSdd06(sinceSdd05b(old.content))));
+    assert.equal(md.replace(`${SPLIT_LINES.join('\n')}\n`, ''), sinceSdd12(sinceSdd11(sinceSdd06(old.content)))); // CAF-SDD-11: helpers/since-11.js
+    assert.equal(md, sinceSdd12(sinceSdd11(sinceSdd06(sinceSdd05b(old.content)))));
     assert.equal(md.match(/^tools: \[.*\]$/m)[0], old.content.match(/^tools: \[.*\]$/m)[0]);
     assert.equal(md.split('\n').slice(0, 8).join('\n'), old.content.split('\n').slice(0, 8).join('\n'));
     const now = trackedSections(md);
@@ -273,7 +274,7 @@ for (const fixture of FIXTURE_NAMES) {
 
     const now = read(dir, PLANNER_REL);
     assert.equal(now, rendered[fixture].planner.content);
-    assert.equal(now.replace(`${SPLIT_LINES.join('\n')}\n`, ''), sinceSdd11(sinceSdd06(old)), 'only the two bullets differ (and the 06 and 11 text)');
+    assert.equal(now.replace(`${SPLIT_LINES.join('\n')}\n`, ''), sinceSdd12(sinceSdd11(sinceSdd06(old))), 'only the two bullets differ (and the 06 and 11 text)');
     assert.equal(now.replace(bodyOf(now, 'Output'), bodyOf(old, 'Output')), old, 'only inside ## Output');
     const after = agentTree(dir);
     for (const [rel, content] of Object.entries(before)) if (rel !== 'caf-planner.md') assert.equal(after[rel], content, rel);

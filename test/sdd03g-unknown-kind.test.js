@@ -35,6 +35,7 @@ import { APP_AGENT, CUSTOM_AGENT, STALE_OUTPUT, makeDrift, makeKindsRepo, relati
 import { sinceSdd06Files } from './helpers/since-06.js';
 import { sinceSdd07Files } from './helpers/since-07.js'; // CAF-SDD-07
 import { sinceSdd11Files } from './helpers/since-11.js';
+import { sinceSdd12Files } from './helpers/since-12.js';
 
 // Once inject() has been called, prompts never reads stdin: an empty queue answers every prompt with its `initial`.
 prompts.inject([]);
@@ -374,7 +375,7 @@ test('AC-10: the default scaffold of every variant is the recorded one', async (
     const now = await renderScaffoldContents(variant);
     const recorded = golden(`scaffold.${variant.id}.json`);
     // CAF-SDD-05a changed three texts of the scaffold (helpers/since-05a.js); the golden is not touched.
-    recorded.files = sinceSdd11Files(sinceSdd07Files(sinceSdd06Files(sinceSdd05bFiles(sinceSdd05aFiles(recorded.files))))); // CAF-SDD-11: helpers/since-11.js // CAF-SDD-05b: planner Specify, helpers/since-05b.js; CAF-SDD-06: helpers/since-06.js
+    recorded.files = sinceSdd12Files(sinceSdd11Files(sinceSdd07Files(sinceSdd06Files(sinceSdd05bFiles(sinceSdd05aFiles(recorded.files)))))); // CAF-SDD-11: helpers/since-11.js // CAF-SDD-05b: planner Specify, helpers/since-05b.js; CAF-SDD-06: helpers/since-06.js
     assert.deepEqual(now.offered, recorded.offered, variant.id);
     assert.deepEqual(now.agents, recorded.agents, variant.id);
     assert.deepEqual(now.commands, recorded.commands, variant.id);

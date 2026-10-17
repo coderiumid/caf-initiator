@@ -1105,8 +1105,29 @@ bullet and before the `Tidak ada` bullet; no new `###` heading, no `TODO`, no ne
 - **Rollout.** `curate sync` carries `## Output` as an ordinary `DRIFT` (an edited one is a
   `CONFLICT` and is left alone). Nothing else to do.
 - Older tests that compare a planner or its `## Output` with a golden read the golden through
-  `test/helpers/since-11.js` (applied after `since-06`/`since-07`); goldens and assertions are
-  untouched. `mono-pnpm.json` was regenerated for this, one entry changed (`caf-planner.md`). Not a
+  `test/helpers/since-11.js` (applied after `since-06`/`since-07`, then `since-12.js`); goldens and
+  assertions are untouched. `mono-pnpm.json` was regenerated for this, one entry changed (`caf-planner.md`). Not a
   precedent. `frozen-kinds` did not change.
 - Whether the model follows the rule on a real Indonesian and a real English ticket is not tested by
   code: it needs a dispatch by a human (CAF-SDD-11 AC-9).
+- **Where the language comes from (CAF-SDD-12).** A real dispatch showed the rule was read as "the language of whatever the planner sees": an
+  English ticket that quoted an Indonesian UI string got Indonesian prose in 2 of 3 identical runs,
+  and the same ticket without the string got English. The bullet now says the language is the one the
+  ticket author wrote in, judged from the title and the author's own sentences, not from UI text
+  quoted in the ticket, code, or files read; an English ticket that quotes an Indonesian label stays
+  English with the label quoted as it is. The final message to the user follows the same language.
+  Same bullet in `### 1. Specify` of the tracked `## Output`, one added sentence, no new `###`
+  heading, no `TODO`, no new status value, no list of languages or words to avoid; the fixed words
+  and the quoted-text sentence of CAF-SDD-11 are unchanged. The skills are untouched (`caf-spec`,
+  `caf-design`, `caf-breakdown` keep their hashes).
+- `test/sdd12-planner-language.test.js` holds the added lines verbatim against
+  `test/fixtures/pre-sdd12/` (recorded by `test/helpers/record-sdd12.mjs` from the HEAD of CAF-SDD-11
+  — never regenerate it). `test/sdd11-planner-language.test.js` and the other tests that held the
+  SDD-11 bullet read through `test/helpers/since-12.js` (applied after `since-11.js`).
+  `mono-pnpm.json` was updated for this, one entry changed (`caf-planner.md`). Not a precedent.
+- **Rollout.** `curate sync` carries `## Output` as an ordinary `DRIFT` for a planner generated with
+  the SDD-11 text (or before it) and not edited; an `## Output` edited by hand stays a `CONFLICT` and
+  the file is unchanged. Nothing else to roll out.
+- Whether the model now follows it is a dispatch result, not a code guarantee (CAF-SDD-12 AC-9,
+  measured in the umkm-pos test worktree). A run that still fails is a limit of the model; do not
+  tighten the sentence again by adding word lists.
