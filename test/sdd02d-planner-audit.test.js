@@ -23,6 +23,7 @@ import { curate } from '../src/commands/curate.js';
 import { skillsTarget } from '../src/commands/skills.js';
 import { buildSkillsSection, buildToolsSection } from '../src/templates/agent-md.js';
 import { buildSpecSkill, skillPath } from '../src/templates/skill-md.js';
+import { specV4ToV3 } from './helpers/since-10.js';
 import { parseSections, sectionBody } from '../src/utils/agent-sections.js';
 import { setSectionBaseline, writeManifest } from '../src/utils/generate-manifest.js';
 import { hashSection, SECTION_STATUS } from '../src/utils/section-diff.js';
@@ -341,7 +342,7 @@ for (const fixture of FIXTURE_NAMES) {
 }
 
 test('AC-8: `caf-spec` is the same file as before this ticket (sha256), and `## Skills` is rendered as it was', () => {
-  assert.equal(sha256(buildSpecSkill()), SPEC_FINAL_SHA256);
+  assert.equal(sha256(specV4ToV3(buildSpecSkill())), SPEC_FINAL_SHA256); // CAF-SDD-10: read as v3
   const pointers = ['caf-scope-discipline', 'caf-no-guess', 'caf-spec'].map(skillPath);
   assert.equal(sha256(buildSkillsSection(pointers)), '9b69da288f3b9dcb25380fa235bcd0ed7d8c45605cd4f4d5f87b7bb79be9aac7');
 });

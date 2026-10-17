@@ -27,6 +27,7 @@ import { silenced, renderMonoSnapshot } from './helpers/mono-snapshot.js';
 import { constraintsBody, swapConstraints } from './helpers/swap-constraints.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir, renderAgents, trackedSections } from './helpers/frozen-kinds.js';
 import { sinceSdd06 } from './helpers/since-06.js';
+import { SPEC_V3, specV4ToV3 } from './helpers/since-10.js';
 
 const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures');
 const SPEC_REL = skillPath('caf-spec');
@@ -120,8 +121,9 @@ function skillSection(md, heading) {
 
 test('AC-1: caf-spec is the v3 ticket source verbatim (sha256) once its banner is put back, at most 90 lines', () => {
   const md = buildSpecSkill();
-  assertIsSource(withBanner(md), SPEC_V3_SHA256);
-  assertDraftBanner(withBanner(md));
+  // CAF-SDD-10: the live skill is v4; the v3 text is the fixture recorded before it (helpers/since-10.js)
+  assertIsSource(withBanner(SPEC_V3), SPEC_V3_SHA256);
+  assertDraftBanner(withBanner(SPEC_V3));
   assert.ok(!hasSkillDraftBanner(md), 'no banner since CAF-SDD-02c');
   assert.ok(lineCount(md) <= 90, `${lineCount(md)} lines`);
   for (const mode of ['SINGLE_REPO', 'MONOREPO']) {
@@ -139,7 +141,7 @@ test('AC-1: scaffold skills in an empty test repo writes caf-spec identical to t
   assert.ok(!result.drafts.includes('caf-spec'), 'active since CAF-SDD-02c');
 
   const md = read(dir, SPEC_REL);
-  assertIsSource(withBanner(md), SPEC_V3_SHA256);
+  assertIsSource(withBanner(specV4ToV3(md)), SPEC_V3_SHA256); // CAF-SDD-10: written file is v4, read as v3
   assert.ok(lineCount(md) <= 90);
 });
 

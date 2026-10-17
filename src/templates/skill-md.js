@@ -255,7 +255,11 @@ Do not commit or push unless the user asks.`,
 // caf-spec (CAF-SDD-01). Content is taken verbatim from the ticket — don't reword it here. It is
 // the v3 source since CAF-SDD-02b (`Finding:`, facts are not questions, `Verify: command:`), and
 // since CAF-SDD-02c it carries no DRAFT banner: the dispatch re-test of v3 passed, so the skill is
-// active and the planner is pointed at it. A test holds the whole file by sha256.
+// active and the planner is pointed at it. Since CAF-SDD-10 it is v4, the text of
+// .ai/tasks/CAF-SDD-10/caf-spec.skill.v4.md verbatim: six replacements, aligning it with the
+// planner's `## Output` (`Tidak ada` for an empty section, `Assumption A-n:`, the `NEEDS_HUMAN`
+// status value, the refactor/config exception, and no `flow.md` line). A test holds the whole file
+// by sha256.
 //
 // It is the one skill that defines an artifact format: `requirements.md`, the spec it exists to
 // describe, including the `Status:` line inside that file. That is as far as it goes — it may
@@ -288,7 +292,7 @@ If the agent definition conflicts with this skill, the agent definition wins.
 Write the spec content in the language the ticket is written in.
 
 ## Size
-- Depth follows ticket size. Small ticket: half a page. Do not add empty sections; write \`-\` when there is genuinely nothing.
+- Depth follows ticket size. Small ticket: half a page. Do not add empty sections; write \`Tidak ada\` when there is genuinely nothing.
 - The spec answers WHAT and WHY. How (files, functions, libraries) belongs to \`design.md\` and \`tasks.md\`, not here.
 - Facts read from the code go in section 3 as short bullets: cite the file path, no line numbers, no full inventories unless an AC depends on the list.
 
@@ -296,7 +300,7 @@ Write the spec content in the language the ticket is written in.
 
 \`\`\`markdown
 # <short title>
-Status: DRAFT | NEEDS_CLARIFICATION | APPROVED
+Status: DRAFT | NEEDS_CLARIFICATION | APPROVED | NEEDS_HUMAN
 Source: <ticket ID or "chat">
 
 ## 1. Outcome
@@ -310,7 +314,7 @@ Out:
 
 ## 3. Constraints and Assumptions
 - Constraint: ...
-- Assumption: ... (label every assumption; a risky assumption becomes an open question)
+- Assumption A-1: ... (number every assumption A-1, A-2, ... and write what it rests on; a risky assumption becomes an open question)
 - Finding: ... (the ticket says X, the code or repo shows Y)
 
 ## 4. Decisions Already Made
@@ -327,13 +331,12 @@ Out:
 ## Acceptance Criteria rules
 - The marker must be exactly \`AC-<number>:\` at the start of the item (read by regex; do not change the format).
 - One behavior per AC. Observable and testable; no subjective words ("fast", "clean", "intuitive") unless given a measurable threshold.
-- Describe behavior, not location: no line numbers or function names. Exception: a ticket that is itself a refactor or config change may name the artifact, still without line numbers.
+- Describe behavior, not location: no line numbers or function names. Exception, on a refactor or config ticket only: the \`When ... then\` sentence may name the file path or symbol that is the subject of the ticket, and no other path or symbol.
 - Always write \`Verify:\` with one of three forms; never leave it empty (the validator uses it to flag ACs without tests):
   - \`automated test\` — name the test file or suite when known.
   - \`command: <command> | expect: <exit code or output>\` — a deterministic command from the repo's verify checklist; the validator runs it.
   - \`manual: <short steps>\` — only when neither of the above is possible.
 - Include failure paths and relevant edge cases (empty input, unauthorized, network error), not only the happy path.
-- Ticket touches UI: screen flow and states go in \`flow.md\`; the ACs stay here.
 
 ## Open Questions rules
 - First check the ticket, the code, the ADRs and \`CLAUDE.md\`. Whatever you can answer by reading is a fact (section 3) or a \`Finding:\`, never a question.
@@ -347,7 +350,7 @@ Out:
 - Spec wrong, impossible, or the request changes scope: write the proposed change in \`verify-report.md\`; a human decides.
 
 ## Check before finishing
-1. All six sections present and filled (or \`-\`).
+1. All six sections present and filled (or \`Tidak ada\`).
 2. Every AC has a unique, sequential number and a \`Verify:\`.
 3. No implementation details; no guess that is not labeled as an assumption or an open question.
 4. No more than 5 questions, none answerable from the code.

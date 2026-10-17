@@ -24,6 +24,7 @@ import { generateDrafts } from '../src/steps/04-generate-drafts.js';
 import { buildPivWorkflowMd } from '../src/templates/piv-workflow-md.js';
 import { buildRunMd } from '../src/templates/run-command.js';
 import { buildSpecSkill } from '../src/templates/skill-md.js';
+import { specV4ToV3 } from './helpers/since-10.js';
 import { parseSections, sectionBody } from '../src/utils/agent-sections.js';
 import { setSectionBaseline, writeManifest } from '../src/utils/generate-manifest.js';
 import { hashSection, SECTION_STATUS } from '../src/utils/section-diff.js';
@@ -346,7 +347,7 @@ for (const fixture of FIXTURE_NAMES) {
       if (header === 'Output') continue;
       assert.equal(nowSections[header], old.sections[header], header);
     }
-    assert.equal(sha256(buildSpecSkill()), SPEC_FINAL_SHA256);
+    assert.equal(sha256(specV4ToV3(buildSpecSkill())), SPEC_FINAL_SHA256); // CAF-SDD-10: read as v3
   });
 }
 

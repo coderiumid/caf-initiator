@@ -169,7 +169,7 @@ in `TARGETS` but not in `CHAIN_ORDER`. No `--skill-dir` — `curate` has no matc
   `build-only`, `manual`, `none`). It defines no status or verdict word and no other part of any
   report. The same five forms are in the verify-report format of
   `src/templates/agent-handoff-md.js`, so change both or neither (a test compares them).
-- `caf-spec` is at v3 and `caf-traceability` at v2 since CAF-SDD-02b. Both are the ticket source
+- `caf-spec` is at v4 (CAF-SDD-10, see below) and `caf-traceability` at v2. Both are the ticket source
   verbatim, held by sha256 in `test/sdd02b-spec-v3.test.js` (`caf-traceability` also in
   `test/sdd02-planner-spec.test.js`; `caf-spec` as it is now, without its banner, in
   `test/sdd02c-spec-active.test.js`) — never reword them in `skill-md.js`. v3 adds: `Finding:` in
@@ -178,8 +178,21 @@ in `TARGETS` but not in `CHAIN_ORDER`. No `--skill-dir` — `curate` has no matc
   `command: <command> | expect: <exit code or output>`, reported in `verify-report.md` as
   `command` with the result observed. Nothing in caf-init runs or parses a `command:` — that is
   the validator's and the orchestrator's work (CAF-SDD-03b, 04).
+- `caf-spec` v4 (CAF-SDD-10) is `.ai/tasks/CAF-SDD-10/caf-spec.skill.v4.md` verbatim (76 lines, sha256
+  in `test/sdd10-spec-v4.test.js`) and differs from v3 in six places, all to line the skill up with
+  the planner's `## Output`: an empty section is `Tidak ada` (Size and the last check, not `-`),
+  assumptions are `Assumption A-n:`, `Status:` has a fourth value `NEEDS_HUMAN`, the refactor/config
+  exception is the narrow one of 03f (the `When ... then` sentence may name the path or symbol that
+  is the subject of the ticket, no other), and the `flow.md` line is gone (the `ux-designer` that
+  wrote it is no longer scaffolded; UI states are ordinary ACs). `NEEDS_HUMAN` is a value of the
+  `Status:` line of `requirements.md` only, not a report word. The v3 render is
+  `test/fixtures/pre-sdd10/caf-spec.v3.SKILL.md` (never regenerate it); the older tests that hold
+  the v3 hashes read the live skill as v3 (`specV4ToV3`, `test/helpers/since-10.js`), and goldens that
+  hold v3 are read through `sinceSdd10`. Rollout: a repo with the v3 skill keeps it
+  (`writeIfAbsent`; no sync); delete `.claude/skills/caf-spec/SKILL.md` and run
+  `caf-init scaffold skills` to get v4. Planner and every other file are unchanged.
 - `caf-spec` is active since CAF-SDD-02c: the re-test of v3 with real dispatches passed, so the
-  builder renders it without a banner (77 lines, the same text otherwise) and a planner gets a
+  builder renders it without a banner (77 lines for v3, the same text otherwise) and a planner gets a
   pointer to it. The pointer comes from the banner rule (`usableSkillPaths`), not from a
   hardcoded list — don't add one. `caf-spec` is mapped to `planner` only.
 - `caf-traceability` is still born a DRAFT in every repo (no `TODO` line, its own 3-line banner,
@@ -328,9 +341,10 @@ other new line in the two sections. What that text must keep:
   `verify-report.md`, `Status: NEEDS_HUMAN`, never a line of `requirements.md`; the final message
   starts with one plain `Status: <value>` line.
 - The rules are in `## Output`, not in `caf-spec`: a skill is never synced, and its text is held
-  by sha256. Two of them differ from a skill on purpose, and the agent definition wins:
-  `caf-spec` says to write `-` for an empty section, and `caf-no-guess` says to write an open
-  item as a line that starts with the to-do word. Don't "fix" the skills to match.
+  by sha256. `caf-spec` and the planner are aligned since CAF-SDD-10 (`Tidak ada`, `Assumption A-n:`,
+  the refactor exception, the four `Status:` values). One difference is left on purpose, and the
+  agent definition wins: `caf-no-guess` says to write an open item as a line that starts with the
+  to-do word. Don't "fix" that skill to match.
 - The word `TODO` must still not appear in that text (`check-drafts` counts it per agent), which
   is why the first rule said "a note ... that says something was not read yet".
 - The ticket run (headless marker) was the one exception to "no `tasks.md`" (it wrote a blocked
@@ -378,8 +392,8 @@ implementer to read what the spec needed. What that text must keep:
   tracked section. (The blocked note of a ticket run, which held no tasks and got no coverage part,
   is gone since CAF-SDD-03c2b.)
 - The skills are not changed (`caf-spec` and `caf-no-guess` are both held by sha256 in the test).
-  Where they differ, the agent definition wins: `caf-spec` writes `Assumption:` with no number
-  and lets a refactor ticket name the artifact in an AC.
+  Where they differ, the agent definition wins: at 02e `caf-spec` wrote `Assumption:` with no number
+  and let a refactor ticket name the artifact in an AC (aligned at CAF-SDD-10).
 - Rollout: `curate sync` carries `## Output` as ordinary `DRIFT`; a planner whose `## Output` was
   edited by hand is a `CONFLICT` and is left alone. Nothing to roll out for the skills.
 - `mono-pnpm.json` was regenerated for this, one entry changed (`caf-planner.md`). Not a precedent.

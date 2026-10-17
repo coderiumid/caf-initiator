@@ -7,6 +7,7 @@
 
 import test from 'node:test';
 import { sinceSdd07 } from './helpers/since-07.js';
+import { sinceSdd10 } from './helpers/since-10.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -94,10 +95,12 @@ for (const fixture of SKILL_FIXTURES) {
     assert.ok(NEW_PATH in now);
     assert.ok(!Object.keys(now).some((rel) => rel.includes(`/${OLD}/`)), 'no caf-verify folder');
     assert.deepEqual(Object.keys(now).sort(), Object.keys(before).map(renamePath).sort());
-    for (const [rel, content] of Object.entries(before)) assert.equal(now[renamePath(rel)], rename(content), rel);
+    // CAF-SDD-10: the golden holds caf-spec v3 (helpers/since-10.js)
+    const upto10 = (c) => (c.includes('# caf-spec — writing requirements.md') ? sinceSdd10(c) : c);
+    for (const [rel, content] of Object.entries(before)) assert.equal(now[renamePath(rel)], rename(upto10(content)), rel);
     // the skills that never mention the old name are byte-identical to the golden
     for (const [rel, content] of Object.entries(before)) {
-      if (!content.includes(OLD) && !rel.includes(OLD)) assert.equal(now[rel], content, rel);
+      if (!content.includes(OLD) && !rel.includes(OLD)) assert.equal(now[rel], upto10(content), rel);
     }
     assert.match(now[NEW_PATH], /^---\nname: caf-self-verify\n/);
   });
