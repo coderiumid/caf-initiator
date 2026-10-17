@@ -14,6 +14,7 @@ import { buildSpecSkill, buildDesignSkill, buildBreakdownSkill } from '../src/te
 import { parseSections, sectionBody } from '../src/utils/agent-sections.js';
 import { readManifest, setSectionBaseline, writeManifest } from '../src/utils/generate-manifest.js';
 import { hashSection } from '../src/utils/section-diff.js';
+import { sinceSdd12 } from './helpers/since-12.js';
 import { snapshotTree } from './helpers/make-repo.js';
 import { silenced } from './helpers/mono-snapshot.js';
 import { makeOldRepo } from './helpers/old-repo.js';
@@ -36,6 +37,10 @@ const LANGUAGE_RULE = [
   '  `NON-BLOCKING`, `Answer:` and `Tidak ada`. File paths, symbol names, commands and text',
   '  quoted from the ticket are written as they are.',
 ];
+// CAF-SDD-12 added sentences to this bullet (helpers/since-12.js). The rule above is the SDD-11 text,
+// held as it was; the rendered planner carries it through `sinceSdd12`. Nothing is loosened: the
+// planner is still compared line for line, with the SDD-12 sentences in the expected text.
+const LANGUAGE_RULE_NOW = sinceSdd12(`${LANGUAGE_RULE.join('\n')}\n`).trimEnd().split('\n');
 const ANCHOR_BEFORE = '  no open `BLOCKING` question is `Status: DRAFT`.';
 const ANCHOR_AFTER = '- A section with nothing to say is written `Tidak ada`. Never a placeholder: not `- -`, not an';
 
@@ -53,20 +58,20 @@ for (const fixture of FIXTURE_NAMES) {
     const lines = trackedSections(rendered[fixture].planner.content).Output.split('\n');
     const specify = lines.indexOf('### 1. Specify');
     const plan = lines.findIndex((l, i) => i > specify && l.startsWith('### '));
-    const at = lines.findIndex((l, i) => i > specify && l === LANGUAGE_RULE[0]);
+    const at = lines.findIndex((l, i) => i > specify && l === LANGUAGE_RULE_NOW[0]);
     assert.ok(specify >= 0 && at > specify && at < plan, 'inside ### 1. Specify');
-    assert.deepEqual(lines.slice(at, at + LANGUAGE_RULE.length), LANGUAGE_RULE);
+    assert.deepEqual(lines.slice(at, at + LANGUAGE_RULE_NOW.length), LANGUAGE_RULE_NOW);
     assert.equal(lines[at - 1], ANCHOR_BEFORE);
-    assert.equal(lines[at + LANGUAGE_RULE.length], ANCHOR_AFTER);
+    assert.equal(lines[at + LANGUAGE_RULE_NOW.length], ANCHOR_AFTER);
   });
 
   test(`AC-2: planner on ${fixture} — the only difference from the golden is the added lines`, () => {
     const md = rendered[fixture].planner.content;
     const old = OLD_PLANNER[fixture].content;
     assert.notEqual(md, old);
-    assert.equal(md.replace(`${LANGUAGE_RULE.join('\n')}\n`, ''), old);
+    assert.equal(md.replace(`${LANGUAGE_RULE_NOW.join('\n')}\n`, ''), old);
     const oldLines = old.split('\n');
-    assert.deepEqual(md.split('\n').filter((l) => !oldLines.includes(l)), LANGUAGE_RULE);
+    assert.deepEqual(md.split('\n').filter((l) => !oldLines.includes(l)), LANGUAGE_RULE_NOW);
     assert.deepEqual(oldLines.filter((l) => !md.split('\n').includes(l)), []);
     assert.equal(md.match(/^tools: \[.*\]$/m)[0], old.match(/^tools: \[.*\]$/m)[0]);
     assert.equal(md.split('\n').slice(0, 8).join('\n'), old.split('\n').slice(0, 8).join('\n'));
@@ -83,10 +88,10 @@ for (const fixture of FIXTURE_NAMES) {
     for (const [kind, old] of Object.entries(outputs)) {
       const now = rendered[fixture][kind] ? trackedSections(rendered[fixture][kind].content).Output ?? null : null;
       if (kind === 'planner') {
-        assert.equal(now.replace(`${LANGUAGE_RULE.join('\n')}\n`, ''), old);
+        assert.equal(now.replace(`${LANGUAGE_RULE_NOW.join('\n')}\n`, ''), old);
       } else {
         assert.equal(now, old, kind);
-        assert.ok(!(now ?? '').includes(LANGUAGE_RULE[0]), kind);
+        assert.ok(!(now ?? '').includes(LANGUAGE_RULE_NOW[0]), kind);
       }
     }
   });
@@ -140,7 +145,7 @@ for (const fixture of FIXTURE_NAMES) {
 
     const now = read(dir, PLANNER_REL);
     assert.equal(now, rendered[fixture].planner.content);
-    assert.equal(now.replace(`${LANGUAGE_RULE.join('\n')}\n`, ''), old, 'only the rule is new');
+    assert.equal(now.replace(`${LANGUAGE_RULE_NOW.join('\n')}\n`, ''), old, 'only the rule is new');
     const after = agentTree(dir);
     for (const [rel, content] of Object.entries(before)) if (rel !== 'caf-planner.md') assert.equal(after[rel], content, rel);
     assert.deepEqual((await sync(dir, false)).drifted, []);

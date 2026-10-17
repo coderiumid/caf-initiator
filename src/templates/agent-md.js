@@ -710,6 +710,9 @@ ${buildSkillsBody(skillPaths)}
 //   follows the language of the ticket, the words other agents read (headings, `Status:` and its
 //   values, `AC-n:`, `Verify:`, `Finding:`, `Assumption A-n:`, `Q-n`, `BLOCKING`, `Answer:`,
 //   `Tidak ada`) do not. An intent plus one short list of fixed tokens, not a list of words to avoid.
+// - One sentence added to that rule at CAF-SDD-12: the language is the one the ticket author wrote in
+//   (title and sentences), not that of UI text quoted in the ticket, code or files read, and the
+//   final message to the user follows it. Same bullet, still an intent, no list of languages.
 // - `###` sub-headings only: a `## ` line here would be read as a section boundary.
 // - No `TODO` word (check-drafts counts them per agent) and no generate-time placeholder.
 const PLANNER_SPEC_WORKFLOW = [
@@ -760,7 +763,11 @@ const PLANNER_SPEC_WORKFLOW = [
   '  no open `BLOCKING` question is `Status: DRAFT`.',
   '- Write the prose of `requirements.md`, `tasks.md`, `design.md` and `breakdown.md` in the',
   '  language of the ticket description (of the request, when it comes from chat), and the open',
-  '  questions too. The words the templates and other agents read stay exactly as the templates',
+  '  questions too. The language is the one the ticket author wrote in, judged from the title and',
+  '  sentences of the ticket, not from UI text quoted in it, code, or files you read: an English',
+  '  ticket that quotes an Indonesian label is still written in English, with the label quoted as',
+  '  it is. Your final message to the user follows the same language.',
+  '  The words the templates and other agents read stay exactly as the templates',
   '  show them, in every language: section headings, `Status:` and its values, `AC-n:`,',
   '  `Verify:` and its three forms, `Finding:`, `Assumption A-n:`, `Q-n`, `BLOCKING`,',
   '  `NON-BLOCKING`, `Answer:` and `Tidak ada`. File paths, symbol names, commands and text',
