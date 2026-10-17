@@ -14,6 +14,12 @@ it detects a target repo's stack/tracker and writes CAF's starter files into it.
 understanding *what* the generated files should contain, not an instruction to execute against
 this repo.
 
+`CAF.md` is kept in step with the tickets (the roster, commands, skills and artifacts it describes
+are the ones `caf-init` scaffolds). Other files refer to its headings — `### Layer 3 — Artifact
+Handoff`, `### Layer 2 — Agent Definitions`, `### Cluster 1 — Discovery`, `### Cluster 4 — Audit` —
+so don't rename them. `test/sdd09-caf-md.test.js` guards the terms (present and stale ones), not the
+whole text.
+
 ## Commands
 
 - Run the CLI: `node src/index.js <command> [options]` (bin name `caf-init` once installed/linked).
