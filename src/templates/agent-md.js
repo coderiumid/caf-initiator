@@ -706,6 +706,10 @@ ${buildSkillsBody(skillPaths)}
 // - Two skills say otherwise and the agent definition wins: `caf-spec` (`-` for an empty section,
 //   `Assumption:` with no number, a refactor ticket may name the artifact in an AC) and
 //   `caf-no-guess` (item 4, the open-item line), which the text names. The skills are not changed.
+// - One rule added at CAF-SDD-11, right after the `Status:` bullet: the prose of the four artifacts
+//   follows the language of the ticket, the words other agents read (headings, `Status:` and its
+//   values, `AC-n:`, `Verify:`, `Finding:`, `Assumption A-n:`, `Q-n`, `BLOCKING`, `Answer:`,
+//   `Tidak ada`) do not. An intent plus one short list of fixed tokens, not a list of words to avoid.
 // - `###` sub-headings only: a `## ` line here would be read as a section boundary.
 // - No `TODO` word (check-drafts counts them per agent) and no generate-time placeholder.
 const PLANNER_SPEC_WORKFLOW = [
@@ -754,6 +758,13 @@ const PLANNER_SPEC_WORKFLOW = [
   '- The status of `requirements.md` is one plain line, `Status: <value>`, never a heading. The',
   '  values are `DRAFT`, `NEEDS_CLARIFICATION`, `APPROVED` and `NEEDS_HUMAN`. A spec written with',
   '  no open `BLOCKING` question is `Status: DRAFT`.',
+  '- Write the prose of `requirements.md`, `tasks.md`, `design.md` and `breakdown.md` in the',
+  '  language of the ticket description (of the request, when it comes from chat), and the open',
+  '  questions too. The words the templates and other agents read stay exactly as the templates',
+  '  show them, in every language: section headings, `Status:` and its values, `AC-n:`,',
+  '  `Verify:` and its three forms, `Finding:`, `Assumption A-n:`, `Q-n`, `BLOCKING`,',
+  '  `NON-BLOCKING`, `Answer:` and `Tidak ada`. File paths, symbol names, commands and text',
+  '  quoted from the ticket are written as they are.',
   '- A section with nothing to say is written `Tidak ada`. Never a placeholder: not `- -`, not an',
   '  empty section, not `TBD`.',
   '- Number every acceptance criterion `AC-1:`, `AC-2:`, ... and end each one with `Verify:` in',

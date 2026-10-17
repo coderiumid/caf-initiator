@@ -81,7 +81,7 @@ test('caf-spec template: no placeholder, no open TODO line, example headings sta
     '## 4. Decisions Already Made', '## 5. Open Questions', '## 6. Acceptance Criteria',
   ]);
   const template = lines.slice(open + 1, close);
-  for (const expected of ['In:', 'Out:', 'Status: DRAFT | NEEDS_CLARIFICATION | APPROVED']) {
+  for (const expected of ['In:', 'Out:', 'Status: DRAFT | NEEDS_CLARIFICATION | APPROVED | NEEDS_HUMAN']) {
     assert.ok(template.includes(expected), expected);
   }
   assert.ok(template.some((l) => /^- AC-1: When .*, then .*\. Verify: /.test(l)));
@@ -107,11 +107,13 @@ test('caf-spec: no banner since CAF-SDD-02c, no project name; the agent definiti
 test('caf-spec defines requirements.md only: no report format, no report status or verdict word', () => {
   const md = buildSpecSkill();
   const statusLines = md.split('\n').filter((l) => /^Status:/.test(l));
-  assert.deepEqual(statusLines, ['Status: DRAFT | NEEDS_CLARIFICATION | APPROVED']);
+  assert.deepEqual(statusLines, ['Status: DRAFT | NEEDS_CLARIFICATION | APPROVED | NEEDS_HUMAN']);
+  // since CAF-SDD-10 NEEDS_HUMAN is a value of the Status line of requirements.md, nowhere else
+  assert.equal(md.match(/\bNEEDS_HUMAN\b/g).length, 1);
   // the only report file named, and only as the place to write a proposed spec change
   assert.deepEqual([...new Set(md.match(/\b[a-z-]+-(?:report|notes)(?:\.md)?\b/g))], ['verify-report.md']);
   assert.ok(!/validate-report|review-notes|qa-report/.test(md));
-  assert.ok(!/\b(?:SUCCESS|NEEDS_HUMAN|PASS(?:ED)?|FAIL(?:ED)?|BLOCKED|REQUEST_CHANGES|CHANGES_REQUESTED)\b/.test(md));
+  assert.ok(!/\b(?:SUCCESS|PASS(?:ED)?|FAIL(?:ED)?|BLOCKED|REQUEST_CHANGES|CHANGES_REQUESTED)\b/.test(md));
   assert.ok(!/## (?:Attempt Log|Quality Gate|Verdict)/.test(md));
 });
 

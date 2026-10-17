@@ -21,6 +21,7 @@ import { fileURLToPath } from 'node:url';
 import { agentsSync } from '../src/commands/agents-sync.js';
 import { buildSkillsSection, buildToolsSection } from '../src/templates/agent-md.js';
 import { buildNoGuessSkill, buildSpecSkill, skillPath } from '../src/templates/skill-md.js';
+import { specV4ToV3 } from './helpers/since-10.js';
 import { parseSections, sectionBody } from '../src/utils/agent-sections.js';
 import { setSectionBaseline, writeManifest } from '../src/utils/generate-manifest.js';
 import { hashSection, SECTION_STATUS } from '../src/utils/section-diff.js';
@@ -32,6 +33,7 @@ import { BREAKDOWN_LINES, sinceSdd05b } from './helpers/since-05b.js';
 import { swapConstraints } from './helpers/swap-constraints.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir, frontmatterTools, renderAgents, trackedSections } from './helpers/frozen-kinds.js';
 import { OUTLINE_LINES, sinceSdd06 } from './helpers/since-06.js';
+import { sinceSdd11 } from './helpers/since-11.js';
 
 const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures');
 const PLANNER_REL = path.join(AGENT_DIR, 'caf-planner.md');
@@ -329,7 +331,7 @@ for (const fixture of FIXTURE_NAMES) {
     const old = { ...OLD_PLANNER[fixture], sections: { ...OLD_PLANNER[fixture].sections } };
     // CAF-SDD-05a replaced three lines of the Plan step (test/sdd05a-caf-design.test.js holds the new
     // text); the golden's Output is read through it, so this comparison still holds the 02e text.
-    old.sections.Output = sinceSdd06(sinceSdd05b(sinceSdd05a(old.sections.Output))); // CAF-SDD-06: the contract sentence
+    old.sections.Output = sinceSdd11(sinceSdd06(sinceSdd05b(sinceSdd05a(old.sections.Output)))); // CAF-SDD-06: the contract sentence; CAF-SDD-11: helpers/since-11.js
     // CAF-SDD-05b, after this ticket, added two bullets to Specify (helpers/since-05b.js); the golden is read through them.
     // CAF-SDD-03f added one rule after this ticket (test/sdd03f-stale-text.test.js holds its text);
     // it is taken out here so this comparison still holds the 02e text line for line.
@@ -350,7 +352,7 @@ for (const fixture of FIXTURE_NAMES) {
 }
 
 test('AC-11: `caf-spec` and `caf-no-guess` are the files of before this ticket (sha256), and `## Skills` is rendered as it was', () => {
-  assert.equal(sha256(buildSpecSkill()), SPEC_FINAL_SHA256);
+  assert.equal(sha256(specV4ToV3(buildSpecSkill())), SPEC_FINAL_SHA256); // CAF-SDD-10: read as v3
   assert.equal(sha256(buildNoGuessSkill()), NO_GUESS_SHA256);
   const pointers = ['caf-scope-discipline', 'caf-no-guess', 'caf-spec'].map(skillPath);
   assert.equal(sha256(buildSkillsSection(pointers)), '9b69da288f3b9dcb25380fa235bcd0ed7d8c45605cd4f4d5f87b7bb79be9aac7');

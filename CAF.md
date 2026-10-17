@@ -142,6 +142,17 @@ and the result contradicts the criterion; `UNVERIFIED` for anything it could not
 its count and ids are always on the `Unverified:` line. The Validator is the successor of the QA
 Agent and is being connected to the pipeline.
 
+**What the Planner writes.** The Planner always writes `requirements.md` and `tasks.md`. When the
+request needs one, it also writes `design.md` or `breakdown.md` itself. `design.md` (a technical
+design) is written when a ticket meets at least one of three criteria: it spans more than one app or
+service, it adds or changes a schema or migration, or it adds or changes a contract between layers;
+none of the three means no `design.md` at all. `breakdown.md` (a proposal of tickets: item, order,
+dependencies, AC outline) is written when a request holds more than one outcome that could ship and
+be used on its own; one outcome reached in many steps is not split, its steps go to `tasks.md`.
+Neither file has a `Status:` line: they ride the approval of the spec. The formats live in the
+skills `caf-design` and `caf-breakdown` (Layer 2), and the commands `/caf-plan` and `/caf-run` drive
+the flow (Layer 2 and the folder structure below).
+
 ---
 
 ## 4-Cluster Structure
@@ -167,6 +178,8 @@ especially for rules that require judgment (as opposed to mechanical rules). A f
 cases (positive and negative in one run) is more convincing than fixtures tested one at a time.
 
 ### Cluster 1 — Discovery
+> Status: not scaffolded by `caf-init` since CAF-SDD-03c1; the description below is unchanged.
+
 Agents: Product Manager, UX Designer (optional, only when the ticket touches a user-facing surface).
 Document access only — the PM Agent does **not** have direct write access to the tracker; tickets
 are created through a separate approval gate (same pattern as Cluster 4), so that no AI can
@@ -211,12 +224,16 @@ The PM Agent reads `docs/product/feature-catalog.md` (read-only, see Layer 1) to
 existing capabilities before proposing something new — instead of reading the code directly.
 
 ### Cluster 3 — Release *(deferred)*
+> Status: not scaffolded by `caf-init` since CAF-SDD-03c1; the description below is unchanged.
+
 Agents: Quality Assurance (staging), DevOps. **Not running yet** — waiting until a project has
 real staging infrastructure to test against. If your project deploys straight to `main` without
 staging, skip this cluster entirely; don't create a staging environment just to fill in
 this cluster.
 
 ### Cluster 4 — Audit
+> Status: not scaffolded by `caf-init` since CAF-SDD-03c1; the description below is unchanged.
+
 Agent: Auditor, running independently to check production that is already live — unlike Cluster 3's
 staging QA, which is a gate before release. Coverage: functional bugs + tech debt/performance,
 **excluding deep security scanning** (outside the CAF Auditor's responsibility).
@@ -304,22 +321,26 @@ and claiming to be done without verification.
 ```
 Incoming ticket ({{TRACKER}}/GitHub Issues)
   ↓
-Planner Agent      — read the ticket, write a plan (don't touch code)
+Planner Agent      — Specify: read the ticket, write requirements.md (don't touch code)
+  ↓                  Clarify: a BLOCKING question without an answer stops the run and asks the human
+  ↓                  Plan: tasks.md, plus design.md or breakdown.md when the request needs one
   ↓
-Architect Agent    — decide the technical approach (optional, for complex tasks)
+[Human approval gate] — a human approves the spec (Status: APPROVED) before any implementation
   ↓
 {{APP_1}}/{{APP_2}} Agent — implementation + self-verify (verify retry up to 3x)
   ↓
-Documentation Agent — update docs (parallel, non-blocking)
-  ↓
-QA Agent           — in-depth testing, edge-case checks
-  ↓
+Validator Agent    — checks every acceptance criterion, writes validate-report.md
+  ↓                  (the older gate is the QA Agent, qa-report.md, in repos scaffolded earlier)
 Reviewer Agent     — qualitative review (approach, technical debt, security)
   ↓
 Open PR + Mention Developer
   ↓
 [next phase] AI PR Reviewer — responds to human reviewers' comments
 ```
+
+Optional and superseded steps, not part of the final roster: the Architect Agent (a design step for
+complex tasks, being folded into the Planner through `design.md`) and the Documentation Agent
+(update docs, parallel and non-blocking). Neither is mandatory.
 
 **Important note:** human review is still mandatory before merging. There is no auto-merge under
 any circumstances.
@@ -441,19 +462,23 @@ Store them in `.claude/agents/` (for Claude Code) or the equivalent folder for o
 [if verify fails: fix and retry up to N times]
 ```
 
-**8 Specialist Agents (match the {{APP_1}}/{{APP_2}} names to the detection results; in `SINGLE_REPO`
-the two {{APP_1}}/{{APP_2}} rows are replaced by whole-repo `caf-frontend` and `caf-backend` agents — see Step 2b; `caf-validator` is what `caf-init` scaffolds in place of the QA row):**
+**Specialist agents.** The final roster is five agents: `caf-planner`, `caf-frontend`, `caf-backend`,
+`caf-validator`, `caf-reviewer`. Match the {{APP_1}}/{{APP_2}} names to the detection results; in
+`SINGLE_REPO` the two {{APP_1}}/{{APP_2}} rows are replaced by whole-repo `caf-frontend` and
+`caf-backend` agents — see Step 2b. What `caf-init` scaffolds is this roster; the optional or
+superseded rows are marked.
 
 | Agent | Phase | Output Artifact |
 |---|---|---|
-| Planner | Plan | `requirements.md`, `tasks.md` |
-| Architect | Plan (optional) | `design.md` |
+| Planner | Plan | `requirements.md`, `tasks.md` (and `design.md` or `breakdown.md` when the request needs one) |
 | {{APP_1}} (e.g. Frontend) | Implement + Verify | code + `verify-report.md` |
 | {{APP_2}} (e.g. Backend) | Implement + Verify | code + `verify-report.md` |
-| QA | In-depth Verify | `qa-report.md` |
+| Validator | Validate against the spec | `validate-report.md` |
 | Reviewer | Qualitative review | `review-notes.md` |
-| Documentation | Parallel | update `docs/` |
-| DevOps | Post-merge (next phase) | deployment |
+| Architect *(optional, being folded into the Planner)* | Plan | `design.md` |
+| QA *(superseded by the Validator)* | In-depth Verify | `qa-report.md` |
+| Documentation *(optional)* | Parallel | update `docs/` |
+| DevOps *(optional, post-merge, next phase)* | Post-merge (next phase) | deployment |
 
 **Recognizing an agent file (`caf-init curate`, `scaffold skills`):** A `.claude/agents/*.md` file is recognized by its name: a known kind (`caf-<kind>.md`, or `<kind>.md`), or `<app-slug>.md` for an app that `caf-init` detected (the per-app `implementation` agent). Any other name is skipped and reported with a warning — never compared with a template, synced, baselined or offered a `## Skills` section. Known limit: an agent you wrote by hand under a name equal to an app slug is treated as that app's `implementation` agent.
 
@@ -488,7 +513,8 @@ without bloating `CLAUDE.md`.
 
 CAF's built-in skills are **universal** and all start with `caf-`: `caf-self-verify` (the repo's actual
 verification commands), `caf-scope-discipline`, `caf-no-guess`, `caf-escalate`, and `caf-piv`
-(manual sessions only). CAF does **not** ship a library of framework conventions: those go stale
+(manual sessions only), plus the spec skills `caf-spec`, `caf-traceability`, `caf-design` and
+`caf-breakdown`. CAF does **not** ship a library of framework conventions: those go stale
 quickly and are a guess about the target repo.
 
 **How a skill reaches its reader:**
@@ -518,10 +544,19 @@ quickly and are a guess about the target repo.
   headless run has nobody to answer.
 - A skill must not change a contract the orchestrator parses (report file names, status words).
   When a skill conflicts with the agent definition, the agent definition wins.
-- Built-in mapping: implementation agents get `caf-self-verify`, `caf-scope-discipline`,
-  `caf-no-guess`, `caf-escalate`; QA gets `caf-self-verify`, `caf-no-guess`; Planner, Architect,
-  Reviewer, Documentation get `caf-scope-discipline`, `caf-no-guess`; Auditor, DevOps, PM,
-  UX Designer get no skills.
+- Built-in mapping (what `caf-init` writes, `SKILLS_BY_KIND` in `src/templates/skill-md.js`):
+  - `caf-frontend`, `caf-backend`: `caf-self-verify`, `caf-scope-discipline`, `caf-no-guess`,
+    `caf-escalate`, `caf-traceability`; the per-app implementation agent gets the first four.
+  - `caf-validator`: `caf-self-verify`, `caf-no-guess`, `caf-traceability`; QA gets `caf-self-verify`,
+    `caf-no-guess`.
+  - `caf-planner`: `caf-scope-discipline`, `caf-no-guess`, `caf-spec`, `caf-traceability`,
+    `caf-design`, `caf-breakdown`.
+  - `caf-reviewer`, Architect, Documentation: `caf-scope-discipline`, `caf-no-guess`.
+  - Auditor, DevOps, PM, UX Designer get no skills.
+- Spec skills: `caf-spec` (the format of `requirements.md`) is active. `caf-traceability` (the
+  per-AC evidence line), `caf-design` (the format of `design.md`) and `caf-breakdown` (the format of
+  `breakdown.md`) are born as DRAFT with a banner in every repo, so no agent is pointed at them
+  until a human removes the banner after a real dispatch test.
 - Must be tested with a real dispatch before relying on it: make sure the agent actually applies
   the skill on a task that doesn't mention the skill, and actually ignores a `DRAFT` skill.
 
@@ -537,8 +572,9 @@ not from memory or chat. The folder name follows the ticket key from the tracker
 
 ```
 .caf/tasks/{{TICKET-ID}}/
-  requirements.md    ← Planner Agent: what is requested, acceptance criteria
-  design.md          ← Architect Agent: technical approach (if needed)
+  requirements.md    ← Planner Agent: what is requested, acceptance criteria (has a Status: line)
+  design.md          ← Planner Agent: technical approach, only when the ticket needs one (no Status: line)
+  breakdown.md       ← Planner Agent: proposal to split a multi-outcome request (no Status: line)
   tasks.md           ← Planner Agent: concrete task breakdown
   verify-report.md   ← {{APP_1}}/{{APP_2}} Agent: implement + verify results
   qa-report.md       ← QA Agent: in-depth test results
@@ -758,6 +794,15 @@ GitHub Issue event ("ready-for-ai" label added)
 ```
 What needs to be set up: a GitHub token with Actions + Issues scope, Anthropic API key.
 
+**SDD flow of the orchestrator** *(implemented by caf-orchestrator, not by `caf-init`)*. The Planner
+runs first. If its `requirements.md` says `Status: NEEDS_CLARIFICATION`, or has a `BLOCKING` question
+without an `Answer:`, the run always stops, pushes the draft spec to the branch and asks the
+questions as a comment on the ticket; the run resumes from the answers. When the spec is a `DRAFT`
+with no open question and the ticket carries the configured spec-gate label, the orchestrator opens a
+Draft PR that holds the spec only and stops. A human approves with `/caf-approve-spec` on that PR,
+which changes only the `Status:` line to `APPROVED` and continues at implementation. The retry
+limits are unchanged: the verify retry inside one agent, and the gates' own retry budgets.
+
 ---
 
 ## Recommended Full Folder Structure
@@ -770,18 +815,15 @@ project-root/
 ├── .claude/
 │   ├── agents/
 │   │   ├── caf-planner.md           ← Layer 2
-│   │   ├── caf-architect.md         ← Layer 2
 │   │   ├── {{app_1}}.md             ← Layer 2 — NOT prefixed, see the note below
 │   │   ├── {{app_2}}.md             ← Layer 2 — NOT prefixed, see the note below
-│   │   ├── caf-validator.md         ← Layer 2 (replaces the earlier caf-qa.md)
-│   │   ├── caf-reviewer.md          ← Layer 2
-│   │   └── caf-documentation.md     ← Layer 2
+│   │   └── caf-reviewer.md          ← Layer 2 (final roster: planner, frontend, backend, validator, reviewer)
 │   └── commands/
 │       ├── caf-plan.md              ← Layer 2, Planner companion
-│       ├── caf-design-ticket.md     ← Layer 2, Architect companion
-│       ├── caf-qa-check.md          ← Layer 2, QA companion
-│       ├── caf-review-ticket.md     ← Layer 2, Reviewer companion
-│       └── ...                      ← audit-scan, discovery-start, run, etc. — all caf-*
+│       ├── caf-run.md               ← Layer 2, runs the pipeline from an approved spec
+│       ├── caf-review.md            ← Layer 2, PR review
+│       ├── caf-fix-review.md        ← Layer 2, fix review comments
+│       └── caf-complete-drafts.md   ← Layer 2, AI-assisted draft completion
 │
 ├── .caf/
 │   ├── knowledge/                   ← Layer 1, CAF-generated (different from docs/ below)
@@ -820,8 +862,13 @@ project-root/
 └── {{apps_dir}}/ / {{packages_dir}}/ ← project code as usual
 ```
 
+The tree shows the final roster and the five final commands. Earlier versions of this document also
+drew `caf-architect.md`, `caf-documentation.md` and the companion commands of Architect, QA,
+Reviewer and Cluster 1/4; `caf-init` no longer scaffolds them (a repo scaffolded earlier keeps its
+files), and `caf-qa.md` was replaced by `caf-validator.md`.
+
 **Transition complete (CAF-REORG-07):** `{{app_1}}.md`/`{{app_2}}.md` (the implementation agents, e.g.
-`frontend`/`backend`) now get the `caf-` prefix just like the 8 other agents above —
+`frontend`/`backend`) now get the `caf-` prefix just like the other agents above —
 `caf-frontend.md`/`caf-backend.md`. The automated orchestrator (Layer 5) has fully cut over to the
 prefixed names since Checkpoint 4B, so the generator and orchestrator are consistent for new projects.
 

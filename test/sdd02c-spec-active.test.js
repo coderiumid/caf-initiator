@@ -20,6 +20,7 @@ import { checkDrafts } from '../src/commands/check-drafts.js';
 import { skillsTarget, usableSkillPaths } from '../src/commands/skills.js';
 import { buildSkillsSection, buildToolsSection } from '../src/templates/agent-md.js';
 import { buildSpecSkill, buildTraceabilitySkill, buildSkillFiles, skillPath, hasSkillDraftBanner, hasSkillDraftAgentNotice } from '../src/templates/skill-md.js';
+import { specV4ToV3 } from './helpers/since-10.js';
 import { KNOWN_KINDS, parseSections, sectionBody } from '../src/utils/agent-sections.js';
 import { setSectionBaseline, writeManifest } from '../src/utils/generate-manifest.js';
 import { hashSection, SECTION_STATUS } from '../src/utils/section-diff.js';
@@ -155,9 +156,11 @@ const flat = (lines) => lines.join(' ').replace(/\s+/g, ' ');
 // ---------------------------------------------------------------------------------------------
 
 function assertActiveSpec(md) {
-  assert.equal(sha256(md), SPEC_FINAL_SHA256);
+  // CAF-SDD-10: the live skill is v4; the v3 hash and line count hold for it read as v3 (helpers/since-10.js)
+  const v3 = specV4ToV3(md);
+  assert.equal(sha256(v3), SPEC_FINAL_SHA256);
   assert.ok(md.endsWith('\n') && !md.endsWith('\n\n'));
-  assert.equal(md.split('\n').length - 1, 77);
+  assert.equal(v3.split('\n').length - 1, 77);
   assert.deepEqual(md.split('\n').filter((l) => l.startsWith('>')), [], 'no blockquote line, so no `> DRAFT` line');
   assert.ok(!hasSkillDraftBanner(md) && !hasSkillDraftAgentNotice(md));
 }
