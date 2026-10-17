@@ -22,6 +22,7 @@ import { copyFixture, snapshotTree } from './helpers/make-repo.js';
 import { silenced } from './helpers/mono-snapshot.js';
 import { makeOldRepo } from './helpers/old-repo.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir, renderAgents } from './helpers/frozen-kinds.js';
+import { sinceSdd11 } from './helpers/since-11.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const GOLDEN = path.join(ROOT, 'test', 'fixtures', 'pre-sdd06');
@@ -182,7 +183,7 @@ for (const fixture of FIXTURE_NAMES) {
 for (const fixture of FIXTURE_NAMES) {
   test(`AC-4: planner on ${fixture} — outside the AC-1 sentence and the AC-3 line the file is the golden, byte for byte`, () => {
     const md = rendered[fixture].planner.content;
-    const old = OLD_PLANNER[fixture].content;
+    const old = sinceSdd11(OLD_PLANNER[fixture].content); // CAF-SDD-11: helpers/since-11.js
     assert.notEqual(md, old);
     assert.equal(md.replace(CONTRACT, OLD_CONTRACT).replace(`${OUTLINE_LINE.join('\n')}\n`, ''), old);
     const mdLines = md.split('\n');

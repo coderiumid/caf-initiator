@@ -359,7 +359,8 @@ other new line in the two sections. What that text must keep:
   time since CAF-SDD-02).
 - `mono-pnpm.json` was regenerated for this, one entry changed (`caf-planner.md`). Not a precedent.
 - Out of scope until their own tickets: the orchestrator's handling of `NEEDS_CLARIFICATION`
-  (04b), and the language of the planner's artifacts (`Tidak ada` is a literal).
+  (04b), and the language of the planner's artifacts (`Tidak ada` is a literal; the language rule
+  came at CAF-SDD-11, see the end of this file).
 
 Since CAF-SDD-02e the planner reads what it claims, and neither puts a reading off nor guesses.
 Only its `## Output` changed (`## Input` did not); everything else in the file is byte-identical
@@ -1079,3 +1080,33 @@ from the commit before the rename only on lines that named the old file or funct
   not the old code name. Those sections are history and were not rewritten.
 - The line in the CAF-SDD-03c2c section, "the builder keeps its name and file", is history superseded
   by this ticket: the builder now has the new name and file.
+
+## Language of the Planner's artifacts (CAF-SDD-11)
+
+The Planner writes the prose of `requirements.md`, `tasks.md`, `design.md` and `breakdown.md` in the
+language of the ticket description (of the chat request, when there is no ticket), the open questions
+included. One whole rule in `### 1. Specify` of its tracked `## Output`, right after the `Status:`
+bullet and before the `Tidak ada` bullet; no new `###` heading, no `TODO`, no new status value.
+`test/sdd11-planner-language.test.js` holds the added lines verbatim against `test/fixtures/pre-sdd11/`
+(the planner of both fixtures and the `## Output` of every kind, recorded by
+`test/helpers/record-sdd11.mjs` from the HEAD of CAF-SDD-10 — never regenerate it).
+- **Fixed words.** The words the templates and other agents read stay as the templates show them, in
+  every language: section headings (`## Frontend Tasks`/`## Backend Tasks`, `## Coverage`,
+  `## Proposed Spec Changes` among them), `Status:` and its values, `AC-n:`, `Verify:` and its three
+  forms, `Finding:`, `Assumption A-n:`, `Q-n`, `BLOCKING`/`NON-BLOCKING`, `Answer:` and `Tidak ada`.
+  Paths, symbols, commands and text quoted from the ticket are written as they are. The rule states
+  an intent plus that one short list of tokens, not a list of words to avoid (the 02d → 02e lesson).
+- **`Tidak ada` stays a literal in every language** (D-2): it is a token like `Status:`. caf-orchestrator
+  hides a `Proposed Spec Changes:` value of `none`/`n/a`/`-`/`tidak ada`, so it is compatible.
+- **Out of scope.** The artifacts of other agents (`verify-report.md`, `validate-report.md`,
+  `review-notes.md`, `fix-review-log.md`), the skills (`caf-spec`, `caf-design`, `caf-breakdown` are
+  unchanged; `caf-spec` keeps its one language line), a per-repo language setting, translated
+  markers, the orchestrator, and every text `caf-init` generates (it stays English).
+- **Rollout.** `curate sync` carries `## Output` as an ordinary `DRIFT` (an edited one is a
+  `CONFLICT` and is left alone). Nothing else to do.
+- Older tests that compare a planner or its `## Output` with a golden read the golden through
+  `test/helpers/since-11.js` (applied after `since-06`/`since-07`); goldens and assertions are
+  untouched. `mono-pnpm.json` was regenerated for this, one entry changed (`caf-planner.md`). Not a
+  precedent. `frozen-kinds` did not change.
+- Whether the model follows the rule on a real Indonesian and a real English ticket is not tested by
+  code: it needs a dispatch by a human (CAF-SDD-11 AC-9).
