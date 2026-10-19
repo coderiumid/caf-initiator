@@ -1131,3 +1131,17 @@ bullet and before the `Tidak ada` bullet; no new `###` heading, no `TODO`, no ne
 - Whether the model now follows it is a dispatch result, not a code guarantee (CAF-SDD-12 AC-9,
   measured in the umkm-pos test worktree). A run that still fails is a limit of the model; do not
   tighten the sentence again by adding word lists.
+
+## `caf-design`/`caf-breakdown` active, `architect` superseded (CAF-CHORE-INIT-01)
+
+`buildDesignSkill` and `buildBreakdownSkill` no longer write the DRAFT banner (the dispatch test
+passed), so `usableSkillPaths` points a new planner at both. Their text is unchanged: the sha256 pins in
+`sdd05a`/`sdd05b` still hold, because the builder output equals the ticket source file. `caf-traceability`
+keeps its banner. A skill already in a repo is never replaced (`writeIfAbsent`), and `curate sync` does not
+read skills: a repo with the banner keeps it until a human removes it.
+`architect` joined `qa` and `implementer` in `SUPERSEDED_CANDIDATE_KINDS`: not offered by the picker, kind,
+builder and candidate stay, a `caf-architect.md` already in a repo is read and left alone. `/caf-run` already
+had the `hasArchitect: false` branch (skip the stage, a missing `design.md` goes back to the Planner).
+Tests of earlier tickets keep their goldens (which hold the architect roster) through
+`test/helpers/legacy-picker.js` (`offeredWithArchitect`); only `test/chore-init-01.test.js` uses the live
+picker filter. `mono-pnpm.json` was not regenerated. Earlier sections above describe their own ticket's state.
