@@ -584,7 +584,7 @@ for (const fixture of FIXTURE_NAMES) {
     await scaffoldSkills(dir, false);
     edit(dir, PLANNER_REL, withOldSkills);
     const spec = read(dir, SPEC_REL);
-    const ofPlanner = (result) => warningsOf(result, 'skill-pointer').filter((w) => w.filePath === PLANNER_REL);
+    const ofPlanner = (result) => warningsOf(result, 'skill-pointer').filter((w) => w.filePath === PLANNER_REL && w.message.includes(SPEC_REL)); // CAF-CHORE-INIT-01: caf-design/caf-breakdown are active too, so only the caf-spec warning is looked at
 
     edit(dir, SPEC_REL, (md) => md.replace('\n# caf-spec', '\n> DRAFT: not tested yet.\n\n# caf-spec'));
     assert.deepEqual(ofPlanner(await auditOnly(dir)), []);

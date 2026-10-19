@@ -34,7 +34,7 @@ const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtur
 const SPEC_REL = skillPath('caf-spec');
 const TRACE_REL = skillPath('caf-traceability');
 const PLANNER_REL = path.join(AGENT_DIR, 'caf-planner.md');
-const PLANNER_POINTERS = ['caf-scope-discipline', 'caf-no-guess', 'caf-spec'].map(skillPath);
+const PLANNER_POINTERS = ['caf-scope-discipline', 'caf-no-guess', 'caf-spec', 'caf-design', 'caf-breakdown'].map(skillPath);
 
 // sha256 of .ai/tasks/CAF-SDD-02c/caf-spec.source.v3-final.md, a file of 77 lines that ends with
 // one newline. `.ai/` is not committed, so the hash is what proves the skill is its source, byte

@@ -9,7 +9,8 @@ import path from 'node:path';
 
 import prompts from 'prompts';
 
-import { agents, buildCandidates, buildSingleRepoCandidates, isOfferedCandidate } from '../../src/commands/agents.js';
+import { agents, buildCandidates, buildSingleRepoCandidates } from '../../src/commands/agents.js';
+import { offeredWithArchitect } from './legacy-picker.js';
 import { completeDrafts } from '../../src/commands/complete-drafts.js';
 import { featureCatalogSync } from '../../src/commands/feature-catalog-sync.js';
 import { workflow } from '../../src/commands/workflow.js';
@@ -64,7 +65,7 @@ function dirsUnder(root, base = root) {
  * the picker (MONOREPO: the frontend and backend app pickers, asked only when there are apps).
  */
 function offeredFor(stack, role) {
-  const offered = isOfferedCandidate;
+  const offered = offeredWithArchitect;
   if (!stack.isMonorepo) {
     return { before: [], candidates: buildSingleRepoCandidates(stack.apps[0], [], role).filter(offered) };
   }

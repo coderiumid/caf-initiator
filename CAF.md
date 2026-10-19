@@ -339,7 +339,7 @@ Open PR + Mention Developer
 ```
 
 Optional and superseded steps, not part of the final roster: the Architect Agent (a design step for
-complex tasks, being folded into the Planner through `design.md`) and the Documentation Agent
+complex tasks, folded into the Planner through `design.md`; `caf-init` no longer offers it) and the Documentation Agent
 (update docs, parallel and non-blocking). Neither is mandatory.
 
 **Important note:** human review is still mandatory before merging. There is no auto-merge under

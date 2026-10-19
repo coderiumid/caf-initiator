@@ -174,7 +174,8 @@ test('AC-4: validator and /caf-plan are not hidden; the five hidden kinds still 
   // qa is replaced, not removed: the kind and its candidate stay, it is just no longer offered
   assert.equal(isOfferedCandidate({ kind: 'qa' }), false);
   assert.ok(AGENTS.buildCandidates({}, []).some((c) => c.kind === 'qa'));
-  for (const kind of ['planner', 'architect', 'frontend', 'backend', 'reviewer']) {
+  // architect was in this list until CAF-CHORE-INIT-01, which superseded it (test/chore-init-01.test.js)
+  for (const kind of ['planner', 'frontend', 'backend', 'reviewer']) {
     assert.equal(isOfferedCandidate({ kind }), true, kind);
   }
   // CAF-SDD-03c3: implementer is replaced too (caf-frontend + caf-backend in SINGLE_REPO).

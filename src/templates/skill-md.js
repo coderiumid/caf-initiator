@@ -34,8 +34,9 @@ const ARTIFACT_WRITER_SKILLS = ['caf-scope-discipline', 'caf-no-guess'];
 // no agent gets a pointer to it until a human removes its banner.
 // `validator` (CAF-SDD-03b1) reads those evidence lines, so it gets `caf-traceability` on top of
 // what `qa` has.
-// `caf-design` (CAF-SDD-05a) is the planner's only and is born a DRAFT, like `caf-traceability`.
-// `caf-breakdown` (CAF-SDD-05b) is the planner's only, after `caf-design`, and born a DRAFT too.
+// `caf-design` (CAF-SDD-05a) is the planner's only; `caf-breakdown` (CAF-SDD-05b) is the planner's only,
+// after `caf-design`. Both were born DRAFTs and are written without the banner since CAF-CHORE-INIT-01
+// (their dispatch test passed), so `usableSkillPaths` points a planner at them.
 export const SKILLS_BY_KIND = {
   frontend: [...IMPLEMENTATION_SKILLS, 'caf-traceability'],
   backend: [...IMPLEMENTATION_SKILLS, 'caf-traceability'],
@@ -412,8 +413,8 @@ Rules:
 }
 
 // caf-design (CAF-SDD-05a): when a ticket needs a technical design and how `design.md` is written.
-// Born a DRAFT with the same 3-line banner as caf-traceability (it waits for a real dispatch
-// test), so no agent gets a pointer to it yet. Content is taken verbatim from the ticket
+// Written without a banner since CAF-CHORE-INIT-01 (the dispatch test passed; it was born a DRAFT
+// with the same 3-line banner as caf-traceability). Content is taken verbatim from the ticket
 // (`.ai/tasks/CAF-SDD-05a/caf-design.skill.md`) — don't reword it here.
 //
 // Third narrow exception to "a skill never redefines a report file": it defines the format of
@@ -423,8 +424,6 @@ export function buildDesignSkill() {
 name: caf-design
 description: Rules for deciding when a ticket needs a technical design and for writing design.md. Use after requirements.md is written and before tasks.md, when the change spans more than one app, adds a schema or migration, or changes a contract between layers.
 ---
-
-${SPEC_DRAFT_BANNER}
 
 # caf-design — when and how to write design.md
 
@@ -471,8 +470,8 @@ Rules:
 }
 
 // caf-breakdown (CAF-SDD-05b): when a request is too big for one spec and how `breakdown.md`, a
-// proposal of tickets, is written. Born a DRAFT with the same 3-line banner as caf-design (it waits
-// for a real dispatch test), so no agent gets a pointer to it yet. Content is taken verbatim from
+// proposal of tickets, is written. Written without a banner since CAF-CHORE-INIT-01 (the dispatch
+// test passed; it was born a DRAFT like caf-design). Content is taken verbatim from
 // the ticket (`.ai/tasks/CAF-SDD-05b/caf-breakdown.skill.md`) — don't reword it here.
 //
 // Fourth narrow exception to "a skill never redefines a report file": it defines the format of
@@ -482,8 +481,6 @@ export function buildBreakdownSkill() {
 name: caf-breakdown
 description: Rules for deciding when a request is too big for one spec and for writing breakdown.md, a proposal of tickets. Use at the start of Specify, when a request holds more than one outcome that could ship and be used on its own.
 ---
-
-${SPEC_DRAFT_BANNER}
 
 # caf-breakdown — when and how to propose several tickets
 

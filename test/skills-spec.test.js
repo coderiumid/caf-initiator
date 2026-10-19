@@ -204,7 +204,7 @@ test('AC-4: without the DRAFT banner the planner gets a pointer to caf-spec; wit
   prompts._injected.length = 0;
 
   // an existing planner: the section it is offered lists the three finished skills
-  const three = ['caf-scope-discipline', 'caf-no-guess', 'caf-spec'].map(skillPath);
+  const three = ['caf-scope-discipline', 'caf-no-guess', 'caf-spec', 'caf-design', 'caf-breakdown'].map(skillPath);
   assert.equal(result.pointers.added.length, 1);
   const existing = read(dir, '.claude/agents/caf-planner.md');
   assert.deepEqual(pointersIn(existing), three);
@@ -219,7 +219,7 @@ test('AC-4: without the DRAFT banner the planner gets a pointer to caf-spec; wit
   const banner = '> DRAFT: this skill has not been tested with real agent dispatches yet.';
   fs.writeFileSync(path.join(drafted, REL), read(drafted, REL).replace('---\n\n\n# caf-spec', `---\n\n${banner}\n\n# caf-spec`));
   assert.ok(hasSkillDraftBanner(read(drafted, REL)));
-  assert.deepEqual(usableSkillPaths(drafted, 'planner'), ['caf-scope-discipline', 'caf-no-guess'].map(skillPath));
+  assert.deepEqual(usableSkillPaths(drafted, 'planner'), ['caf-scope-discipline', 'caf-no-guess', 'caf-design', 'caf-breakdown'].map(skillPath));
 
   // a planner that already has `## Skills` is never edited, whatever the run finds
   const before = read(dir, '.claude/agents/caf-planner.md');
