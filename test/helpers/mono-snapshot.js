@@ -9,7 +9,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { detectStack } from '../../src/steps/02-detect-stack.js';
-import { buildCandidates, buildValidatorAgent, isOfferedCandidate } from '../../src/commands/agents.js';
+import { buildCandidates, buildValidatorAgent } from '../../src/commands/agents.js';
+import { offeredWithArchitect } from './legacy-picker.js';
 import { matchVerifyScripts, readPackageName } from '../../src/utils/package-scripts.js';
 import { buildAgentMd, agentSlug } from '../../src/templates/agent-md.js';
 import { buildClaudeMd } from '../../src/templates/claude-md.js';
@@ -51,7 +52,7 @@ export async function renderMonoSnapshot(detectOpts = {}) {
   // CAF-SDD-03c1: only what a scaffold run can write — the candidates the picker offers. Until
   // then every candidate was rendered, hidden ones included, so the snapshot held files no run
   // wrote (devops.md).
-  const candidates = buildCandidates({ frontend: [web], backend: [api] }, []).filter(isOfferedCandidate);
+  const candidates = buildCandidates({ frontend: [web], backend: [api] }, []).filter(offeredWithArchitect);
 
   const agentFiles = {};
   for (const candidate of candidates) {

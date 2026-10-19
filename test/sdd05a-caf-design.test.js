@@ -253,12 +253,15 @@ for (const fixture of FIXTURE_NAMES) {
   });
 }
 
-test('AC-9: architect is still offered: it is in neither list of dropped kinds', () => {
-  assert.ok(!SUPERSEDED_CANDIDATE_KINDS.includes('architect'));
+// CAF-CHORE-INIT-01 superseded architect: the candidate and the kind stay, it is no longer offered
+// (held in test/chore-init-01.test.js). It is still not one of the five dropped kinds.
+test('AC-9: architect is superseded, not hidden: it is not in the list of dropped kinds', () => {
+  assert.ok(SUPERSEDED_CANDIDATE_KINDS.includes('architect'));
   assert.ok(!HIDDEN_CANDIDATE_KINDS.includes('architect'));
   const stack = { apps: [{ name: 'web', path: 'apps/web' }] };
   const candidates = buildCandidates({ frontend: stack.apps, backend: stack.apps }, []);
-  assert.ok(candidates.filter(isOfferedCandidate).some((c) => c.kind === 'architect'));
+  assert.ok(candidates.some((c) => c.kind === 'architect'));
+  assert.ok(!candidates.filter(isOfferedCandidate).some((c) => c.kind === 'architect'));
 });
 
 // ---------------------------------------------------------------------------------------------

@@ -15,7 +15,10 @@ import { listDraftFiles } from '../src/commands/complete-drafts.js';
 import { skillsTarget, usableSkillPaths } from '../src/commands/skills.js';
 import { buildAgentMd } from '../src/templates/agent-md.js';
 import { buildSkillFiles, hasSkillDraftAgentNotice, hasSkillDraftBanner, skillPath } from '../src/templates/skill-md.js';
-import { parseSections, sectionBody } from '../src/utils/agent-sections.js';
+import { HIDDEN_CANDIDATE_KINDS, SUPERSEDED_CANDIDATE_KINDS, buildCandidates, buildSingleRepoCandidates, isOfferedCandidate } from '../src/commands/agents.js';
+import { curate } from '../src/commands/curate.js';
+import { buildRunMd } from '../src/templates/run-command.js';
+import { KNOWN_KINDS, detectKind, parseSections, sectionBody } from '../src/utils/agent-sections.js';
 import { copyFixture, snapshotTree } from './helpers/make-repo.js';
 import { silenced } from './helpers/mono-snapshot.js';
 import { AGENT_DIR, FIXTURE_NAMES, fixtureDir, renderAgents } from './helpers/frozen-kinds.js';
@@ -102,4 +105,53 @@ test('AC-5: curate sync leaves an existing skill file byte for byte, whatever it
   for (const [n, text] of Object.entries(skillsBefore)) assert.equal(read(dir, skillPath(n)), text, n);
   const after = snapshotTree(dir);
   for (const key of Object.keys(before)) if (key.includes('.claude/skills/')) assert.deepEqual(after[key], before[key], key);
+});
+
+// ---------------------------------------------------------------------------------------------
+// Part B — architect is superseded
+// ---------------------------------------------------------------------------------------------
+
+test('AC-7: architect is not offered by isOfferedCandidate; the candidate and the kind stay', () => {
+  assert.deepEqual(SUPERSEDED_CANDIDATE_KINDS, ['qa', 'implementer', 'architect']);
+  assert.ok(!HIDDEN_CANDIDATE_KINDS.includes('architect'), 'superseded, not one of the five dropped kinds');
+  assert.equal(isOfferedCandidate({ kind: 'architect' }), false);
+  assert.ok(KNOWN_KINDS.includes('architect'));
+  const apps = [{ name: 'web', path: 'apps/web' }];
+  assert.ok(buildCandidates({ frontend: apps, backend: apps }, []).some((c) => c.kind === 'architect'), 'mono: still buildable');
+  for (const list of [buildCandidates({ frontend: apps, backend: apps }, []), buildSingleRepoCandidates(apps[0], [])]) {
+    assert.deepEqual(list.filter(isOfferedCandidate).map((c) => c.kind).filter((k) => k === 'architect'), []);
+  }
+});
+
+for (const fixture of FIXTURE_NAMES) {
+  test(`AC-8: ${fixture} — a caf-architect.md already in the repo is read by curate as kind architect and stays byte for byte`, async () => {
+    const dir = copyFixture(fixtureDir(fixture));
+    const { architect } = await renderAgents(fixture);
+    const rel = path.join(AGENT_DIR, 'caf-architect.md');
+    fs.mkdirSync(path.join(dir, AGENT_DIR), { recursive: true });
+    fs.writeFileSync(path.join(dir, rel), architect.content);
+    assert.equal(detectKind('caf-architect.md', []), 'architect');
+
+    const before = snapshotTree(dir);
+    const saved = process.exitCode;
+    const original = console.log;
+    console.log = () => {};
+    let audit;
+    try {
+      audit = await curate({ dir, mode: 'audit-only' });
+      await agentsSync({ dir, dryRun: false });
+    } finally {
+      console.log = original;
+      process.exitCode = saved;
+    }
+    assert.ok(!(audit.warnings ?? []).some((w) => w.check === 'unknown-kind'), 'not an unknown kind');
+    assert.equal(read(dir, rel), architect.content);
+    assert.deepEqual(snapshotTree(dir)[rel], before[rel]);
+  });
+}
+
+test('a roster without an architect gets the /caf-run stage that skips it and sends a missing design.md back to the Planner', () => {
+  const md = buildRunMd({ agentDir: '.claude/agents', implementationRoles: [], appPaths: ['.'], hasArchitect: false, hasDocumentation: false, gate: 'validator' });
+  assert.match(md, /does NOT yet have an Architect Agent/);
+  assert.match(md, /`design\.md` is written by the Planner/);
 });

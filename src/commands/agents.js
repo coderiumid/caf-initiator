@@ -44,7 +44,11 @@ export const HIDDEN_CANDIDATE_KINDS = ['devops', 'documentation', 'pm', 'ux-desi
 // CAF-SDD-03c3: `implementer` is replaced the same way, by caf-frontend + caf-backend in
 // SINGLE_REPO. Its candidate stays in buildSingleRepoCandidates(.., 'implementer') and the kind in
 // KNOWN_KINDS, and a caf-implementer.md already in a repo is never touched.
-export const SUPERSEDED_CANDIDATE_KINDS = ['qa', 'implementer'];
+//
+// CAF-CHORE-INIT-01: `architect` is replaced the same way, by the planner writing `design.md` with
+// the `caf-design` skill (active now). Candidate and kind stay, and a caf-architect.md already in a
+// repo is never touched by `curate`; it is only no longer offered.
+export const SUPERSEDED_CANDIDATE_KINDS = ['qa', 'implementer', 'architect'];
 
 /** Is this candidate offered by the agent picker (the one place an agent kind is chosen)? */
 export function isOfferedCandidate(candidate) {
