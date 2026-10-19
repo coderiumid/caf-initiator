@@ -83,6 +83,9 @@ const bodyOf = (text, header) => {
 };
 const headings = (md) => bodyOf(md, 'Output').split('\n').filter((l) => /^###? /.test(l));
 const withoutBanner = (md) => md.replace(`${BANNER.join('\n')}\n\n`, '');
+// CAF-CHORE-INIT-01: the template no longer writes the banner; this puts it back to model a repo
+// scaffolded before.
+const withBanner = (md) => md.replace('\n---\n\n# ', `\n---\n\n${BANNER.join('\n')}\n\n# `);
 const flat = (text) => text.replace(/\s+/g, ' ');
 
 async function runSkills(dir) {
@@ -112,31 +115,29 @@ async function auditOnly(dir) {
 // AC-1 .. AC-5 — the skill
 // ---------------------------------------------------------------------------------------------
 
-test('AC-1: caf-breakdown is the last of SKILL_NAMES, born a DRAFT with the 3-line banner and no open to-do line', () => {
+test('AC-1: caf-breakdown is the last of SKILL_NAMES, no longer born a DRAFT (CAF-CHORE-INIT-01)', () => {
   assert.equal(SKILL_NAMES[SKILL_NAMES.length - 1], 'caf-breakdown');
   assert.equal(SKILL_NAMES.filter((n) => n === 'caf-breakdown').length, 1);
   const file = buildSkillFiles({ mode: 'SINGLE_REPO', verifyApps: [] }).find((f) => f.name === 'caf-breakdown');
   assert.equal(file.relPath, BREAKDOWN_REL);
-  assert.equal(file.draft, true);
+  assert.equal(file.draft, false);
   assert.equal(file.content, buildBreakdownSkill());
   const fm = file.content.match(/^---\n([\s\S]*?)\n---\n/)[1].split('\n');
   assert.deepEqual(fm.map((l) => l.split(':')[0]), ['name', 'description']);
   assert.equal(fm[0], 'name: caf-breakdown');
   assert.ok(fm[1].slice('description: '.length).length > 0);
-  assert.ok(hasSkillDraftBanner(file.content));
-  assert.ok(hasSkillDraftAgentNotice(file.content));
+  assert.ok(!hasSkillDraftBanner(file.content));
+  assert.ok(!hasSkillDraftAgentNotice(file.content));
   assert.equal(countOpenSkillTodos(file.content), 0);
-  const lines = file.content.split('\n');
-  const at = lines.indexOf(BANNER[0]);
-  assert.deepEqual(lines.slice(at - 1, at + 4), ['', ...BANNER, '']);
+  // front-matter, one blank line, then the heading
+  assert.match(file.content, /^---\nname: caf-breakdown\ndescription: [^\n]+\n---\n\n# caf-breakdown/);
   assert.deepEqual(buildTraceabilitySkill().split('\n').filter((l) => l.startsWith('>')), BANNER);
 });
 
-test('AC-2: the skill without its banner is caf-breakdown.skill.md of the ticket, verbatim', () => {
+test('AC-2: the skill is caf-breakdown.skill.md of the ticket, verbatim, with no banner', () => {
   const md = buildBreakdownSkill();
-  const body = withoutBanner(md);
-  assert.notEqual(body, md);
-  assert.equal(sha256(body), BREAKDOWN_SOURCE_SHA256);
+  assert.equal(sha256(md), BREAKDOWN_SOURCE_SHA256);
+  assert.equal(withoutBanner(withBanner(md)), md, 'the banner of an older repo comes off to the same text');
 });
 
 test('AC-3: caf-breakdown is mapped to planner and to no other kind, after caf-design; the older entries keep their order', () => {
@@ -147,20 +148,20 @@ test('AC-3: caf-breakdown is mapped to planner and to no other kind, after caf-d
   assert.ok(planner.indexOf('caf-breakdown') === planner.indexOf('caf-design') + 1);
 });
 
-test('AC-4: while caf-breakdown has its banner no planner points at it; without the banner it does', async () => {
+test('AC-4: a fresh scaffold points the planner at caf-breakdown; a repo that still has the banner does not, until it is removed', async () => {
   const dir = copyFixture(fixtureDir('mono-pnpm'));
   await runSkills(dir);
   const planner = (skills) => buildAgentMd({ name: 'planner', role: 'r', scope: 's', kind: 'planner', slug: 'caf-planner', skills });
 
-  const withBanner = usableSkillPaths(dir, 'planner');
-  assert.ok(!withBanner.includes(BREAKDOWN_REL));
-  assert.ok(!planner(withBanner).includes(BREAKDOWN_REL));
+  const fresh = usableSkillPaths(dir, 'planner');
+  assert.ok(fresh.includes(BREAKDOWN_REL));
+  assert.equal(fresh[fresh.length - 1], BREAKDOWN_REL);
+  assert.ok(bodyOf(planner(fresh), 'Skills').includes(`- \`${BREAKDOWN_REL}\``));
 
-  fs.writeFileSync(path.join(dir, BREAKDOWN_REL), withoutBanner(read(dir, BREAKDOWN_REL)), 'utf8');
-  const without = usableSkillPaths(dir, 'planner');
-  assert.ok(without.includes(BREAKDOWN_REL));
-  assert.equal(without[without.length - 1], BREAKDOWN_REL);
-  assert.ok(bodyOf(planner(without), 'Skills').includes(`- \`${BREAKDOWN_REL}\``));
+  fs.writeFileSync(path.join(dir, BREAKDOWN_REL), withBanner(read(dir, BREAKDOWN_REL)), 'utf8');
+  const bannered = usableSkillPaths(dir, 'planner');
+  assert.ok(!bannered.includes(BREAKDOWN_REL));
+  assert.ok(!planner(bannered).includes(BREAKDOWN_REL));
 });
 
 test('AC-5: the skill names no status or verdict word, does not tell the reader to wait, and says tickets are not the planner\'s work', () => {
@@ -304,10 +305,11 @@ for (const fixture of FIXTURE_NAMES) {
 // ---------------------------------------------------------------------------------------------
 
 for (const fixture of FIXTURE_NAMES) {
-  test(`AC-10: ${fixture} — a skill-pointer warning names caf-breakdown once its banner is gone, and not while it is there`, async () => {
+  test(`AC-10: ${fixture} — a skill-pointer warning names caf-breakdown on a fresh scaffold, and not while an older banner is there`, async () => {
     const { dir } = await makeOldRepo(fixture);
     await runSkills(dir);
     const ofPlanner = (result) => result.warnings.filter((w) => w.check === 'skill-pointer' && w.filePath === PLANNER_REL && w.message.includes(BREAKDOWN_REL));
+    fs.writeFileSync(path.join(dir, BREAKDOWN_REL), withBanner(read(dir, BREAKDOWN_REL)), 'utf8');
     const clean = await auditOnly(dir);
 
     assert.ok(read(dir, BREAKDOWN_REL).includes('> DRAFT'));
@@ -324,7 +326,7 @@ for (const fixture of FIXTURE_NAMES) {
     assert.equal(result.requiredGaps.length, clean.requiredGaps.length);
     assert.equal(result.declined.length, clean.declined.length);
     assert.deepEqual(result.sectionCounts, clean.sectionCounts);
-    assert.ok(read(dir, DESIGN_REL).includes('> DRAFT'), 'caf-design is untouched');
+    assert.ok(!read(dir, DESIGN_REL).includes('> DRAFT'), 'caf-design is not written with a banner any more');
   });
 }
 

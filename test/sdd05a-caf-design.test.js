@@ -87,6 +87,9 @@ const planBlock = (md) => {
 };
 const headings = (md) => bodyOf(md, 'Output').split('\n').filter((l) => /^###? /.test(l));
 const withoutBanner = (md) => md.replace(`${BANNER.join('\n')}\n\n`, '');
+// CAF-CHORE-INIT-01: the template no longer writes the banner; this puts it back to model a repo
+// scaffolded before (the banner sat between the front-matter and the heading).
+const withBanner = (md) => md.replace('\n---\n\n# ', `\n---\n\n${BANNER.join('\n')}\n\n# `);
 
 async function runSkills(dir) {
   prompts.inject(Array(40).fill(false));
@@ -115,25 +118,24 @@ async function auditOnly(dir) {
 // AC-1 .. AC-5 — the skill
 // ---------------------------------------------------------------------------------------------
 
-test('AC-1: caf-design is the last of SKILL_NAMES, born a DRAFT with the 3-line banner and no open to-do line', () => {
+test('AC-1: caf-design is the second to last of SKILL_NAMES and is no longer born a DRAFT (CAF-CHORE-INIT-01)', () => {
   // CAF-SDD-05b appended caf-breakdown after it.
   assert.equal(SKILL_NAMES[SKILL_NAMES.length - 2], 'caf-design');
   assert.equal(SKILL_NAMES.filter((n) => n === 'caf-design').length, 1);
   const file = buildSkillFiles({ mode: 'SINGLE_REPO', verifyApps: [] }).find((f) => f.name === 'caf-design');
   assert.equal(file.relPath, DESIGN_REL);
-  assert.equal(file.draft, true);
+  assert.equal(file.draft, false);
   assert.equal(file.content, buildDesignSkill());
   const fm = file.content.match(/^---\n([\s\S]*?)\n---\n/)[1].split('\n');
   assert.deepEqual(fm.map((l) => l.split(':')[0]), ['name', 'description']);
   assert.equal(fm[0], 'name: caf-design');
   assert.ok(fm[1].slice('description: '.length).length > 0);
-  assert.ok(hasSkillDraftBanner(file.content));
-  assert.ok(hasSkillDraftAgentNotice(file.content));
+  assert.ok(!hasSkillDraftBanner(file.content));
+  assert.ok(!hasSkillDraftAgentNotice(file.content));
   assert.equal(countOpenSkillTodos(file.content), 0);
-  const lines = file.content.split('\n');
-  const at = lines.indexOf(BANNER[0]);
-  assert.deepEqual(lines.slice(at - 1, at + 4), ['', ...BANNER, '']);
-  // the same banner as caf-traceability
+  // front-matter, one blank line, then the heading
+  assert.match(file.content, /^---\nname: caf-design\ndescription: [^\n]+\n---\n\n# caf-design/);
+  // caf-traceability keeps the banner
   assert.deepEqual(buildTraceabilitySkill().split('\n').filter((l) => l.startsWith('>')), BANNER);
 });
 
@@ -142,18 +144,16 @@ for (const fixture of FIXTURE_NAMES) {
     const dir = copyFixture(fixtureDir(fixture));
     const result = await runSkills(dir);
     assert.ok(result.written.includes(path.join(dir, DESIGN_REL)));
-    assert.ok(result.drafts.includes('caf-design'));
+    assert.ok(!result.drafts.includes('caf-design'));
     assert.equal(read(dir, DESIGN_REL), buildDesignSkill());
   });
 }
 
-test('AC-2: the skill without its banner is the ticket source, verbatim (sha256)', () => {
+test('AC-2: the skill is the ticket source, verbatim (sha256), with no banner', () => {
   const md = buildDesignSkill();
   assert.ok(md.endsWith('\n') && !md.endsWith('\n\n'));
-  const body = withoutBanner(md);
-  assert.notEqual(body, md);
-  assert.equal(sha256(body), DESIGN_SOURCE_SHA256);
-  assert.equal(buildDesignSkill(), md);
+  assert.equal(sha256(md), DESIGN_SOURCE_SHA256);
+  assert.equal(withoutBanner(withBanner(md)), md, 'the banner of an older repo comes off to the same text');
 });
 
 test('AC-3: caf-design is mapped to planner and to no other kind; the planner keeps the order of its older skills', () => {
@@ -163,20 +163,20 @@ test('AC-3: caf-design is mapped to planner and to no other kind; the planner ke
   assert.ok(SKILLS_BY_KIND.planner.includes('caf-traceability'));
 });
 
-test('AC-4: while caf-design has its banner no planner points at it; without the banner it does', async () => {
+test('AC-4: a fresh scaffold points the planner at caf-design; a repo that still has the banner does not, until it is removed', async () => {
   const dir = copyFixture(fixtureDir('mono-pnpm'));
   await runSkills(dir);
   const planner = (skills) => buildAgentMd({ name: 'planner', role: 'r', scope: 's', kind: 'planner', slug: 'caf-planner', skills });
 
-  const withBanner = usableSkillPaths(dir, 'planner');
-  assert.ok(!withBanner.includes(DESIGN_REL));
-  assert.ok(!planner(withBanner).includes(DESIGN_REL));
+  const fresh = usableSkillPaths(dir, 'planner');
+  assert.ok(fresh.includes(DESIGN_REL));
+  assert.equal(fresh[fresh.length - 2], DESIGN_REL);
+  assert.ok(bodyOf(planner(fresh), 'Skills').includes(`- \`${DESIGN_REL}\``));
 
-  fs.writeFileSync(path.join(dir, DESIGN_REL), withoutBanner(read(dir, DESIGN_REL)), 'utf8');
-  const without = usableSkillPaths(dir, 'planner');
-  assert.ok(without.includes(DESIGN_REL));
-  assert.equal(without[without.length - 1], DESIGN_REL);
-  assert.ok(bodyOf(planner(without), 'Skills').includes(`- \`${DESIGN_REL}\``));
+  fs.writeFileSync(path.join(dir, DESIGN_REL), withBanner(read(dir, DESIGN_REL)), 'utf8');
+  const bannered = usableSkillPaths(dir, 'planner');
+  assert.ok(!bannered.includes(DESIGN_REL));
+  assert.ok(!planner(bannered).includes(DESIGN_REL));
 });
 
 test('AC-5: the skill names no status or verdict word, does not tell the reader to wait, and no other kind has it', () => {
@@ -326,10 +326,11 @@ for (const fixture of FIXTURE_NAMES) {
 // ---------------------------------------------------------------------------------------------
 
 for (const fixture of FIXTURE_NAMES) {
-  test(`AC-11: ${fixture} — a skill-pointer warning names caf-design once its banner is gone, and not while it is there`, async () => {
+  test(`AC-11: ${fixture} — a skill-pointer warning names caf-design on a fresh scaffold, and not while an older banner is there`, async () => {
     const { dir } = await makeOldRepo(fixture);
     await runSkills(dir);
     const ofPlanner = (result) => result.warnings.filter((w) => w.check === 'skill-pointer' && w.filePath === PLANNER_REL && w.message.includes(DESIGN_REL));
+    fs.writeFileSync(path.join(dir, DESIGN_REL), withBanner(read(dir, DESIGN_REL)), 'utf8');
     const clean = await auditOnly(dir);
 
     assert.ok(read(dir, DESIGN_REL).includes('> DRAFT'));
