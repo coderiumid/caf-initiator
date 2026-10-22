@@ -25,6 +25,8 @@ import {
   SINGLE_REPO_ROLES,
 } from '../src/commands/agents.js';
 import { runScaffoldTarget } from '../src/commands/scaffold.js';
+import { AGENT_KINDS } from '../src/commands/scaffold-flow.js';
+import { SUPERSEDED_CANDIDATE_KINDS } from '../src/commands/agents.js';
 import { detectStack } from '../src/steps/02-detect-stack.js';
 import { KNOWN_KINDS, detectKind } from '../src/utils/agent-sections.js';
 import { SECTION_STATUS } from '../src/utils/section-diff.js';
@@ -144,12 +146,15 @@ test('AC-1: every mode that had an implementation agent still has it — SINGLE_
   assert.deepEqual(implementation('mono-pnpm.auto'), ['caf-backend.md', 'caf-frontend.md']);
 });
 
-// There is no non-interactive way to name an agent: the picker is the one place a kind is
-// chosen. A new flag on `scaffold` has to be added to this list, and to the hidden-kind filter.
+// A flag may only name an agent kind the picker offers: `--agents` (CAF-INIT-SMART-01) accepts the
+// five final kinds only (AGENT_KINDS), so a hidden or superseded kind still cannot be selected. A
+// new flag on `scaffold` has to be added to this list, and to the hidden-kind filter.
 test('AC-1: scaffold has no flag that selects an agent kind past the picker', () => {
+  // --agents is limited to kinds the picker offers.
+  assert.ok(AGENT_KINDS.every((kind) => !HIDDEN_CANDIDATE_KINDS.includes(kind) && !SUPERSEDED_CANDIDATE_KINDS.includes(kind)));
   const help = execFileSync(process.execPath, [path.join(HERE, '..', 'src', 'index.js'), 'scaffold', '--help'], { encoding: 'utf8' });
   const flags = [...new Set(help.match(/^\s+--[a-z-]+/gm).map((f) => f.trim()))];
-  assert.deepEqual(sorted(flags), sorted(['--dir', '--dry-run', '--app', '--all-apps', '--agent-dir', '--command-dir', '--force', '--mode', '--scope', '--role']));
+  assert.deepEqual(sorted(flags), sorted(['--dir', '--dry-run', '--app', '--all-apps', '--agent-dir', '--command-dir', '--force', '--mode', '--scope', '--role', '--yes', '--tracker', '--apps', '--agents', '--no-banner']));
 });
 
 // ---------------------------------------------------------------------------------------------

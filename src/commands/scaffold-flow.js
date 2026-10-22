@@ -2,13 +2,13 @@ import path from 'node:path';
 import kleur from 'kleur';
 
 import ask, { withAutoAnswers } from '../utils/ask.js';
-import { recordWrites, section, withSilentConsole } from '../util.js';
+import { recordWrites, section, setOverwritePolicy, withSilentConsole } from '../util.js';
 import { detectProject } from '../utils/detect.js';
-import { detectTrackerSignals } from '../utils/tracker-signals.js';
+import { detectTrackerSignals, trackerByKey, TRACKERS } from '../utils/tracker-signals.js';
 import { recommend } from '../utils/recommend.js';
 import { pickTracker } from '../steps/03-detect-tracker.js';
 import { runSetup } from './setup.js';
-import { goldenExamples } from './golden-examples.js';
+import { goldenExamples, resolveAppSelectors } from './golden-examples.js';
 import { agents } from './agents.js';
 import { TARGETS, CHAIN_ORDER, printSummary } from './scaffold.js';
 
@@ -163,7 +163,82 @@ async function editSelection(detected, sel) {
  * `process.exitCode = 1` and writes nothing.
  */
 export async function runSmartScaffold(opts) {
-  const { dir, dryRun = false, agentDir, overwrite, mode, scope, role, interactive = true } = opts;
+  const { dir, dryRun = false, agentDir, overwrite, mode, scope, role, interactive = true, yes = false } = opts;
+  // D9: no TTY, or --yes, means no question is ever shown; every default is taken.
+  const unattended = yes || !interactive;
+  if (unattended) return withAutoAnswers(() => smartScaffold({ ...opts, unattended: true }));
+  return smartScaffold({ ...opts, unattended: false });
+}
+
+/** Parses `--apps`/`--agents` style lists: `a,b` or repeated values, whitespace trimmed. */
+export function splitList(value) {
+  return [].concat(value ?? [])
+    .flatMap((v) => String(v).split(','))
+    .map((v) => v.trim())
+    .filter(Boolean);
+}
+
+function fail(message) {
+  console.error(kleur.red(`scaffold: ${message}`));
+  process.exitCode = 1;
+  return { ok: false, reason: 'invalid' };
+}
+
+/** Applies --tracker/--apps/--agents on top of the recommendation; returns `{ error }` for an invalid value. */
+function applyFlags(opts, detected, sel) {
+  if (opts.tracker) {
+    const tracker = trackerByKey(String(opts.tracker).toLowerCase());
+    if (!tracker) return { error: `--tracker "${opts.tracker}" is not one of ${TRACKERS.map((t) => t.key).join('|')}` };
+    sel.tracker = { name: tracker.name, source: '--tracker', status: 'flag' };
+  }
+  if (opts.apps !== undefined) {
+    const values = splitList(opts.apps);
+    if (values.length === 1 && values[0].toLowerCase() === 'none') {
+      sel.goldenApps = [];
+    } else {
+      const resolved = resolveAppSelectors({ apps: detected.apps }, values);
+      if (resolved.error) return { error: resolved.error.replace(/^--app /, '--apps ') };
+      sel.goldenApps = resolved.apps.map((a) => a.path);
+    }
+  }
+  if (opts.agents !== undefined) {
+    const values = splitList(opts.agents);
+    const unknown = values.filter((v) => !AGENT_KINDS.includes(v));
+    if (unknown.length > 0 || values.length === 0) {
+      return { error: `--agents ${unknown.join(',') || '(empty)'} is not valid (choices: ${AGENT_KINDS.join(', ')})` };
+    }
+    sel.kinds = AGENT_KINDS.filter((k) => values.includes(k));
+  }
+  return {};
+}
+
+// D8: files that exist and differ are skipped by default. One combined question when there are
+// some; "one by one" asks per file with N as the default (overwriting is never the default).
+async function resolveConflicts(conflicts) {
+  if (conflicts.length === 0) return new Set();
+  const { choice } = await ask({
+    type: 'select',
+    name: 'choice',
+    message: `${conflicts.length} file(s) already exist and differ. What now?`,
+    initial: 0,
+    choices: [
+      { title: 'Skip all (keep my files)', value: 'skip' },
+      { title: 'Overwrite all', value: 'all' },
+      { title: 'Choose one by one', value: 'each' },
+    ],
+  });
+  if (choice === 'all') return new Set(conflicts.map((c) => c.path));
+  if (choice !== 'each') return new Set();
+  const chosen = new Set();
+  for (const c of conflicts) {
+    const { overwrite } = await ask({ type: 'confirm', name: 'overwrite', message: `Overwrite ${c.rel}?`, initial: false });
+    if (overwrite) chosen.add(c.path);
+  }
+  return chosen;
+}
+
+async function smartScaffold(opts) {
+  const { dir, dryRun = false, agentDir, overwrite, mode, scope, role, unattended } = opts;
   const ctx = { dir, dryRun, agentDir, overwrite, mode, scope, role };
 
   section('scaffold — detecting the project');
@@ -171,12 +246,20 @@ export async function runSmartScaffold(opts) {
   const signals = await detectTrackerSignals({ dir, gitHost: detected.gitHost });
   const rec = recommend(detected, signals);
 
-  const sel = {
+  let sel = {
     tracker: rec.tracker.status === 'single' ? { name: rec.tracker.name, source: rec.tracker.reasons.join('; '), status: 'single' } : null,
     goldenApps: rec.goldenApps,
     kinds: rec.agents.kinds,
     roleApp: rec.agents.roleApp,
   };
+
+  const flagged = applyFlags(opts, detected, sel);
+  if (flagged.error) return fail(flagged.error);
+
+  if (!sel.tracker && unattended) {
+    const why = rec.tracker.status === 'none' ? 'no tracker signal found' : `several trackers have a signal (${rec.tracker.candidates.join(', ')})`;
+    return fail(`cannot choose a ticket tracker without asking: ${why}. Pass --tracker ${TRACKERS.map((t) => t.key).join('|')}.`);
+  }
 
   if (!sel.tracker) {
     const why = rec.tracker.status === 'none' ? 'no tracker signal found' : `several trackers have a signal (${rec.tracker.candidates.join(', ')})`;
@@ -195,6 +278,10 @@ export async function runSmartScaffold(opts) {
     console.log(renderSummary(detected, sel, preview));
     console.log('');
 
+    if (unattended) {
+      sel.preview = preview;
+      break;
+    }
     let verdict = null;
     while (verdict === null) {
       const { answer } = await ask({ type: 'text', name: 'answer', message: 'Proceed? (Y/n/e)', initial: 'Y' });
@@ -208,10 +295,19 @@ export async function runSmartScaffold(opts) {
       await editSelection(detected, sel);
       continue;
     }
+    sel.preview = preview;
     break;
   }
 
-  const result = await withAutoAnswers(() => runChain(ctx, sel));
+  // Conflicts: only an attended run can overwrite, and only what the user picked.
+  const toOverwrite = unattended || dryRun ? new Set() : await resolveConflicts(sel.preview.conflicts);
+  setOverwritePolicy((filePath) => toOverwrite.has(filePath));
+  let result;
+  try {
+    result = await withAutoAnswers(() => runChain(ctx, sel));
+  } finally {
+    setOverwritePolicy(null);
+  }
   console.log('');
   if (result.ok) {
     printSummary(result.summary);
