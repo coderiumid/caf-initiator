@@ -214,7 +214,7 @@ async function addSkillPointers({ dir, agentDir, dryRun, onDisk, appSlugs }) {
 
 /**
  * `caf-init scaffold skills` (CAF-SKILLS-01) — write the universal CAF skills into
- * `.claude/skills/<name>/SKILL.md`. Explicit-only: not part of the bare `scaffold` chain.
+ * `.claude/skills/<name>/SKILL.md`. Also a step of the bare `scaffold` chain, right after Agents.
  *
  * Never overwrites an existing SKILL.md unless `overwrite` (`--force`) is passed. Then offers the
  * pointers to agent definitions that already exist (see addSkillPointers).

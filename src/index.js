@@ -33,14 +33,14 @@ program
   .description('Automate the initial setup of the Coderium Agent Framework (CAF) in a repo');
 
 // scaffold: `caf-init scaffold` runs the default Setup → Golden Examples → ADR → Agents →
-// Task Completion → Workflow chain; `caf-init scaffold <target>` runs one target standalone
+// Skills → Task Completion → Workflow chain; `caf-init scaffold <target>` runs one target standalone
 // with behavior identical to the old individual commands. Union of every underlying target's
 // flags is declared here since a single positional-arg command can't have per-target option
 // sets in commander.
 program
   .command('scaffold')
   .description(
-    `bare: run Setup → Golden Examples → ADR → Agents → Task Completion → Workflow → AI Draft Completion in sequence, ` +
+    `bare: run Setup → Golden Examples → ADR → Agents → Skills → Task Completion → Workflow → AI Draft Completion in sequence, ` +
       `with a skip-confirmation before each step after Setup. With a target ` +
       `(${OFFERED_TARGETS.join('|')}): run only that part, behavior identical to the old ` +
       `standalone command.`

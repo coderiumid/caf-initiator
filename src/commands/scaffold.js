@@ -28,8 +28,9 @@ export const TARGETS = {
   'task-completion': { label: 'Task Completion Generator', run: (ctx) => taskCompletion({ dir: ctx.dir, dryRun: ctx.dryRun, mode: ctx.mode }) },
   workflow: { label: 'Workflow Docs Generator', run: (ctx) => workflow({ dir: ctx.dir, agentDir: ctx.agentDir, dryRun: ctx.dryRun }) },
   'feature-catalog-sync': { label: 'Feature Catalog Sync Command Generator', run: (ctx) => featureCatalogSync({ dir: ctx.dir, agentDir: ctx.agentDir, dryRun: ctx.dryRun, mode: ctx.mode }) },
-  // CAF-SKILLS-01: explicit-only, like feature-catalog-sync — it offers to edit agent definitions
-  // that already exist (a `## Skills` pointer section), which the bare chain never does.
+  // CAF-SKILLS-01: also a standalone target (re-run, repos scaffolded earlier). Since
+  // CAF-INIT-DOCS-REMOVE amendment 3 it is in the bare chain too, right after Agents: the
+  // `## Skills` pointers it offers need the agent definitions to exist first.
   skills: { label: 'CAF Skills Scaffolder', run: (ctx) => skillsTarget({ dir: ctx.dir, agentDir: ctx.agentDir, dryRun: ctx.dryRun, overwrite: ctx.overwrite, mode: ctx.mode }) },
   // CAF-COMPLETE-DRAFTS-01: generates /caf-complete-drafts (an AI-runner command that fills in the
   // TODOs left by the steps above). Last in the chain on purpose — it inventories the drafts the
@@ -43,9 +44,10 @@ export const TARGETS = {
 const HIDDEN_TARGETS = ['feature-catalog-sync'];
 export const OFFERED_TARGETS = Object.keys(TARGETS).filter((key) => !HIDDEN_TARGETS.includes(key));
 
-// Order for the bare chain — feature-catalog-sync stays out per decision B above, and so does
-// skills (explicit-only).
-export const CHAIN_ORDER = ['golden-examples', 'adr', 'agents', 'task-completion', 'workflow', 'complete-drafts'];
+// Order for the bare chain — feature-catalog-sync stays out per decision B above. Skills comes
+// right after agents (their `## Skills` pointers need the agents) and before complete-drafts
+// (whose draft inventory then includes the skills).
+export const CHAIN_ORDER = ['golden-examples', 'adr', 'agents', 'skills', 'task-completion', 'workflow', 'complete-drafts'];
 
 function printSummary(summary) {
   console.log('');
@@ -62,12 +64,12 @@ function printSummary(summary) {
 }
 
 /**
- * `scaffold` bare: Setup → Golden Examples → ADR → Agents → Task Completion → Workflow →
+ * `scaffold` bare: Setup → Golden Examples → ADR → Agents → Skills → Task Completion → Workflow →
  * AI Draft Completion (generates /caf-complete-drafts),
  * per-step confirm (default yes). Identical to the old `full` chain minus Reference Docs.
  */
 export async function runScaffold({ dir, dryRun, explicitGlobs, agentDir, overwrite, mode, scope, role }) {
-  section('scaffold — run Setup → Golden Examples → ADR → Agents → Task Completion → Workflow → AI Draft Completion in sequence');
+  section('scaffold — run Setup → Golden Examples → ADR → Agents → Skills → Task Completion → Workflow → AI Draft Completion in sequence');
 
   const summary = [];
 
