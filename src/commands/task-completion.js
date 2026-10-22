@@ -1,5 +1,5 @@
 import path from 'node:path';
-import prompts from 'prompts';
+import prompts from '../utils/ask.js';
 import kleur from 'kleur';
 
 import { section, writeIfAbsent } from '../util.js';
@@ -25,6 +25,9 @@ async function pickScope(stack, appOpt) {
     type: 'select',
     name: 'picked',
     message: 'Pick the scope for task-completion.md:',
+    initial: 0,
+    // Unattended runs use the root scripts; a per-app scope is a deliberate choice.
+    auto: { path: '.', label: 'whole repo (root)', packageManager: stack.packageManager },
     choices: [
       ...stack.apps.map((a) => ({
         title: `${a.name} (${a.path})`,

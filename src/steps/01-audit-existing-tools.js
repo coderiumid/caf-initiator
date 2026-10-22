@@ -1,5 +1,5 @@
 import path from 'node:path';
-import prompts from 'prompts';
+import prompts from '../utils/ask.js';
 import kleur from 'kleur';
 import { dirHasContent, section } from '../util.js';
 

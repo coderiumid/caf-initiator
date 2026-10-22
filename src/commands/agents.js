@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import prompts from 'prompts';
+import prompts from '../utils/ask.js';
 import kleur from 'kleur';
 
 import { section } from '../util.js';
@@ -390,6 +390,7 @@ export async function agents({
   mode,
   scope: scopeOpt,
   role: roleOpt,
+  plan,
 }) {
   section('agents — draft agent definitions into .claude/agents/ (or equivalent)');
 
@@ -475,23 +476,29 @@ export async function agents({
     );
     console.log('');
   } else {
-    const roleApp = await pickRoleApps(apps);
+    // `plan` (CAF-INIT-SMART-01, from recommend()) replaces both app pickers: roles come from the
+    // recommended assignment and unassigned apps get no agent (caf-orchestrator does not route them).
+    const roleApp = plan
+      ? Object.fromEntries(FIXED_ROLES.map((role) => [role, apps.filter((a) => (plan.roleApp?.[role] || []).includes(a.path))]))
+      : await pickRoleApps(apps);
     const assignedPaths = new Set(Object.values(roleApp).flat().map((a) => a.path));
     const remaining = apps.filter((a) => !assignedPaths.has(a.path));
-    const extraApps = await pickExtraApps(remaining);
+    const extraApps = plan ? [] : await pickExtraApps(remaining);
 
     candidates = buildCandidates(roleApp, extraApps);
   }
 
-  const { picked } = await prompts({
-    type: 'multiselect',
-    name: 'picked',
-    message: 'Pick the agents to generate:',
-    instructions: false,
-    choices: candidates
-      .filter(isOfferedCandidate)
-      .map((c) => ({ title: c.name, value: c })),
-  });
+  // `plan.kinds` is the agent set of the summary screen (or --agents): nothing is asked.
+  const offered = candidates.filter(isOfferedCandidate);
+  const { picked } = plan
+    ? { picked: offered.filter((c) => plan.kinds.includes(c.kind)) }
+    : await prompts({
+        type: 'multiselect',
+        name: 'picked',
+        message: 'Pick the agents to generate:',
+        instructions: false,
+        choices: offered.map((c) => ({ title: c.name, value: c })),
+      });
 
   if (!picked || picked.length === 0) {
     console.log(kleur.dim('no agents selected — done without generating'));

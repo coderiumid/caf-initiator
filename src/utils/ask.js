@@ -10,6 +10,20 @@ import prompts from 'prompts';
 // choice (first by default) for select, and the choices ticked with `selected` for multiselect.
 let autoMode = false;
 
+// Tests (and the non-interactive guarantee) can cap how many questions a run may show: one more
+// throws instead of hanging on stdin. `promptCount` counts the questions actually shown.
+let shown = 0;
+let budget = null;
+
+export function resetPromptCount(limit = null) {
+  shown = 0;
+  budget = limit;
+}
+
+export function promptCount() {
+  return shown;
+}
+
 export function setAutoAnswers(value) {
   autoMode = Boolean(value);
 }
@@ -50,7 +64,11 @@ export function defaultAnswer(question) {
 }
 
 export default async function ask(question, options) {
-  if (!autoMode) return prompts(question, options);
+  if (!autoMode) {
+    shown += 1;
+    if (budget !== null && shown > budget) throw new Error(`unexpected prompt #${shown}: ${[].concat(question)[0]?.message}`);
+    return prompts(question, options);
+  }
   const questions = [].concat(question);
   const answers = {};
   for (const q of questions) answers[q.name] = defaultAnswer(q);

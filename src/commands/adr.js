@@ -1,6 +1,6 @@
 import path from 'node:path';
 import fs from 'node:fs';
-import prompts from 'prompts';
+import prompts from '../utils/ask.js';
 import kleur from 'kleur';
 
 import { section, writeIfAbsent } from '../util.js';
@@ -65,6 +65,8 @@ export async function adr({ dir, app: appOpt, dryRun = false, mode }) {
       name: 'picked',
       message: 'Pick the technical decisions to document as ADRs:',
       instructions: false,
+      // Unattended runs draft every decision the stack evidence supports (reasons stay TODO).
+      auto: candidates,
       choices: candidates.map((c) => ({ title: c.label, value: c })),
     });
     if (picked && picked.length > 0) {

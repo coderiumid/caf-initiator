@@ -1,6 +1,6 @@
 import path from 'node:path';
 import fg from 'fast-glob';
-import prompts from 'prompts';
+import prompts from '../utils/ask.js';
 import kleur from 'kleur';
 
 import { section, readFileSafe, writeIfAbsent, exists, dirHasContent } from '../util.js';
@@ -184,6 +184,8 @@ async function scanApp({ dir, app, dryRun }) {
         name: 'picked',
         message: `${category.name} — pick files to use as golden examples:`,
         instructions: false,
+        // Unattended runs (smart scaffold, --yes) take the best-scored candidate; RULES.md stays a draft.
+        auto: candidates.slice(0, 1),
         choices: candidates.map((c) => ({
           title: `${c.relPath} (score ${describeScore(c.score)}${c.hasTodo ? ', has TODO' : ''}, ${c.lines} lines)`,
           value: c,
