@@ -44,7 +44,7 @@ The full CAF specification is in [`CAF.md`](./CAF.md).
 # 1. Preview — detects the stack and lists what would be written
 npx -p caf-initiator caf-init scaffold --dry-run
 
-# 2. Generate the drafts and the CAF skills (asks before each step)
+# 2. Generate the drafts and the CAF skills (one summary, one Enter)
 npx -p caf-initiator caf-init scaffold
 
 # 3. In your AI runner (e.g. Claude Code), fill in the TODOs
@@ -116,12 +116,22 @@ The `docs` command, which scaffolded optional reference documents under `docs/`,
 
 ### `caf-init scaffold`
 
-Bare `scaffold` runs these steps in order, asking before each one after Setup:
+Bare `scaffold` (CAF-INIT-SMART-01) detects first and asks only what it cannot infer:
+
+1. **Detect** (read-only): package manager, monorepo and apps, stack, scripts, default branch and git host of the target repo, plus the ticket tracker.
+2. **Tracker**: exactly one tracker with a signal is used and its reason is shown; none or several open a picker with nothing preselected. The tracker is never guessed.
+3. **Summary** on one screen (repo, tracker and why, golden-example apps, agents, files to create or skip), then `Proceed? (Y/n/e)`. Enter proceeds; `e` lets you change the tracker, the golden-example apps or the agents, then shows the summary again; `n` stops with nothing written.
+
+That is **1 Enter** when the tracker has a single signal, **2** when it is ambiguous, **0** with `--yes`. After `Proceed?` the steps below run without further questions, with the choices from the summary. Existing files are never overwritten silently: if some exist and differ, one extra question offers *Skip all* (default), *Overwrite all* or *Choose one by one* (each defaulting to No).
+
+Run the steps one at a time, with their own questions, with `scaffold <target>` (names in the table).
+
+The steps, in order:
 
 | Step | Target name | Output |
 |---|---|---|
 | Setup | (always first) | `CLAUDE.md`, `AGENTS.md`, `.caf/tasks/README.md`. Writes nothing under `.caf/knowledge/`. Checks for existing AI-tool config first; detects stack and tracker |
-| Golden Examples | `golden-examples` | Lets you pick reference files; writes `RULES.md` (one per app) with a do/don't skeleton. In a monorepo you tick the apps to scan (none ticked by default), and can run the step again later to add the apps that have none; an app whose `RULES.md` exists is skipped |
+| Golden Examples | `golden-examples` | Lets you pick reference files; writes `RULES.md` (one per app) with a do/don't skeleton. In a monorepo you tick the apps to scan (apps worth scanning, see below, start ticked; since CAF-INIT-SMART-01 this replaces "none ticked by default"), and can run the step again later to add the apps that have none; an app whose `RULES.md` exists is skipped |
 | ADR | `adr` | ADR drafts for technical decisions already visible in the repo |
 | Agents | `agents` | Agent definitions you select, plus their companion slash commands |
 | Skills | `skills` | `.claude/skills/caf-*/SKILL.md`; offers a `## Skills` pointer section to the agent definitions from the previous step (a confirmation per agent) |
@@ -137,14 +147,33 @@ Notes:
 - Commands written: `/caf-plan` with the Planner, `/caf-run` (Planner plus an implementation agent; it was `/caf-run-pipeline` before CAF-SDD-03c2c), `/caf-fix-review` and `/caf-review` (Reviewer) after a confirmation each, and `/caf-complete-drafts` from its own step.
 - Five agents and eight commands are no longer scaffolded. See [No longer scaffolded](#no-longer-scaffolded).
 - The `validator` kind (`caf-validator.md`) is on offer and written by a default scaffold, in place of QA. See [The validator kind](#the-validator-kind).
-- The tracker is detected from `.linear/`, `atlassian.yml` or a README mention. Otherwise you are asked (Linear, Jira, GitHub Issues); it is never silently defaulted.
+- Tracker signals, counted per tracker (a git host alone is never a signal):
+  - Linear: `.linear/`, `LINEAR_API_KEY` in `.env*`, or a `linear.app` reference in the repo's docs/config.
+  - Jira: `atlassian.yml`, `JIRA_*` in `.env*`, or an `atlassian.net` reference.
+  - GitHub Issues: `.github/ISSUE_TEMPLATE` **and** a GitHub remote.
+  - GitLab Issues: `.gitlab/issue_templates` **and** a GitLab remote.
+  - **Behavior change (CAF-INIT-SMART-01):** a README mentioning the words "linear" or "jira" is no longer a signal, and GitLab Issues is a new choice (the tracker is only a name rendered into `CLAUDE.md`, `AGENTS.md` and the tasks README, so no template differs). A repo that relied on a README mention is now asked, or passes `--tracker`.
+- Golden-example apps are recommended when an app is run or deployed (a `dev`/`start`/`serve`/`preview` script), its stack is recognized and it has real source files; shared `packages/*` libraries and config-only packages are not. The same recommendation feeds the picker (preselected), the summary and `--yes`. Without a question about files, unattended runs (`--yes`, no TTY) use the best-scored candidate per category; `RULES.md` stays a draft.
+- Agents in the summary: Planner, Frontend and Backend (where an app of that kind exists), Validator, Reviewer. The side-effect commands `/caf-run`, `/caf-review` and `/caf-fix-review` are opt-in: they are not generated by the unattended flow; run `caf-init scaffold agents` to be offered them.
+- ADR drafts are now idempotent: a decision that already has an ADR file is skipped instead of drafted again under the next number.
+
+Prompt convention: every prompt has a default. The capital letter marks it (`(Y/n)`, `(y/N)`); anything that would overwrite or delete defaults to `N`.
+
+Banner: bare `caf-init` and the start of `scaffold` print a block-letter "CAF" banner with a tagline. It is hidden without a TTY, with `--yes`, with `--no-banner` and with the environment variable `CAF_NO_BANNER`; `NO_COLOR` prints it without colors, and colors step down from truecolor to 256 colors to none.
+
+Non-interactive: with `--yes`, or when stdin/stdout is not a TTY, no prompt is ever shown. If the tracker is ambiguous the command exits 1 and names `--tracker`.
 
 Options:
 
 | Option | Description | Default |
 |---|---|---|
 | `--dir <path>` | Target repo directory | current directory |
-| `--dry-run` | Show detection results without writing anything | `false` |
+| `--dry-run` | Show detection results and the summary without writing anything | `false` |
+| `--yes` | Bare `scaffold`: take every detected/recommended choice, ask nothing. Exits 1 (nothing written) if the tracker is ambiguous. On a single target, its questions take their defaults | `false` |
+| `--tracker <linear\|jira\|github\|gitlab>` | Bare `scaffold`: set the tracker instead of detecting it | detected |
+| `--apps <a,b>` | Bare `scaffold`: apps to scan for golden examples (paths or slugs); `--apps none` scans no app | recommended apps |
+| `--agents <list>` | Bare `scaffold`: agents to generate, from `planner,frontend,backend,validator,reviewer` | recommended agents |
+| `--no-banner` | Do not print the banner (or set `CAF_NO_BANNER=1`) | banner shown on a TTY |
 | `--app <app>` | Restrict to one app, by path (`apps/api`) or slug (`api`). Used by `golden-examples`, `adr`, `agents`, `task-completion`. Repeatable (`--app api --app web`) for `scaffold golden-examples` only; elsewhere repeating it is an error | all apps |
 | `--all-apps` | `scaffold golden-examples` only: scan every detected app without the app picker (the question of which files to use still runs per app). Cannot be combined with `--app` | off |
 | `--agent-dir <path>` | Where agent definitions are read and written | `.claude/agents` |
