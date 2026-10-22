@@ -147,9 +147,12 @@ test('commands: no /caf-run without an implementation agent, and the summary say
   assert.ok(!commandFiles(dir).includes('caf-run.md'));
 });
 
-test('commands: asked on its own, /caf-run still defaults to N (only the unattended flow says yes)', () => {
+test('commands: asked on its own, /caf-run defaults to Y and keeps its warning', () => {
   const src = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'src', 'commands', 'agents.js'), 'utf8');
   const prompt = src.slice(src.indexOf("message: 'Generate /caf-run?'"), src.indexOf("if (generateRun)"));
-  assert.match(prompt, /initial: false/);
-  assert.match(prompt, /auto: true/);
+  assert.match(prompt, /initial: true/);
+  assert.doesNotMatch(prompt, /initial: false/);
+  const warning = src.slice(src.indexOf('⚠ /caf-run runs the entire'), src.indexOf("message: 'Generate /caf-run?'"));
+  assert.match(warning, /WRITES APPLICATION CODE/);
+  assert.match(warning, /auto-commits\/pushes\/opens a PR/);
 });

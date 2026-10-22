@@ -9,6 +9,8 @@ import { detectStack } from '../steps/02-detect-stack.js';
 import { matchVerifyScripts, readPackageName } from '../utils/package-scripts.js';
 import { buildAgentMd, agentSlug, buildDirScopeSection, IMPLEMENTATION_KINDS } from '../templates/agent-md.js';
 import { REPO_MODE } from '../utils/repo-context.js';
+import { detectProject } from '../utils/detect.js';
+import { githubCommandsOffered } from '../utils/recommend.js';
 import { usableSkillPaths, collectVerifyApps } from './skills.js';
 import { buildPmAgentMd, buildUxDesignerAgentMd } from '../templates/discovery-commands.js';
 import { buildPlanTicketMd } from '../templates/ticket-preview-commands.js';
@@ -639,6 +641,14 @@ export async function agents({
   // cannot be detected from repo contents alone. So the generate decision is left to the human
   // via an explicit confirmation (default: no), the same pattern as the enforcement warning
   // in export.
+  // CAF-INIT-SMART-01: /caf-run (PR step), /caf-review and /caf-fix-review use `gh` and GitHub PRs
+  // only. With a non-GitHub remote they are neither offered nor written (backlog CAF-INIT-GITLAB-REVIEW).
+  const git = await detectProject({ dir, mode });
+  const githubOffered = githubCommandsOffered(git);
+  const notOffered = (names) => {
+    console.log('');
+    console.log(kleur.dim(`${names} not offered: they use the gh CLI and GitHub PRs (GitHub only), but this repo's remote is not GitHub (${git.remoteUrl}).`));
+  };
   const plannerPicked = selected.some((c) => c.kind === 'planner');
   const implementationCandidates = selected.filter((c) => IMPLEMENTATION_KINDS.includes(c.kind));
   const implementationRoles = implementationCandidates.map((c) => agentSlug(c.kind, c.app));
@@ -654,7 +664,8 @@ export async function agents({
     ])
   );
 
-  if (plannerPicked && implementationRoles.length > 0) {
+  if (plannerPicked && implementationRoles.length > 0 && !githubOffered) notOffered('/caf-run');
+  if (plannerPicked && implementationRoles.length > 0 && githubOffered) {
     console.log('');
     section('Planner + implementation agent(s) selected — offer the /caf-run command (optional)');
 
@@ -680,9 +691,9 @@ export async function agents({
       type: 'confirm',
       name: 'generateRun',
       message: 'Generate /caf-run?',
-      initial: false,
-      // The smart scaffold flow (unattended after `Proceed?`) generates it; asked alone, the default stays N.
-      auto: true,
+      // Default Y, same as the unattended scaffold flow; the warning above (branch checkout, code
+      // written, push + PR on SUCCESS) is still shown first.
+      initial: true,
     });
 
     if (generateRun) {
@@ -726,7 +737,8 @@ export async function agents({
   // auto-generated as soon as Reviewer is selected) — its side effects are real on GitHub
   // (public reply to someone else's PR), not just writing a local file.
   const reviewerPicked = selected.some((c) => c.kind === 'reviewer');
-  if (reviewerPicked) {
+  if (reviewerPicked && !githubOffered) notOffered('/caf-review and /caf-fix-review');
+  if (reviewerPicked && githubOffered) {
     console.log('');
     section('Reviewer selected — offer the /caf-fix-review command (optional)');
 

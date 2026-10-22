@@ -5,7 +5,7 @@ import ask, { withAutoAnswers } from '../utils/ask.js';
 import { recordWrites, section, setOverwritePolicy, withSilentConsole } from '../util.js';
 import { detectProject } from '../utils/detect.js';
 import { detectTrackerSignals, trackerByKey, TRACKERS } from '../utils/tracker-signals.js';
-import { recommend } from '../utils/recommend.js';
+import { recommend, githubCommandsOffered } from '../utils/recommend.js';
 import { pickTracker } from '../steps/03-detect-tracker.js';
 import { runSetup } from './setup.js';
 import { goldenExamples, resolveAppSelectors } from './golden-examples.js';
@@ -123,8 +123,12 @@ export function renderSummary(detected, sel, preview) {
   if (preview.conflicts.length > 8) lines.push(kleur.dim(`                      … and ${preview.conflicts.length - 8} more`));
   if (preview.error) lines.push(kleur.yellow(`  (file preview incomplete: ${preview.error.message})`));
   const runCommand = sel.kinds.includes('planner') && (sel.kinds.includes('frontend') || sel.kinds.includes('backend'));
-  lines.push(`  Commands:         ${runCommand ? '/caf-run (generated: Planner + an implementation agent)' : 'no /caf-run (needs the Planner and an implementation agent)'}`);
-  lines.push(kleur.dim('                    /caf-review and /caf-fix-review are not generated: they post to GitHub PRs. Use `caf-init scaffold agents`.'));
+  if (!githubCommandsOffered(detected)) {
+    lines.push('  Commands:         no /caf-run, /caf-review or /caf-fix-review — GitHub only (they use the gh CLI and GitHub PRs); the remote is not GitHub');
+  } else {
+    lines.push(`  Commands:         ${runCommand ? '/caf-run (generated; on success it commits, pushes a branch and opens a PR, no confirmation)' : 'no /caf-run (needs the Planner and an implementation agent)'}`);
+    lines.push(kleur.dim('                    /caf-review and /caf-fix-review are not generated (GitHub only; they post public reviews and replies on PRs). Use `caf-init scaffold agents`.'));
+  }
   return lines.join('\n');
 }
 

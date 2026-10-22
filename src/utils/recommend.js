@@ -72,6 +72,16 @@ export function recommendAdr() {
   return false;
 }
 
+/**
+ * The generated /caf-run (its PR step), /caf-review and /caf-fix-review use the `gh` CLI and GitHub
+ * PRs only. They are offered when the repo has no remote yet or its remote is GitHub, and not when
+ * the remote is anything else (GitLab, Bitbucket, a self-hosted host we cannot name as GitHub).
+ * `remoteUrl`/`gitHost` come from `detectProject`.
+ */
+export function githubCommandsOffered({ remoteUrl = null, gitHost = null } = {}) {
+  return !remoteUrl || gitHost === 'github';
+}
+
 export function recommend(detected, signals = {}) {
   return {
     adr: recommendAdr(),
