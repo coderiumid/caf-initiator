@@ -149,7 +149,7 @@ test('AC-1: every mode that had an implementation agent still has it — SINGLE_
 test('AC-1: scaffold has no flag that selects an agent kind past the picker', () => {
   const help = execFileSync(process.execPath, [path.join(HERE, '..', 'src', 'index.js'), 'scaffold', '--help'], { encoding: 'utf8' });
   const flags = [...new Set(help.match(/^\s+--[a-z-]+/gm).map((f) => f.trim()))];
-  assert.deepEqual(sorted(flags), sorted(['--dir', '--dry-run', '--app', '--agent-dir', '--command-dir', '--force', '--mode', '--scope', '--role']));
+  assert.deepEqual(sorted(flags), sorted(['--dir', '--dry-run', '--app', '--all-apps', '--agent-dir', '--command-dir', '--force', '--mode', '--scope', '--role']));
 });
 
 // ---------------------------------------------------------------------------------------------
