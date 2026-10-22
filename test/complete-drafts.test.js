@@ -167,14 +167,13 @@ test('generator: never overwrites an existing command, and --dry-run writes noth
   assert.ok(!fs.existsSync(path.join(dir, '.caf', '.generate-manifest.json')), 'declined baseline must not be written');
 });
 
-test('listDraftFiles: only files that exist, including RULES.md and docs', async () => {
+test('listDraftFiles: only files that exist, including RULES.md, and never the docs/ reference documents', async () => {
   const dir = await scaffold({ withCommand: false });
-  assert.ok(!(await listDraftFiles(dir)).includes('docs/product/prd.md'));
   fs.mkdirSync(path.join(dir, 'docs', 'product'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'docs', 'product', 'prd.md'), '# PRD\n');
   fs.writeFileSync(path.join(dir, '.caf', 'knowledge', 'golden-examples', 'RULES.md'), buildRulesMd({ entries: [] }));
   const drafts = await listDraftFiles(dir);
-  assert.ok(drafts.includes('docs/product/prd.md'));
+  assert.ok(!drafts.includes('docs/product/prd.md'));
   assert.ok(drafts.includes('.caf/knowledge/golden-examples/RULES.md'));
 });
 
