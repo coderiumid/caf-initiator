@@ -681,6 +681,8 @@ export async function agents({
       name: 'generateRun',
       message: 'Generate /caf-run?',
       initial: false,
+      // The smart scaffold flow (unattended after `Proceed?`) generates it; asked alone, the default stays N.
+      auto: true,
     });
 
     if (generateRun) {

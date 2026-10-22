@@ -25,7 +25,7 @@ Branch `CAF-INIT-SMART-01`, local commits only (T0–T9). Repo is JavaScript ESM
 - AC9: PASS
   `node --test test/banner.test.js` → tests 8, pass 8, fail 0 (truecolor/256/plain snapshots in `test/fixtures/banner/`, hidden for non-TTY, `--yes`, `--no-banner`, `CAF_NO_BANNER`; `NO_COLOR` prints without color).
 - AC10: PASS (typecheck/lint N/A)
-  `npm test` → exit 0; `# tests 1118`, `# pass 1118`, `# fail 0`.
+  `npm test` → exit 0; `# tests 1126`, `# pass 1126`, `# fail 0` (after the follow-ups; 1118 before).
   Typecheck: N/A — no TypeScript or typecheck script in this repo. Lint: N/A — no linter configured; the ticket (amended) says not to add tooling.
 - AC11: PASS
   `grep -n "CAF-INIT-SMART-01" README.md` → 3 matches (lines 119, 134, 155): flow, flags table, banner rules, preselect reversal, tracker detection change. No CHANGELOG.md (amended away).
@@ -60,3 +60,11 @@ Also on this repo itself (`--dir . --dry-run --yes --tracker github`): 20 to cre
 4. ADR drafting made idempotent (skips a decision whose ADR file already exists) — needed for AC8.
 5. `--agents` accepts only the five offered kinds; `sdd03c1` AC-1 flag-list test updated accordingly.
 6. In dry-run, the per-step "N written" counts stay 0 (pre-existing semantics); the summary screen carries the real counts.
+
+## Tindak lanjut
+
+Dua perubahan lanjutan, satu commit per perubahan.
+
+1. **ADR tidak lagi otomatis** (`ce886c1`). `recommend().adr` adalah `false`; `--yes`, non-TTY dan rekomendasi tidak membuat ADR. ADR dibuat hanya lewat pilihan "ADR drafts" di `e` atau flag `--adr` (semua keputusan yang terdeteksi dari stack, alasan tetap TODO). Ringkasan menampilkan `ADR drafts: none (add with e or --adr)`. Golden examples tetap otomatis. `scaffold adr` sebagai target tidak berubah. Ini mengganti butir 2 di "Decisions taken inside the brief" di atas (ADR otomatis). Tes: `scaffold-flow` (default none, `e`, `--adr`), `non-interactive` (`--yes` tanpa dan dengan `--adr`), `recommend`.
+2. **`/caf-run` otomatis di alur baru.** Prompt `Generate /caf-run?` diberi `auto: true`: alur scaffold (jawaban otomatis setelah `Proceed?`) membuatnya bila Planner dan sebuah agent implementasi ada di set; dipanggil sendiri (`scaffold agents`) default tetap N dengan peringatannya. Ringkasan baris `Commands:` menyebut hasilnya. Tes di `scaffold-flow`.
+3. **`/caf-review` dan `/caf-fix-review` TIDAK diubah (berhenti dan lapor).** Komentar di `src/commands/agents.js` (sejak commit awal `99fdd3e`) menjelaskan opt-in karena efek sampingnya publik dan nyata di GitHub: `/caf-fix-review` membalas komentar di PR orang lain, `/caf-review` membuat PR Review resmi; ada juga cek izin (write/maintain/admin). Alasan itu bukan "hanya berguna dengan orchestrator", jadi sesuai instruksi aku tidak mengubah default-nya: tetap N, tidak dibuat oleh alur baru, ringkasan menyebut alasannya (posting ke PR GitHub). Keputusan ada padamu.

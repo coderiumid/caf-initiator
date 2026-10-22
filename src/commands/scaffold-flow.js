@@ -122,7 +122,9 @@ export function renderSummary(detected, sel, preview) {
   for (const { rel } of preview.conflicts.slice(0, 8)) lines.push(kleur.dim(`                      skip  ${rel}`));
   if (preview.conflicts.length > 8) lines.push(kleur.dim(`                      … and ${preview.conflicts.length - 8} more`));
   if (preview.error) lines.push(kleur.yellow(`  (file preview incomplete: ${preview.error.message})`));
-  lines.push(kleur.dim('  Opt-in commands with side effects (/caf-run, /caf-review, /caf-fix-review) are not generated; use `caf-init scaffold agents`.'));
+  const runCommand = sel.kinds.includes('planner') && (sel.kinds.includes('frontend') || sel.kinds.includes('backend'));
+  lines.push(`  Commands:         ${runCommand ? '/caf-run (generated: Planner + an implementation agent)' : 'no /caf-run (needs the Planner and an implementation agent)'}`);
+  lines.push(kleur.dim('                    /caf-review and /caf-fix-review are not generated: they post to GitHub PRs. Use `caf-init scaffold agents`.'));
   return lines.join('\n');
 }
 
