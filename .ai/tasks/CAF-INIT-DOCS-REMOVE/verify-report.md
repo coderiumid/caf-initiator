@@ -541,3 +541,71 @@ AC-6 tetap dihapus (amendment-1).
 4. **Cabang `tracker: null` tak terjangkau**: `tasks-readme.js:10` mempertahankan `TODO: fill in tracker`, tetapi `setup.js:24-27` berhenti sebelum `generateDrafts`. Kode mati lewat CLI; hanya terpanggil dari test atau kode lain.
 5. **`README.md` dan `CLAUDE.md` memuat narasi sejarah** yang menyebut `INDEX.md` (`CLAUDE.md` bagian 03c2/03c2b, bagian "Commands"). Tidak diedit karena Task 12 hanya mencakup README dan `CAF.md`, dan bagian itu menjelaskan keadaan di tiketnya sendiri.
 6. **Tabel Status baseline helper**: `renderDefaultFileSet` tidak menjalankan `task-completion`, sehingga hasilnya punya satu gap lain di `curate`; bukan masalah produk.
+
+# Amendment 3 — skills di rantai `scaffold` (Task 14-16)
+
+Commit sebelum Task 14: `d9570be`. Rentang review: `12ad83f..HEAD` (awalan `CAF-INIT-DOCS-REMOVE (scaffold-skills):`). `b83013d` tidak disentuh.
+Task 14 `05cbea5`, Task 15 `92b9dbc`, Task 16 `a5296a4`.
+
+## Syarat keputusan 2 (dibuktikan sebelum mengubah apa pun)
+- `listDraftFiles` (`complete-drafts.js`) meng-glob `.claude/skills/*/SKILL.md` sejak `80f0df0` (CAF-SKILLS-01 task 7), terlepas dari rantai. Test `listDraftFiles already lists the skills after scaffold skills alone` memegangnya.
+- Teks `/caf-complete-drafts` (bagian `CAF skills`): hanya skill yang masih ber-banner `DRAFT` boleh diedit, skill tanpa banner "is finished: do not edit it", tidak boleh mencabut banner, membuat skill, atau menambah pointer. Ini batas instruksi, bukan batas kode (caf-init tidak memanggil model).
+
+## Hasil `npm test` (HEAD `a5296a4`)
+```
+# tests 1044
+# pass 1044
+# fail 0
+# skipped 0
+```
+Sebelum Task 14: 1037. Selisih 7 = file test baru `test/scaffold-skills-chain.test.js`. Satu test diedit: `skills-scaffold.test.js:40` (dibalik, sesuai persetujuan).
+
+## Scaffold penuh lewat pty (mono-pnpm, Planner dipilih, Enter di setiap prompt)
+`.claude/skills/` berisi 9 skill; `caf-planner.md` punya `## Skills`. Lalu:
+```
+curate --audit-only : exit 0, "0 required gap(s), 0 optional document(s) missing, 0 need manual review"; 5 in-sync, 0 untracked
+curate --check-drafts: exit 0, "14 draft(s) checked — 0 fail, 0 warn" (INFO: caf-self-verify 1 TODO, DRAFT)
+```
+
+## Status AC
+| AC | Perintah / bukti | Hasil |
+|---|---|---|
+| AC-1 | `--help \| grep -cE '^\s+docs\b'` | `0` — LULUS |
+| AC-2 | `grep -rn "caf-init docs" ...` | 0 baris — LULUS |
+| AC-3 | scaffold penuh pty | exit 0, tanpa dokumen docs — LULUS |
+| AC-4 | `curate --audit-only` | exit 0 — LULUS |
+| AC-5 | `npm test` | 1044/1044 — LULUS |
+| AC-7 | `scaffold --help` | `complete-drafts` ada (3 baris) — LULUS |
+| AC-8 | grep `docs/(prd...)` di `src` | 2 baris, pengecualian D1/D2 (`agent-md.js:147`, `skill-md.js:443`) — LULUS |
+| AC-9 | README | `docs` dicatat dihapus (baris 115) — LULUS |
+| AC-10 | `git status`, `git log origin/HEAD..HEAD` | tree bersih; 25 commit lokal, tanpa push — LULUS |
+| AC-11, AC-16 | `inventory-report-2.md` tidak berubah | LULUS |
+| AC-12 | `grep -rlsE TODO .caf/tasks .caf/knowledge` | 0 file — LULUS |
+| AC-13 | `find .caf -mindepth 1` | manifest, `tasks/README.md`, tiga `workflows/*` — LULUS |
+| AC-14 | `curate --audit-only` | exit 0, 0 gap — LULUS |
+| AC-15 | file dikunci | `git diff --name-only d8fe450..HEAD` tidak memuat `snapshots`, `frozen-kinds`, `legacy-manifest` — LULUS |
+| AC-17 | `scaffold --help` + test | "Agents → Skills → Task Completion" — LULUS |
+| AC-18 | pty: kode lama (`12ad83f`, tanpa langkah skills) lalu `scaffold skills` vs kode baru penuh; `diff -r .claude/skills` | tanpa perbedaan (9 skill) — LULUS. Test: `AC-18` |
+| AC-19 | `skills-scaffold.test.js`, `skills-pointer.test.js` dll. tanpa diubah (kecuali baris 40-43) | lulus — LULUS |
+| AC-20 | test `AC-20` (konfirmasi skills dijawab no): tanpa `.claude/skills`, rantai lanjut, exit code tidak berubah | LULUS di test. **Tidak** terbukti lewat pty (lihat batasan) |
+| AC-21 | pty: dua kali penuh, satu skill diedit di antaranya | `cmp` sama — skill utuh — LULUS. Test: `AC-21` |
+| AC-22 | `npm test`; `git diff --stat 05cbea5^..HEAD` | lulus; 7 file: `scaffold.js`, `index.js`, `skills.js` (komentar, lihat temuan 1), `skills-scaffold.test.js`, test baru, `README.md`, `CLAUDE.md`; tanpa fixture/golden/snapshot/sha256 — LULUS dengan catatan |
+| AC-23 | `grep -rn "scaffold skills" README.md CAF.md` | semua konteks "jalankan ulang", "target terpisah" atau tidak mewajibkan (baris 156 judul, 135, 186, 217, 220, 280, 321, 571; CAF.md:480) — LULUS |
+| AC-24 | lihat di atas | exit 0, 0 required gap, 0 FAIL, 0 WARN — LULUS |
+
+AC-6 tetap dihapus (amendment-1).
+
+## Diff test yang diedit
+`test/skills-scaffold.test.js`: judul dan asersi `!CHAIN_ORDER.includes('skills')` diganti `CHAIN_ORDER[indexOf('agents') + 1] === 'skills'`. Tidak ada regenerate.
+
+## Batasan pengujian
+- Skip lewat pty tidak berhasil didemonstrasikan: skrip `expect` buatanku menjawab `n` di prompt "CAF Skills Scaffolder" tetapi hasilnya `yes` (kemungkinan Enter nyasar dari prompt sebelumnya; masalah skrip, bukan produk). Skip dibuktikan di test dengan `prompts.inject` dan langkah lain di-spy.
+- Test rantai mengganti semua langkah selain skills dengan spy; urutan prompt nyata diuji lewat pty penuh.
+
+## Temuan di luar scope (tidak diubah)
+1. **Komentar `src/commands/skills.js:217`** ("Explicit-only") ikut kuubah di Task 14 supaya tidak salah; file itu tidak ada di daftar persetujuan (hanya komentar, nol perubahan perilaku). Bila tidak diinginkan, revert satu baris itu.
+2. **Backlog alur draf:** `complete-drafts` sebaiknya hanya mendaftar file yang benar-benar draf. Hari ini semua `SKILL.md` terdaftar (juga yang tanpa banner dan tanpa TODO); instruksi command melarang mengeditnya, tetapi daftarnya lebih panjang dari yang perlu.
+3. **Teks `/caf-complete-drafts`** masih menyebut pointer "managed by `caf-init scaffold skills`": benar, tidak diubah.
+4. Urutan chain-lalu-pointer menyisakan satu baris kosong tambahan di file agent dibanding skills-sebelum-agents; `.claude/skills/` identik.
+5. `process.exitCode = 1` karena tabrakan nama folder skill tidak menghentikan rantai; ringkasan tetap ✓ sementara exit 1 (sama seperti target tunggal).
+6. Temuan 1-6 dari bagian Task 12 di atas tetap berlaku.
