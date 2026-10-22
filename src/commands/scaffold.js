@@ -122,7 +122,7 @@ export async function runScaffold({ dir, dryRun, explicitGlobs, agentDir, overwr
  * `scaffold <target>`: run a single target standalone, behavior identical to the old
  * individual command.
  */
-export async function runScaffoldTarget(target, { dir, dryRun, agentDir, app, commandDir, overwrite, mode, scope, role }) {
+export async function runScaffoldTarget(target, { dir, dryRun, agentDir, app, allApps, commandDir, overwrite, mode, scope, role }) {
   if (!TARGETS[target]) {
     console.error(kleur.red(`scaffold: unknown target "${target}" (choices: ${OFFERED_TARGETS.join(', ')})`));
     process.exitCode = 1;
@@ -131,7 +131,7 @@ export async function runScaffoldTarget(target, { dir, dryRun, agentDir, app, co
 
   switch (target) {
     case 'golden-examples':
-      return goldenExamples({ dir, app, dryRun, mode });
+      return goldenExamples({ dir, app, allApps, dryRun, mode });
     case 'adr':
       return adr({ dir, app, dryRun, mode });
     case 'agents':

@@ -48,7 +48,13 @@ program
   .argument('[target]', `optional: run only one part (${OFFERED_TARGETS.join('|')})`)
   .option('--dir <path>', 'target repo directory', process.cwd())
   .option('--dry-run', 'show detection results without writing anything', false)
-  .option('--app <app-path>', 'restrict to a specific app path (e.g. apps/api) — only used by golden-examples/adr/agents/task-completion targets')
+  .option(
+    '--app <app>',
+    'restrict to a specific app, by path or slug (e.g. apps/api or api) — used by golden-examples/adr/agents/task-completion targets. ' +
+      'Repeatable (--app api --app web) for scaffold golden-examples only',
+    (value, previous = []) => [...previous, value]
+  )
+  .option('--all-apps', 'scaffold golden-examples only: scan every detected app without the app picker (file questions still run)', false)
   .option('--agent-dir <path>', 'directory to read/write agent definitions', '.claude/agents')
   .option(
     '--command-dir <path>',
@@ -81,6 +87,15 @@ program
     const dryRun = Boolean(cmdOpts.dryRun);
     const overwrite = Boolean(cmdOpts.force);
     const { mode, scope, role } = cmdOpts;
+    const apps = cmdOpts.app ?? [];
+    // Repeated --app and --all-apps mean "several apps", which only golden-examples handles. Anywhere
+    // else, silently using one value would hide the rest — refuse before anything runs or is written.
+    if (target !== 'golden-examples' && (apps.length > 1 || cmdOpts.allApps)) {
+      const used = cmdOpts.allApps ? '--all-apps' : 'repeated --app';
+      console.error(kleur.red(`scaffold: ${used} is only for scaffold golden-examples (hanya untuk scaffold golden-examples)`));
+      process.exitCode = 1;
+      return;
+    }
     if (!target) {
       await runScaffold({ dir, dryRun, explicitGlobs: undefined, agentDir: cmdOpts.agentDir, overwrite, mode, scope, role });
       return;
@@ -89,7 +104,8 @@ program
       dir,
       dryRun,
       agentDir: cmdOpts.agentDir,
-      app: cmdOpts.app,
+      app: target === 'golden-examples' ? apps : apps[0],
+      allApps: Boolean(cmdOpts.allApps),
       commandDir: cmdOpts.commandDir,
       overwrite,
       mode,
