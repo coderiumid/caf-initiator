@@ -609,3 +609,75 @@ AC-6 tetap dihapus (amendment-1).
 4. Urutan chain-lalu-pointer menyisakan satu baris kosong tambahan di file agent dibanding skills-sebelum-agents; `.claude/skills/` identik.
 5. `process.exitCode = 1` karena tabrakan nama folder skill tidak menghentikan rantai; ringkasan tetap ✓ sementara exit 1 (sama seperti target tunggal).
 6. Temuan 1-6 dari bagian Task 12 di atas tetap berlaku.
+
+---
+
+# Amendment 4 — golden-examples: beberapa app dalam satu run (Task 17-20)
+
+Commit (awalan `CAF-INIT-DOCS-REMOVE (golden-examples):`): `3ccd721` amendment, `a75ed3a` inventaris (Task 17), `03f7310` keputusan checkpoint, `6b9467e` Task 18, `8666650` perbaikan satu test merah, `bc8c5fb` Task 19 (test), `b6996aa` Task 20 (docs). `b83013d` leluhur HEAD, tidak disentuh. Semua lokal, tidak ada push.
+
+## Amandemen AC (sesuai keputusan checkpoint)
+- **AC-28 (ditulis ulang).** `--app <slug|path>` (boleh diulang) dan `--all-apps` hanya menghilangkan prompt pemilihan app; prompt kategori file tetap muncul dan `RULES.md` tidak dibuat otomatis. Nilai tak dikenal, slug ambigu (error menyebut kedua path), atau `--all-apps` bersama `--app`: error, exit 1, tanpa menulis apa pun. Pengulangan `--app`/`--all-apps` di target lain dan di rantai tanpa target: error "hanya untuk scaffold golden-examples", exit 1, sebelum apa pun berjalan.
+- **AC-32 (ditulis ulang).** Memilih N app menghasilkan N file `RULES.md` yang bentuknya identik dengan versi satu app (masing-masing 4 `TODO`), tanpa file lain: tidak ada jenis file ber-TODO yang baru.
+- Keputusan 5: Enter pada semua kategori satu app **tidak** menulis `RULES.md` (tidak ada cangkang TODO). Perilaku hari ini dipertahankan; terbukti di test AC-31 dan pty AC-31 (web tidak punya file).
+
+## Hasil
+`npm test`: **1064 tests, 1064 pass, 0 fail, 0 skipped** (1044 sebelumnya + 20 test baru di `test/golden-examples-multiapp.test.js`; selisih 20 = test baru, tidak ada test lama yang hilang).
+
+| AC | Bukti | Hasil |
+|---|---|---|
+| AC-25 | pty/skrip: `goldenExamples` di salinan single-nuxt dengan jawaban yang sama, kode `0393cc1` (disimpan sebelum Task 18) vs HEAD: `diff -r` | kosong — LULUS. Test: `AC-25` (satu file `RULES.md`, isi sama dengan `buildRulesMd`, tanpa picker, tanpa penanda App i/N) |
+| AC-26 | pty `scaffold golden-examples` di salinan mono-pnpm (+1 file kandidat per app): picker tampil `◯ ◯` (tidak ada yang tercentang), centang dua app, satu file tiap app | `apps/api/RULES.md` dan `apps/web/RULES.md` ada, EXIT=0 — LULUS |
+| AC-27 | pty, Enter tanpa centang | EXIT=0, `git status` kosong, output: `apps without golden example: api (apps/api), web (apps/web)` dan petunjuk `caf-init scaffold golden-examples --app <slug-or-path>` — LULUS |
+| AC-28 | test otomatis (slug+path, `--all-apps`, tidak dikenal, ambigu, gabungan, CLI di target lain dan rantai) + CLI manual: `--app tidak-ada` exit 1; `--app a --app b` pada `adr`, `--all-apps` pada rantai: exit 1 + pesan | LULUS (versi amandemen) |
+| AC-29 | pty: jalan untuk api, ubah `RULES.md`, jalan untuk api+web | `cmp` sama (file ubahan utuh), pesan `already exists, skipped (sudah ada, skip)` tanpa pertanyaan kategori api, web baru ditambah — LULUS |
+| AC-30 | pty: jalan untuk satu dari dua app | ringkasan `apps without golden example: web (apps/web)`, api tidak disebut — LULUS. Setelah run kedua: `none` |
+| AC-31 | pty `scaffold` penuh, centang dua app, api diberi file, web Enter, lalu langkah berikutnya dijawab skip | EXIT=0, `golden-examples/apps/api/RULES.md` saja, ringkasan rantai memuat 8 baris dan rantai berlanjut ke ADR — LULUS |
+| AC-32 | `grep -rlE TODO .caf/knowledge`: dua app → 2 file, satu app → 1 file; test membandingkan isi file api dari run dua app dengan run satu app | byte sama; tidak ada file lain di `.caf` — LULUS (versi amandemen) |
+| AC-33 | `npm test`; `git diff --stat 0393cc1..HEAD` | 1064 lulus. 10 file: 2 laporan/amendment, `golden-examples.js`, `scaffold.js`, `index.js`, 1 test baru, `README.md`, `CAF.md`, `CLAUDE.md`, dan **1 test lama** (lihat diff di bawah, disetujui). Tidak ada fixture/golden/snapshot/helper/sha256 yang berubah — LULUS |
+| AC-34 | `grep -rn "golden-examples" README.md CAF.md CLAUDE.md` | README baris 124, 148, 149; CAF.md 73-78 (kalimat baru); CLAUDE.md bagian baru. Tidak ada baris yang menyiratkan satu app atau mewajibkan jalan ulang per app. Baris CAF.md:57 dan README:556 (tanpa subfolder app di SINGLE_REPO) tetap benar — LULUS |
+
+### Ulang AC-1 sampai AC-24 (HEAD `b6996aa`)
+| AC | Hasil |
+|---|---|
+| AC-1 | `--help | grep -cE '^\s+docs\b'` → `0` — LULUS |
+| AC-2 | versi D5 `grep -rnF "caf-init docs"` → 0 baris. Regex asli masih menemukan sisa sah yang sama dengan Task 7 (README:115 catatan penghapusan, CAF.md spesifikasi, `CLAUDE.md:1150` judul bagian yang memuat "DOCS-REMOVE", test:107 komentar) — LULUS (versi D5) |
+| AC-3 | pty Enter-saja: rantai EXIT=0, 8 langkah ✓ (Skills 9 written), tidak ada `docs/` — LULUS |
+| AC-4 | `curate --audit-only` di fixture: tidak menyebut dokumen docs; exit 1 karena fixture belum ter-scaffold (sama seperti sebelum Task 18) — LULUS menurut kriteria "tidak menyebut docs" |
+| AC-5 | `npm test` 1064/0/0 — LULUS |
+| AC-6 | dihapus (amendment-1; tidak ada script lint/build) |
+| AC-7 | `scaffold --help` memuat `complete-drafts` — LULUS |
+| AC-8 | versi D5: 2 baris sah (`agent-md.js:147`, `skill-md.js:443`; D1/D2) — LULUS dengan pengecualian |
+| AC-9 | README:115 mencatat penghapusan; tidak ada CHANGELOG.md (keputusan: tanpa CHANGELOG) — LULUS (versi D5) |
+| AC-10 | working tree bersih, semua commit lokal, `b83013d` leluhur dan tidak diubah — LULUS |
+| AC-11, AC-16 | `inventory-report-2.md` tidak diubah — LULUS |
+| AC-12 | `scaffold` penuh (Enter-saja) lalu `grep -rlsE TODO .caf/knowledge .caf/tasks` → kosong — LULUS |
+| AC-13 | `find .caf` → `tasks/README.md`, `workflows/task-completion.md` — LULUS |
+| AC-14 | dengan 3 agent + `scaffold workflow`: `curate --audit-only` exit 0, 0 gap. Tanpa agent (Enter-saja): exit 1, 2 gap workflow; keluaran **identik** dengan `0393cc1` (diff kosong), jadi bukan akibat amendment 4 — LULUS |
+| AC-15, AC-22 | tidak ada `snapshots`, `frozen-kinds`, `legacy-manifest`, fixture, atau sha256 berubah di `0393cc1..HEAD` — LULUS |
+| AC-17 | `scaffold --help`: "Agents → Skills → Task Completion" — LULUS |
+| AC-18, AC-19, AC-21 | dicakup `npm test` (`scaffold-skills-chain.test.js`, `skills-*.test.js`); tidak diubah — LULUS |
+| AC-20 | tidak diulang (Ganjar mengecek manual) |
+| AC-23 | `grep -rn "scaffold skills" README.md CAF.md`: semua konteks "target terpisah/jalankan ulang", tidak ada yang berubah — LULUS |
+| AC-24 | `curate --check-drafts` setelah scaffold penuh: exit 0, 0 fail (3 warn "belum ada baseline" saat agent dibuat lewat `scaffold agents` tanpa `complete-drafts`; sama sebelum Task 18) — LULUS |
+
+## Diff test lama yang diedit (disetujui)
+`test/sdd03c1-stop-scaffold.test.js:152` (AC-1, "scaffold has no flag that selects an agent kind past the picker"), satu elemen:
+```diff
+-  assert.deepEqual(sorted(flags), sorted(['--dir', '--dry-run', '--app', '--agent-dir', '--command-dir', '--force', '--mode', '--scope', '--role']));
++  assert.deepEqual(sorted(flags), sorted(['--dir', '--dry-run', '--app', '--all-apps', '--agent-dir', '--command-dir', '--force', '--mode', '--scope', '--role']));
+```
+Commit `8666650` memperbaiki satu test merah dari `6b9467e`, karena `--all-apps` adalah flag baru yang diwajibkan amendment 4. `--all-apps` tidak disembunyikan dari help.
+
+## Catatan proses
+- `6b9467e` (Task 18) dikomit dengan satu test merah: aku menjalankan `npm test` dan `git commit` dalam satu perintah tanpa menunggu hasil. Dilaporkan, disetujui, diperbaiki di `8666650`. Sejak itu hasil test ditunggu dulu.
+- Task 19 mengubah `golden-examples.js` sedikit (bukan hanya test): test dry-run menemukan bahwa ringkasan akhir menyebut app yang file `RULES.md`-nya *akan* ditulis dry-run sebagai "tanpa golden example". Sekarang dry-run dihitung (`planned`). Masuk commit `bc8c5fb`.
+- pty: skrip `expect` buatanku beberapa kali hang karena salah mengirim Enter ekstra pada konfirmasi `(Y/n)` (Enter = yes); diperbaiki di skrip, bukan di kode. Hasil di atas dari run yang selesai dengan EXIT=0.
+
+## Temuan di luar scope (tidak diubah)
+1. Jalur non-interaktif sebenarnya tidak ada: `--app`/`--all-apps` hanya menghapus prompt app (keputusan 4); prompt kategori file tetap, sehingga tanpa TTY mereka dibatalkan dan tidak menulis apa pun (exit 0).
+2. `RULES.md` yang sudah ada dilewati utuh: tidak ada merge bila pengguna ingin menambah file ke app yang sudah punya golden example. Harus hapus file lalu jalan ulang.
+3. Slug bisa bentrok (`apps/web` vs `packages/web`). Ditangani untuk `--app` (error menyebut kedua path); nama agent implementasi yang bentrok di langkah Agents tidak diperiksa di sini.
+4. `adr` dan `agents` masih menerima `--app` dengan path yang tidak dikenal tanpa error (hanya `golden-examples` dan `task-completion` yang memvalidasi). Tidak diubah.
+5. `curate --check-drafts` memberi 3 WARN "no baseline" bila agent dibuat lewat `scaffold agents` tanpa `complete-drafts` (sama sebelum Task 18).
+6. Pesan "sudah ada, skip" bercampur Inggris/Indonesia mengikuti permintaan; sisa keluaran CLI berbahasa Inggris.
