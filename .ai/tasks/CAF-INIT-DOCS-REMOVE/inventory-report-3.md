@@ -85,3 +85,22 @@ Pre-existing inaccuracy seen, out of scope (do not fix in this ticket): `README.
 3. **Zero agents:** no special case; the step runs and writes the skills.
 4. **Item 3 (DRAFT in `complete-drafts`):** accept as is (INFO only). No code needed, but the README should say the skills appear in the draft inventory.
 5. Update `CLAUDE.md` lines 61 and 137-139 in Task 16 (needs your yes).
+
+## Keputusan checkpoint
+
+Diputuskan oleh Ganjar setelah laporan ini.
+
+**Koreksi premis (amendment 3 menyebut empat skill DRAFT; yang benar):**
+- Hanya `caf-traceability` yang selalu DRAFT.
+- `caf-self-verify` DRAFT bila repo tanpa script verify.
+- `caf-design` dan `caf-breakdown` tanpa banner sejak CAF-CHORE-INIT-01.
+
+1. Skills tepat setelah Agents, satu konfirmasi skip (default yes). Konfirmasi pointer `## Skills` per agent tetap. Target `scaffold skills` tidak berubah perilakunya.
+2. Skill di inventaris `/caf-complete-drafts`: diterima dengan syarat. Syarat dibuktikan sebelum mengubah apa pun:
+   - `listDraftFiles` (`src/commands/complete-drafts.js`) sudah meng-glob `.claude/skills/*/SKILL.md` sejak commit `80f0df0` (CAF-SKILLS-01 task 7), tidak terkait rantai. Repo yang menjalankan `scaffold skills` lalu `scaffold complete-drafts` sudah mendaftarkan skill hari ini.
+   - Teks `/caf-complete-drafts` (`src/templates/complete-drafts-command.js`, bagian `CAF skills`) hanya mengizinkan mengedit skill yang masih ber-banner `DRAFT`; skill tanpa banner "is finished: do not edit it"; tidak boleh mencabut banner, membuat skill, atau menambah pointer. Daftar draf di command bukan sumber skill (command me-glob ulang).
+   - Backlog: `complete-drafts` sebaiknya hanya mendaftar yang benar-benar draf (dicatat di `verify-report.md`).
+3. `CLAUDE.md` diperbarui di Task 16: hanya baris 61 dan 137-139, ditambah satu entri riwayat tiket bila formatnya ada.
+4. `README.md:165` ("seven") diperbaiki bila barisnya ada di bagian yang diedit; dicatat di pesan commit.
+
+Persetujuan perubahan: `src/commands/scaffold.js`, `src/index.js`, `README.md`, `CAF.md` (bila perlu), `CLAUDE.md` (butir 3), `test/skills-scaffold.test.js:42` (dibalik), satu file test baru (AC-17 sampai AC-21). Fixture, golden, snapshot beku atau file sha256 yang ikut berubah: berhenti dan lapor.
