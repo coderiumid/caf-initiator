@@ -18,9 +18,8 @@ const SYMBOL = { ok: '✓', gap: '✗', declined: '⊘', warn: '!' };
 const COLOR = { ok: kleur.green, gap: kleur.red, declined: kleur.yellow, warn: kleur.yellow };
 
 // status: 'ok' | 'gap' | 'declined' | 'warn'. 'warn' is a rollout warning (see
-// rolloutWarnings()): shown with the agent definitions, counted on its own, never a gap. severity 'optional' never fails the exit code (Layer 1
-// reference docs are human-owned and not required for the pipeline to run — same stance as
-// reference-docs.js). syncCommand is the CLI command that would address this gap, or null
+// rolloutWarnings()): shown with the agent definitions, counted on its own, never a gap. severity 'optional' never fails the exit code.
+// syncCommand is the CLI command that would address this gap, or null
 // when no apply command exists yet (report the gap as-is — not this command's job to add one).
 function entry({ status, filePath, message, syncCommand = null, severity = 'required' }) {
   return { status, filePath, message, syncCommand, severity };
@@ -88,12 +87,6 @@ function auditKnowledgeBase(dir, stack) {
   entries.push(
     ...auditSingleFile(dir, 'AGENTS.md', 'agents-md', { createCommand: 'caf-init scaffold', partialSyncCommand: null })
   );
-  entries.push(
-    ...auditSingleFile(dir, path.join('.caf', 'knowledge', 'INDEX.md'), 'knowledge-index-md', {
-      createCommand: 'caf-init scaffold',
-      partialSyncCommand: null,
-    })
-  );
 
   // RULES.md is a mandatory pair for every non-empty .caf/knowledge/golden-examples/{{app}}/
   // folder (CAF.md Layer 1) — same rule golden-examples.js already enforces.
@@ -107,29 +100,6 @@ function auditKnowledgeBase(dir, stack) {
           filePath: path.join('.caf', 'knowledge', 'golden-examples', app.path, 'RULES.md'),
           message: 'missing, golden example folder already has content',
           syncCommand: 'caf-init scaffold golden-examples',
-        })
-      );
-    }
-  }
-
-  // Optional Layer 1 reference docs — never required, existence-only (content is human-owned
-  // prose, not something to structurally diff — see reference-docs.js).
-  const OPTIONAL_DOCS = [
-    'docs/product/prd.md',
-    'docs/architecture/system-overview.md',
-    'docs/schema/erd.md',
-    'docs/testing-strategy.md',
-    'docs/api-contract.md',
-  ];
-  for (const relPath of OPTIONAL_DOCS) {
-    if (!exists(path.join(dir, relPath))) {
-      entries.push(
-        entry({
-          status: 'gap',
-          filePath: relPath,
-          message: 'missing (optional)',
-          syncCommand: 'caf-init docs',
-          severity: 'optional',
         })
       );
     }
@@ -472,8 +442,7 @@ export async function audit({ dir, agentDir: agentDirOpt, output, repoMode }) {
     console.log(kleur.dim(`report saved to ${outputPath}`));
   }
 
-  // Optional-doc gaps never fail the run (see reference-docs.js — Layer 1 reference docs are
-  // never required for the pipeline). Required gaps do, so `audit` is usable as a CI gate.
+  // Optional gaps never fail the run. Required gaps do, so `audit` is usable as a CI gate.
   // Warnings never do (CAF-SDD-02d).
   if (requiredGaps.length > 0) process.exitCode = 1;
 

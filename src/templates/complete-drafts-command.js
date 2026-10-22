@@ -175,16 +175,6 @@ they leave unanswered stays a \`TODO\` (or becomes an explicit open question in 
   their report/status formats are parsed word-for-word by caf-orchestrator.
 - Leave every \`TODO\` about MCP servers alone — that is a security decision for a human.
 
-\`docs/architecture/system-overview.md\`, \`docs/testing-strategy.md\`, \`docs/api-contract.md\`
-(only the ones that already exist)
-- Describe what the code shows; mark every part that is an inference as an inference.
-- Testing strategy: the tooling and patterns that exist, and what is missing. Coverage targets
-  and policy are the user's call.
-- API contract: if this repo only *consumes* an API, document only the endpoints it actually
-  calls (with the calling file), label the document as the consumer's view, and never invent
-  response fields the code does not use.
-- \`docs/schema/erd.md\`: fill only if this repo owns a schema. Otherwise leave it alone and say so.
-
 \`${SKILLS_DIR}/*/SKILL.md\` (CAF skills)
 - Glob \`${SKILLS_DIR}/*/SKILL.md\` **now** — skills can be added after this command was generated,
   so the list of drafts above is not the source for them.
@@ -202,9 +192,6 @@ they leave unanswered stays a \`TODO\` (or becomes an explicit open question in 
 #### Never invent — ask, then write only from the user's answers
 
 - **Business Context** in \`CLAUDE.md\`: domain, users, business constraints.
-- \`docs/product/prd.md\`: problem, target users, success criteria, scope.
-- \`docs/product/features/*.md\`: you may describe existing behavior from the code; the goal and
-  acceptance criteria come from the user.
 - \`.caf/knowledge/golden-examples/**/RULES.md\`: you may propose candidate files per pattern with
   your reasoning; the user picks them and decides the do/don't.
 - \`.caf/knowledge/decisions/\` (ADRs): you may list the technical decisions that are visible; the

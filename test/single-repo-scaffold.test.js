@@ -89,7 +89,6 @@ test('SINGLE_REPO scaffold on a Nuxt single package is complete and leaves no un
     'CLAUDE.md',
     'AGENTS.md',
     '.caf/tasks/README.md',
-    '.caf/knowledge/INDEX.md',
     '.claude/agents/caf-planner.md',
     '.claude/agents/caf-frontend.md',
     '.claude/agents/caf-backend.md',
@@ -105,8 +104,10 @@ test('SINGLE_REPO scaffold on a Nuxt single package is complete and leaves no un
   assert.deepEqual(generated.filter((f) => path.basename(f) === 'CLAUDE.md'), ['CLAUDE.md']);
   assert.ok(!generated.includes('.claude/agents/caf-implementer.md'));
   assert.ok(!generated.includes('.claude/agents/.md'));
-  // golden-examples has no per-app subfolder in SINGLE_REPO.
-  assert.deepEqual(fs.readdirSync(path.join(dir, '.caf', 'knowledge', 'golden-examples')), []);
+  // Neither INDEX.md nor the empty knowledge/ folders are scaffolded (CAF-INIT-DOCS-REMOVE):
+  // `scaffold golden-examples` and `scaffold adr` create their folder when they write.
+  assert.ok(!generated.includes('.caf/knowledge/INDEX.md'));
+  assert.ok(!fs.existsSync(path.join(dir, '.caf', 'knowledge')));
 
   for (const file of generated) {
     const content = fs.readFileSync(path.join(dir, file), 'utf8');
@@ -340,7 +341,7 @@ test('CLAUDE.md: MONOREPO and mode-less rendering carry no Repo mode line (uncha
 test('CLI: --mode is documented in --help and overrides auto-detection', () => {
   const run = (args) => spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8', input: '' });
 
-  for (const command of ['scaffold', 'docs', 'curate']) {
+  for (const command of ['scaffold', 'curate']) {
     const help = run([command, '--help']).stdout;
     assert.match(help, /--mode <mode>/, `${command} --help should document --mode`);
     assert.match(help, /choices: "single", "mono"/);

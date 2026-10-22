@@ -341,7 +341,7 @@ export async function checkDrafts({ dir, agentDir: agentDirOpt, repoMode }) {
   console.log(`  ${drafts.length} draft(s) checked — ${fails} fail, ${warns} warn`);
   console.log(
     kleur.dim(
-      '  This checks structure and verifiable facts only. Whether business context, PRD, ADR reasons and\n' +
+      '  This checks structure and verifiable facts only. Whether business context, ADR reasons and\n' +
         '  golden-example choices are TRUE is not checkable — review the diff yourself.'
     )
   );

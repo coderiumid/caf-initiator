@@ -267,8 +267,8 @@ for (const fixture of FIXTURE_NAMES) {
     assert.deepEqual(without.layers, withFile.layers);
     assert.equal(without.optionalGaps.length, withFile.optionalGaps.length);
     assert.equal(without.exitCode, withFile.exitCode);
-    // the optional reference documents are still listed
-    assert.ok(withFile.optionalGaps.some((g) => g.filePath === 'docs/testing-strategy.md'));
+    // the reference documents are no longer audited (CAF-INIT-DOCS-REMOVE)
+    assert.ok(!withFile.optionalGaps.some((g) => g.filePath === 'docs/testing-strategy.md'));
   });
 }
 

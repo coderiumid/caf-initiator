@@ -37,9 +37,9 @@ async function withExitCode(fn) {
   }
 }
 
-test('scaffold skills is a target but not part of the bare chain', () => {
+test('scaffold skills is a target and a step of the bare chain, right after agents', () => {
   assert.ok(TARGETS.skills);
-  assert.ok(!CHAIN_ORDER.includes('skills'));
+  assert.equal(CHAIN_ORDER[CHAIN_ORDER.indexOf('agents') + 1], 'skills');
 });
 
 for (const [name, fixture] of Object.entries(FIXTURE)) {

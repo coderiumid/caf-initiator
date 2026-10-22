@@ -7,7 +7,6 @@ import { agentsPublish } from './commands/export.js';
 import { curate } from './commands/curate.js';
 import { curateBaseline } from './commands/curate-baseline.js';
 import { checkDrafts } from './commands/check-drafts.js';
-import { referenceDocs } from './commands/reference-docs.js';
 import { runScaffold, runScaffoldTarget, OFFERED_TARGETS } from './commands/scaffold.js';
 import { MODE_FLAG_CHOICES } from './utils/repo-context.js';
 import { SINGLE_REPO_OFFERED_ROLES } from './commands/agents.js';
@@ -34,14 +33,14 @@ program
   .description('Automate the initial setup of the Coderium Agent Framework (CAF) in a repo');
 
 // scaffold: `caf-init scaffold` runs the default Setup → Golden Examples → ADR → Agents →
-// Task Completion → Workflow chain; `caf-init scaffold <target>` runs one target standalone
+// Skills → Task Completion → Workflow chain; `caf-init scaffold <target>` runs one target standalone
 // with behavior identical to the old individual commands. Union of every underlying target's
 // flags is declared here since a single positional-arg command can't have per-target option
 // sets in commander.
 program
   .command('scaffold')
   .description(
-    `bare: run Setup → Golden Examples → ADR → Agents → Task Completion → Workflow → AI Draft Completion in sequence, ` +
+    `bare: run Setup → Golden Examples → ADR → Agents → Skills → Task Completion → Workflow → AI Draft Completion in sequence, ` +
       `with a skip-confirmation before each step after Setup. With a target ` +
       `(${OFFERED_TARGETS.join('|')}): run only that part, behavior identical to the old ` +
       `standalone command.`
@@ -49,7 +48,13 @@ program
   .argument('[target]', `optional: run only one part (${OFFERED_TARGETS.join('|')})`)
   .option('--dir <path>', 'target repo directory', process.cwd())
   .option('--dry-run', 'show detection results without writing anything', false)
-  .option('--app <app-path>', 'restrict to a specific app path (e.g. apps/api) — only used by golden-examples/adr/agents/task-completion targets')
+  .option(
+    '--app <app>',
+    'restrict to a specific app, by path or slug (e.g. apps/api or api) — used by golden-examples/adr/agents/task-completion targets. ' +
+      'Repeatable (--app api --app web) for scaffold golden-examples only',
+    (value, previous = []) => [...previous, value]
+  )
+  .option('--all-apps', 'scaffold golden-examples only: scan every detected app without the app picker (file questions still run)', false)
   .option('--agent-dir <path>', 'directory to read/write agent definitions', '.claude/agents')
   .option(
     '--command-dir <path>',
@@ -82,6 +87,15 @@ program
     const dryRun = Boolean(cmdOpts.dryRun);
     const overwrite = Boolean(cmdOpts.force);
     const { mode, scope, role } = cmdOpts;
+    const apps = cmdOpts.app ?? [];
+    // Repeated --app and --all-apps mean "several apps", which only golden-examples handles. Anywhere
+    // else, silently using one value would hide the rest — refuse before anything runs or is written.
+    if (target !== 'golden-examples' && (apps.length > 1 || cmdOpts.allApps)) {
+      const used = cmdOpts.allApps ? '--all-apps' : 'repeated --app';
+      console.error(kleur.red(`scaffold: ${used} is only for scaffold golden-examples (hanya untuk scaffold golden-examples)`));
+      process.exitCode = 1;
+      return;
+    }
     if (!target) {
       await runScaffold({ dir, dryRun, explicitGlobs: undefined, agentDir: cmdOpts.agentDir, overwrite, mode, scope, role });
       return;
@@ -90,7 +104,8 @@ program
       dir,
       dryRun,
       agentDir: cmdOpts.agentDir,
-      app: cmdOpts.app,
+      app: target === 'golden-examples' ? apps : apps[0],
+      allApps: Boolean(cmdOpts.allApps),
       commandDir: cmdOpts.commandDir,
       overwrite,
       mode,
@@ -193,32 +208,6 @@ program
       mode,
       dryRun: Boolean(cmdOpts.dryRun),
       repoMode: cmdOpts.mode,
-    });
-  });
-
-program
-  .command('docs')
-  .description(
-    'scaffold optional Layer 1 reference docs (PRD, Feature Spec, system-overview, api-contract, ERD, testing-strategy) — all read-only/optional, never required for the pipeline to run'
-  )
-  .option('--dir <path>', 'target repo directory', process.cwd())
-  .option('--dry-run', 'show detection results without writing anything', false)
-  .option(
-    '--include <items...>',
-    'non-interactive: only generate these items (product, architecture, schema, testing-strategy, api-contract)'
-  )
-  .option('--feature <name...>', 'non-interactive: Feature Spec names to generate placeholders for')
-  .addOption(modeOption())
-  .action(async (cmdOpts) => {
-    const dir = path.resolve(cmdOpts.dir);
-    const interactive = !cmdOpts.include && !cmdOpts.feature;
-    await referenceDocs({
-      dir,
-      dryRun: Boolean(cmdOpts.dryRun),
-      interactive,
-      include: cmdOpts.include || [],
-      features: cmdOpts.feature || [],
-      mode: cmdOpts.mode,
     });
   });
 

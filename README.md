@@ -32,7 +32,6 @@ The full CAF specification is in [`CAF.md`](./CAF.md).
   - [`scaffold skills`](#caf-init-scaffold-skills)
   - [`scaffold complete-drafts`](#caf-init-scaffold-complete-drafts)
   - [`curate`](#caf-init-curate)
-  - [`docs`](#caf-init-docs)
   - [`export`](#caf-init-export)
 - [Working with caf-orchestrator](#working-with-caf-orchestrator)
 - [Repo mode](#repo-mode-monorepo-vs-single_repo)
@@ -45,16 +44,13 @@ The full CAF specification is in [`CAF.md`](./CAF.md).
 # 1. Preview — detects the stack and lists what would be written
 npx -p caf-initiator caf-init scaffold --dry-run
 
-# 2. Generate the drafts (asks before each step)
+# 2. Generate the drafts and the CAF skills (asks before each step)
 npx -p caf-initiator caf-init scaffold
 
-# 3. Optional: add the CAF skills
-npx -p caf-initiator caf-init scaffold skills
-
-# 4. In your AI runner (e.g. Claude Code), fill in the TODOs
+# 3. In your AI runner (e.g. Claude Code), fill in the TODOs
 /caf-complete-drafts
 
-# 5. Check the result, then review the diff and commit
+# 4. Check the result, then review the diff and commit
 npx -p caf-initiator caf-init curate --check-drafts
 ```
 
@@ -85,10 +81,9 @@ npm link                          # makes `caf-init` available globally
 ├── AGENTS.md                        # concrete rules for agents (draft)
 ├── .caf/
 │   ├── tasks/README.md              # per-ticket artifact convention
-│   ├── knowledge/
-│   │   ├── INDEX.md                 # status of the optional reference docs
-│   │   ├── golden-examples/         # RULES.md pointing at your best files
-│   │   └── decisions/               # ADR drafts
+│   ├── knowledge/                   # created on first use, not by Setup
+│   │   ├── golden-examples/         # RULES.md pointing at your best files (`scaffold golden-examples`)
+│   │   └── decisions/               # ADR drafts (`scaffold adr`)
 │   ├── workflows/
 │   │   ├── task-completion.md       # Definition of Done
 │   │   ├── piv-workflow.md          # Plan → Implement → Verify
@@ -97,7 +92,7 @@ npm link                          # makes `caf-init` available globally
 └── .claude/
     ├── agents/caf-*.md              # agent definitions
     ├── commands/caf-*.md            # companion slash commands
-    └── skills/caf-*/SKILL.md        # only with `scaffold skills`
+    └── skills/caf-*/SKILL.md        # written by the Skills step of `scaffold`
 ```
 
 Setup also appends ignore rules for `.caf/discovery/*/` and `.caf/audits/*/` to `.gitignore`.
@@ -113,10 +108,11 @@ Setup also appends ignore rules for `.caf/discovery/*/` and `.caf/audits/*/` to 
 | `caf-init curate` | Audit an existing CAF setup, then offer to sync agent sections with the current templates |
 | `caf-init curate --check-drafts` | Read-only check of the drafts after they were filled in |
 | `caf-init curate baseline` | Record the current agent sections as the tracking baseline |
-| `caf-init docs` | Scaffold optional reference docs under `docs/` |
 | `caf-init export` | Copy agent definitions and commands to other AI runners |
 
 Every command accepts `--dir <path>` (default: current directory). `--dry-run` shows what would happen without writing.
+
+The `docs` command, which scaffolded optional reference documents under `docs/`, was removed before the first publish (CAF-INIT-DOCS-REMOVE). Existing `docs/` files in a repo are untouched and `curate` no longer audits them. Setup also no longer writes `.caf/knowledge/INDEX.md` (a status table of those documents, with no reader) or the empty `knowledge/decisions/` and `knowledge/golden-examples/` folders: `scaffold adr` and `scaffold golden-examples` create their folder when they write. A repo that already has `INDEX.md` keeps it; `curate` ignores it.
 
 ### `caf-init scaffold`
 
@@ -124,23 +120,19 @@ Bare `scaffold` runs these steps in order, asking before each one after Setup:
 
 | Step | Target name | Output |
 |---|---|---|
-| Setup | (always first) | `CLAUDE.md`, `AGENTS.md`, `.caf/tasks/README.md`, `.caf/knowledge/INDEX.md`. Checks for existing AI-tool config first; detects stack and tracker |
-| Golden Examples | `golden-examples` | Lets you pick reference files; writes `RULES.md` with a do/don't skeleton |
+| Setup | (always first) | `CLAUDE.md`, `AGENTS.md`, `.caf/tasks/README.md`. Writes nothing under `.caf/knowledge/`. Checks for existing AI-tool config first; detects stack and tracker |
+| Golden Examples | `golden-examples` | Lets you pick reference files; writes `RULES.md` (one per app) with a do/don't skeleton. In a monorepo you tick the apps to scan (none ticked by default), and can run the step again later to add the apps that have none; an app whose `RULES.md` exists is skipped |
 | ADR | `adr` | ADR drafts for technical decisions already visible in the repo |
 | Agents | `agents` | Agent definitions you select, plus their companion slash commands |
+| Skills | `skills` | `.claude/skills/caf-*/SKILL.md`; offers a `## Skills` pointer section to the agent definitions from the previous step (a confirmation per agent) |
 | Task Completion | `task-completion` | `.caf/workflows/task-completion.md` from the verify scripts in `package.json` |
 | Workflow | `workflow` | `piv-workflow.md` and `agent-handoff.md` from the agent roster |
 | AI Draft Completion | `complete-drafts` | The `/caf-complete-drafts` command |
 
-One more target exists but only runs when named explicitly:
-
-| Target | Output | Why it is not in the chain |
-|---|---|---|
-| `skills` | `.claude/skills/caf-*/SKILL.md` | It offers to edit agent definitions that already exist |
-
 Notes:
 
 - `scaffold workflow` needs an agent roster; run `scaffold agents` first.
+- The Skills step runs after Agents, so its pointers reach the agents you just generated. `.claude/skills/*/SKILL.md` then appear in the draft list of `/caf-complete-drafts`, as they already do after a standalone `scaffold skills`; the command edits only a skill that still has its `DRAFT` banner. Answer no to the step to skip it; skills that already exist are never replaced.
 - Agents on offer: Planner, Frontend and Backend (per assigned app; in `SINGLE_REPO` one whole-repo Frontend and one Backend, or just one with `--role`; Implementer is not offered), extra per-app implementation agents, Validator, Reviewer. Architect is not offered either: the Planner writes `design.md` with the `caf-design` skill (CAF-CHORE-INIT-01). CAF recommends starting with Planner plus one implementation agent. QA is no longer offered: the Validator replaces it (see [The default roster](#the-default-roster-validator-and-caf-plan)).
 - Commands written: `/caf-plan` with the Planner, `/caf-run` (Planner plus an implementation agent; it was `/caf-run-pipeline` before CAF-SDD-03c2c), `/caf-fix-review` and `/caf-review` (Reviewer) after a confirmation each, and `/caf-complete-drafts` from its own step.
 - Five agents and eight commands are no longer scaffolded. See [No longer scaffolded](#no-longer-scaffolded).
@@ -153,7 +145,8 @@ Options:
 |---|---|---|
 | `--dir <path>` | Target repo directory | current directory |
 | `--dry-run` | Show detection results without writing anything | `false` |
-| `--app <app-path>` | Restrict to one app. Used by `golden-examples`, `adr`, `agents`, `task-completion` | all apps |
+| `--app <app>` | Restrict to one app, by path (`apps/api`) or slug (`api`). Used by `golden-examples`, `adr`, `agents`, `task-completion`. Repeatable (`--app api --app web`) for `scaffold golden-examples` only; elsewhere repeating it is an error | all apps |
+| `--all-apps` | `scaffold golden-examples` only: scan every detected app without the app picker (the question of which files to use still runs per app). Cannot be combined with `--app` | off |
 | `--agent-dir <path>` | Where agent definitions are read and written | `.claude/agents` |
 | `--command-dir <path>` | Where slash commands are written | `.claude/commands` |
 | `--force` | Overwrite existing files. `agents` target: agent definitions and their commands. `skills` target: `SKILL.md` files only. Manual edits in an overwritten file are lost and the `curate` manifest is not updated | `false` |
@@ -163,7 +156,7 @@ Options:
 
 ### `caf-init scaffold skills`
 
-Writes seven universal skills into `.claude/skills/<name>/SKILL.md`.
+Writes the nine universal skills into `.claude/skills/<name>/SKILL.md`. This is also the Skills step of bare `scaffold` (right after Agents); run the target on its own to re-run it, for example in a repo that was scaffolded earlier.
 
 | Skill | What it tells the reader | Agents that point at it |
 |---|---|---|
@@ -359,21 +352,6 @@ Read-only check after `/caf-complete-drafts` or manual editing. Exit code 1 on a
 
 The check covers what code can verify. Whether the business content is true is still yours to review. Agent frontmatter (`tools:`) is not covered by the baseline; check it in the diff.
 
-### `caf-init docs`
-
-Scaffolds optional reference docs. None of them is required for the CAF pipeline, existing files are never overwritten, and interactive mode asks per item.
-
-| Item (`--include`) | File |
-|---|---|
-| `product` | `docs/product/prd.md` |
-| `architecture` | `docs/architecture/system-overview.md` |
-| `schema` | `docs/schema/erd.md` |
-| `testing-strategy` | `docs/testing-strategy.md` |
-| `api-contract` | `docs/api-contract.md` (only offered when frontend and backend are separate apps in the same repo) |
-| `--feature <name...>` | `docs/product/features/<name>.md` |
-
-Also accepts `--dir`, `--dry-run` and `--mode`.
-
 ### `caf-init export`
 
 Copies the Claude Code agent definitions, slash commands or both to other AI runners, converting the format where needed.
@@ -454,7 +432,7 @@ The spec-driven design dropped five agents and eight commands. A new repo does n
 - **Implementer is replaced.** Since CAF-SDD-03c3 `SINGLE_REPO` gets `caf-frontend` and `caf-backend` instead (see [SINGLE_REPO](#repo-mode-monorepo-vs-single_repo)). `implementer` is filtered out of the picker like `qa` (a superseded kind, not a hidden one); its kind is still known, so `caf-init curate` reads a `caf-implementer.md` already in a repo as before.
 - **Architect is no longer offered** (CAF-CHORE-INIT-01): the Planner writes `design.md` with the `caf-design` skill, which is active. Like QA, it is a superseded kind, not a dropped one: the kind and any `caf-architect.md` already in a repo are untouched by `curate`. QA is no longer offered (see [The default roster](#the-default-roster-validator-and-caf-plan)); its kind and any `caf-qa.md` already in a repo are untouched.
 - **A new repo has no Documentation agent**, so `/caf-run` is written with its "no Documentation Agent" stage, and `piv-workflow.md` lists the role as not scaffolded.
-- **Some generated text still mentions them**: the `.gitignore` lines for `.caf/discovery/` and `.caf/audits/` (kept on purpose). The planner's `## Input` and, since CAF-SDD-03c2b, its `## Constraints` no longer point at the Discovery fallback, the review commands no longer name `/caf-review-ticket`, and `.caf/knowledge/INDEX.md` names neither the PM agent (CAF-SDD-03c2) nor `.caf/discovery/` (CAF-SDD-03c2b).
+- **Some generated text still mentions them**: the `.gitignore` lines for `.caf/discovery/` and `.caf/audits/` (kept on purpose). The planner's `## Input` and, since CAF-SDD-03c2b, its `## Constraints` no longer point at the Discovery fallback, the review commands no longer name `/caf-review-ticket`. (`.caf/knowledge/INDEX.md` is no longer scaffolded at all; see below.)
 - **Released.** This change ships in 0.1.10 and later. caf-orchestrator is meant to skip its documentation stage when `caf-documentation` is absent (CAF-SDD-04a); check the orchestrator repository for the exact behavior.
 
 ### The agents and commands the design ends with
@@ -571,7 +549,7 @@ Every command that runs stack detection first decides the repo mode.
 - **`MONOREPO`**: the root has a `workspaces` field, `pnpm-workspace.yaml`, `turbo.json`, `nx.json` or `lerna.json`, or `apps/*` / `packages/*` contain a `package.json`. The apps are the workspace packages.
 - **`SINGLE_REPO`**: anything else. This is not an error. The repo root is the only app.
 
-`--mode single` or `--mode mono` overrides detection on `scaffold`, `docs` and `curate`. The mode is not stored; pass it again on later runs.
+`--mode single` or `--mode mono` overrides detection on `scaffold` and `curate`. The mode is not stored; pass it again on later runs.
 
 What changes in `SINGLE_REPO`:
 

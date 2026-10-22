@@ -8,7 +8,6 @@ import { section, exists } from '../util.js';
 import { writeIfAbsentGuarded, reportCollisions } from '../utils/collision-check.js';
 import { detectStack } from '../steps/02-detect-stack.js';
 import { buildCompleteDraftsMd } from '../templates/complete-drafts-command.js';
-import { KNOWLEDGE_INDEX_DOCS } from '../templates/knowledge-index-md.js';
 import { SKILLS_DIR } from '../templates/skill-md.js';
 import { curateBaseline } from './curate-baseline.js';
 
@@ -23,14 +22,12 @@ export async function listDraftFiles(dir, agentDir = '.claude/agents') {
     'AGENTS.md',
     '.caf/tasks/README.md',
     '.caf/workflows/task-completion.md',
-    ...KNOWLEDGE_INDEX_DOCS.map((d) => d.path),
   ];
   const globbed = await fg(
     [
       `${agentDir.replace(/\/$/, '')}/*.md`,
       '.caf/knowledge/golden-examples/**/RULES.md',
       '.caf/knowledge/decisions/*.md',
-      'docs/product/features/*.md',
       `${SKILLS_DIR}/*/SKILL.md`,
     ],
     { cwd: dir, dot: true }
@@ -118,7 +115,7 @@ export async function completeDrafts({
     console.log(kleur.green(`generated ${filePath}`));
     console.log('  Next steps:');
     console.log('    1. open your AI runner (e.g. Claude Code) in this repo and run /caf-complete-drafts');
-    console.log('    2. answer its questions — business context, PRD, ADR reasons and golden examples are yours to decide');
+    console.log('    2. answer its questions — business context, ADR reasons and golden examples are yours to decide');
     console.log('    3. run `caf-init curate --check-drafts`, then review the diff before committing');
   } else if (result === 'skipped') {
     console.log(kleur.dim(`${filePath} already exists — not overwritten`));

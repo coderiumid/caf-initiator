@@ -167,14 +167,14 @@ test('generator: never overwrites an existing command, and --dry-run writes noth
   assert.ok(!fs.existsSync(path.join(dir, '.caf', '.generate-manifest.json')), 'declined baseline must not be written');
 });
 
-test('listDraftFiles: only files that exist, including RULES.md and docs', async () => {
+test('listDraftFiles: only files that exist, including RULES.md, and never the docs/ reference documents', async () => {
   const dir = await scaffold({ withCommand: false });
-  assert.ok(!(await listDraftFiles(dir)).includes('docs/product/prd.md'));
   fs.mkdirSync(path.join(dir, 'docs', 'product'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'docs', 'product', 'prd.md'), '# PRD\n');
+  fs.mkdirSync(path.join(dir, '.caf', 'knowledge', 'golden-examples'), { recursive: true });
   fs.writeFileSync(path.join(dir, '.caf', 'knowledge', 'golden-examples', 'RULES.md'), buildRulesMd({ entries: [] }));
   const drafts = await listDraftFiles(dir);
-  assert.ok(drafts.includes('docs/product/prd.md'));
+  assert.ok(!drafts.includes('docs/product/prd.md'));
   assert.ok(drafts.includes('.caf/knowledge/golden-examples/RULES.md'));
 });
 
@@ -249,6 +249,7 @@ test('check-drafts: leftover placeholder fails; runtime tokens do not', async ()
 test('check-drafts: golden-example path must exist (FAIL); a missing path cited in prose is only a WARN', async () => {
   const dir = await scaffold();
   const rules = '.caf/knowledge/golden-examples/RULES.md';
+  fs.mkdirSync(path.join(dir, '.caf', 'knowledge', 'golden-examples'), { recursive: true });
   fs.writeFileSync(
     path.join(dir, rules),
     buildRulesMd({

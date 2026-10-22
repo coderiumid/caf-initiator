@@ -28,7 +28,7 @@ whole text.
 - Main subcommands: `scaffold [target]` (init pipeline — see Architecture), `curate`
   (Layer 1-4 compliance audit + optional sync into `.claude/agents/*.md`, plus `curate baseline`
   for manifest backfill — see "Content-level section tracking" below), `export` (copy agent
-  definitions to other AI runner targets), `docs` (optional Layer 1 reference docs). Run
+  definitions to other AI runner targets). Run
   `node src/index.js --help` or `<command> --help` for full flags.
 - `npm test` runs `node --test test/*.test.js` (Node's built-in test runner, no extra dependency).
   No linter or build step is configured in `package.json` — don't invent commands that don't
@@ -58,8 +58,8 @@ whole text.
   4. **`04-generate-drafts.js`** — renders templates from `src/templates/` and writes them via
      `writeIfAbsent`/`ensureDir`.
 - **`src/commands/scaffold.js`** (`runScaffold`/`runScaffoldTarget`) — chains Setup → Golden
-  Examples → ADR → Agents → Task Completion → Workflow → AI Draft Completion, each step confirmed
-  interactively (bare `scaffold`), or runs one target standalone (`scaffold <target>`).
+  Examples → ADR → Agents → Skills → Task Completion → Workflow → AI Draft Completion, each step
+  confirmed interactively (bare `scaffold`), or runs one target standalone (`scaffold <target>`).
 - Other top-level commands (`audit.js`/`curate.js`, `export.js`, `reference-docs.js`) are layered
   on top of the same `detectStack`/`writeIfAbsent` primitives but are not part of the init chain.
 
@@ -77,7 +77,7 @@ touching the filesystem — keep write paths and dry-run paths going through the
 `detectRepoContext` (`src/utils/repo-context.js`) is the only place that decides the repo mode;
 don't re-derive it elsewhere — read `stack.mode` (or the legacy `stack.isMonorepo`). No
 workspaces is **not** an error or a warning: it is `SINGLE_REPO` with
-`apps = [{ name, path: '.' }]`. `--mode single|mono` (on `scaffold`, `docs`, `curate`) overrides
+`apps = [{ name, path: '.' }]`. `--mode single|mono` (on `scaffold`, `curate`) overrides
 detection and must be threaded to every `detectStack` call a command makes.
 
 - The app list is in a deterministic order: `findApps` sorts it by app path, in code-unit order
@@ -137,8 +137,9 @@ own AI runner, and `src/commands/check-drafts.js` verifies the result afterwards
 ## Skills (`scaffold skills`)
 
 `src/commands/skills.js` writes the universal CAF skills into `.claude/skills/<name>/SKILL.md` and
-offers a `## Skills` pointer section to agent definitions that already exist. Explicit-only: it is
-in `TARGETS` but not in `CHAIN_ORDER`. No `--skill-dir` — `curate` has no matching flag.
+offers a `## Skills` pointer section to agent definitions that already exist. It is a step of the
+bare chain, right after Agents (CAF-INIT-DOCS-REMOVE amendment 3, below), and still a standalone
+target. No `--skill-dir` — `curate` has no matching flag.
 
 - `src/templates/skill-md.js` is the single source for the skill names (`SKILL_NAMES`, all
   `caf-`-prefixed), the kind → skills table (`SKILLS_BY_KIND`), the DRAFT banner
@@ -1145,3 +1146,45 @@ had the `hasArchitect: false` branch (skip the stage, a missing `design.md` goes
 Tests of earlier tickets keep their goldens (which hold the architect roster) through
 `test/helpers/legacy-picker.js` (`offeredWithArchitect`); only `test/chore-init-01.test.js` uses the live
 picker filter. `mono-pnpm.json` was not regenerated. Earlier sections above describe their own ticket's state.
+
+## `scaffold` runs the skills step (CAF-INIT-DOCS-REMOVE, amendment 3)
+
+`CHAIN_ORDER` is `golden-examples, adr, agents, skills, task-completion, workflow, complete-drafts`: bare
+`scaffold` writes the skills without a separate `scaffold skills`. Skills sits right after Agents because
+the `## Skills` pointers it offers need the agent files, and before `complete-drafts` so the draft
+inventory sees the skills. `test/scaffold-skills-chain.test.js` holds the ticket (it stubs every step but
+skills).
+- The step is the standalone target, unchanged: same prompts (one skip confirm, then one pointer confirm
+  per agent without `## Skills`), same files, same `writeIfAbsent` (a skill that exists is never replaced).
+  With no agent selected it writes the skills and asks nothing. Declining the step writes nothing.
+- `listDraftFiles` has listed `.claude/skills/*/SKILL.md` since CAF-SKILLS-01, so the skills in the
+  `/caf-complete-drafts` inventory are not new behavior; the chain only makes them exist in time. The
+  command edits a skill only while it has its DRAFT banner. Backlog: list only what is really a draft.
+- Which skills are DRAFT: `caf-traceability` always; `caf-self-verify` when the repo has no verify
+  script; `caf-design` and `caf-breakdown` have no banner since CAF-CHORE-INIT-01.
+- Chain-then-pointer leaves one extra blank line in an agent file compared with skills-before-agents
+  (insertion vs native render); `.claude/skills/` is byte-identical either way.
+- No fixture, golden, snapshot or sha256 file changed.
+
+## `golden-examples` picks several apps in one run (CAF-INIT-DOCS-REMOVE, amendment 4)
+
+`goldenExamples` (`src/commands/golden-examples.js`) loops the per-app body (`scanApp`) over the chosen apps, in
+the bare chain and in `scaffold golden-examples` (one function serves both). The layout did not change:
+`RULES.md` was already per app (`golden-examples/<app path>/RULES.md`, at the folder root in SINGLE_REPO).
+`test/golden-examples-multiapp.test.js` holds the ticket.
+- One detected app: no picker, output as before. Several: a multiselect with nothing ticked. `--app` (path or
+  slug, repeatable; `resolveAppSelectors`) or `--all-apps` replaces **only** the app picker; the per-category
+  file questions still run, because which files are golden examples is a human decision, and RULES.md is never
+  filled in on its own. Unknown value, ambiguous slug (error names both paths) or `--all-apps` with `--app`:
+  error, exit 1, nothing written.
+- `--app` is repeatable on the commander option, but a repeated `--app` or `--all-apps` on any other target or on
+  the bare chain is refused in `src/index.js` before anything runs. A single `--app` on `adr`/`agents`/
+  `task-completion` is passed as before (`apps[0]`). `sdd03c1` AC-1 pins the `scaffold --help` flag list and now
+  includes `--all-apps`.
+- An app whose `RULES.md` exists is skipped up front (`already exists, skipped (sudah ada, skip)`), with no
+  category question; it is counted in `skipped`. Enter on every category of an app writes nothing for it (no
+  TODO-only RULES.md), same as before.
+- With more than one detected app the step ends with `apps without golden example: ...`, counted from the
+  `RULES.md` files (a dry run counts the file it would write). Not printed in a single repo.
+- Choosing N apps writes N `RULES.md`, each the same shape as the single-app file (4 `TODO` each): no new kind
+  of file. No fixture, golden, snapshot or sha256 file changed.

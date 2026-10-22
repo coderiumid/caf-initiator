@@ -120,7 +120,7 @@ for (const id of DEFAULT_IDS) {
 // ---------------------------------------------------------------------------------------------
 
 for (const { id } of CONTENT_VARIANTS) {
-  test(`AC-4: ${id} — the planner differs from the pre-ticket golden in ## Output and ## Constraints only; every other file, agents included, is byte-identical (INDEX.md aside: AC-7)`, () => {
+  test(`AC-4: ${id} — the planner differs from the pre-ticket golden in ## Output and ## Constraints only; every other file, agents included, is byte-identical`, () => {
     const before = golden(id);
     const after = now[id];
     // CAF-SDD-03c2c: /caf-plan-ticket is not written and /caf-run-pipeline is /caf-run.
@@ -141,7 +141,7 @@ for (const { id } of CONTENT_VARIANTS) {
     assert.match(newPlanner, /^tools: \[Read, Write, Glob, Grep\]$/m);
 
     for (const rel of Object.keys(before.files)) {
-      if (rel === PLANNER || rel === INDEX) continue;
+      if (rel === PLANNER) continue;
       assert.equal(after.files[rel], before.files[rel], `${rel} must stay byte-identical`);
     }
   });
@@ -309,16 +309,9 @@ for (const fixture of FIXTURE_NAMES) {
 // ---------------------------------------------------------------------------------------------
 
 for (const id of DEFAULT_IDS) {
-  test(`AC-7: ${id} — INDEX.md has no reference to .caf/discovery/ and is otherwise the pre-ticket text`, () => {
-    const index = now[id].files[INDEX];
-    assert.doesNotMatch(index, /\.caf\/discovery/);
-    assert.doesNotMatch(index, /Discovery/);
-    const old = golden(id).files[INDEX];
-    assert.match(old, /\.caf\/discovery\//, 'the golden still has the reference');
-    const from = old.indexOf('**Difference from');
-    const to = old.indexOf('## Reference Documents');
-    assert.ok(from > 0 && to > from);
-    assert.equal(index, old.slice(0, from) + old.slice(to));
+  test(`AC-7: ${id} — INDEX.md is no longer scaffolded, so it holds no .caf/discovery/ reference (CAF-INIT-DOCS-REMOVE)`, () => {
+    assert.equal(INDEX in now[id].files, false);
+    assert.equal(INDEX in golden(id).files, false);
   });
 }
 

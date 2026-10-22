@@ -69,6 +69,11 @@ NOT an error and NOT a gap** — it is `SINGLE_REPO` mode, a fully supported mod
   the framework. In the CLI: `caf-init scaffold agents --role frontend|backend` for just one of
   the two (default: both). The names `caf-frontend`/`caf-backend` are the ones `caf-orchestrator`
   routes.
+- In `MONOREPO`, the golden examples of several apps can be written in one run. In the CLI:
+  `caf-init scaffold golden-examples` shows every app with none ticked; `--app <slug-or-path>`
+  (repeatable) or `--all-apps` replaces only that app picker. Which files become golden examples is
+  still asked per app and per pattern. An app that already has a `RULES.md` is skipped, so the step
+  can be run again later to add the apps that have none.
 
 **Also check for these optional Layer 1 documents** (they come from the Product/Design domain
 and are not created by CAF — CAF only reads them if present):
@@ -363,7 +368,7 @@ AGENTS.md                       ← instructions for every AI coding agent (cros
 {{APP_2}}/CLAUDE.md             ← {{APP_2}}-specific conventions (e.g. backend)
 
 .caf/knowledge/                 ← CAF-generated, written by caf-initiator — different from docs/ below
-  INDEX.md                       ← status bridge (✓/✗) to the docs/ documents below, see the note
+                                   (created when the first ADR or golden example is written; Setup does not create it)
   decisions/                    ← ADRs: why technical decisions were made
     adr-001-*.md
   golden-examples/               ← REFERENCES to real code, not copies (see Principles below)
@@ -373,9 +378,7 @@ AGENTS.md                       ← instructions for every AI coding agent (cros
       RULES.md                    ← path to the original file + pattern name + do/don't reasons
 
 docs/                            ← project-owned, read-only for CAF — NEVER written by
-                                     caf-initiator itself (one exception: the optional
-                                     `caf-init docs` command may scaffold EMPTY placeholders
-                                     at the user's explicit request; humans still write the content)
+                                     caf-initiator itself (humans write the content)
   product/
     prd.md                       ← optional, product-level reference (see the note below)
     feature-catalog.md           ← catalog of existing capabilities, synced from code
@@ -411,8 +414,7 @@ docs/                            ← project-owned, read-only for CAF — NEVER 
   CAF — they are reference documents that may come from other teams (Product/Design), read by agents
   when available (see Layer 2), but **never a mandatory prerequisite** before the pipeline
   runs. If they're absent, agents keep working from the ticket description as usual.
-  `.caf/knowledge/INDEX.md` links to these documents with a ✓ present/✗ not yet present status,
-  so agents know what's available without probing the filesystem themselves.
+  caf-initiator does not generate them and does not keep an index of them.
 
 > **`.caf/discovery/{{slug}}/prd.md` is not `docs/product/prd.md`.** The first is a per-feature
 > draft artifact written by the PM Agent during Cluster 1 (see the Cluster 1 structure above) — not
@@ -826,8 +828,7 @@ project-root/
 │       └── caf-complete-drafts.md   ← Layer 2, AI-assisted draft completion
 │
 ├── .caf/
-│   ├── knowledge/                   ← Layer 1, CAF-generated (different from docs/ below)
-│   │   ├── INDEX.md                 ← ✓/✗ status of the docs/ documents below
+│   ├── knowledge/                   ← Layer 1, CAF-generated on first use (different from docs/ below)
 │   │   ├── decisions/               ← ADRs
 │   │   └── golden-examples/         ← code references (paths to the original files, not copies)
 │   │       ├── {{app_2}}/
