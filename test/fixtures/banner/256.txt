@@ -1,0 +1,8 @@
+[38;5;111m ██████  █████  ███████[0m
+[38;5;111m██      ██   ██ ██[0m
+[38;5;116m██      ███████ █████[0m
+[38;5;116m██      ██   ██ ██[0m
+[38;5;146m ██████ ██   ██ ██[0m
+
+[3m[38;5;223mCoderium Agent Framework — Spec-Driven Agentic Delivery[0m
+[38;5;103mRun 'caf-init --help' for usage information[0m

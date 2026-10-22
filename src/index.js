@@ -7,7 +7,10 @@ import { agentsPublish } from './commands/export.js';
 import { curate } from './commands/curate.js';
 import { curateBaseline } from './commands/curate-baseline.js';
 import { checkDrafts } from './commands/check-drafts.js';
-import { runScaffold, runScaffoldTarget, OFFERED_TARGETS } from './commands/scaffold.js';
+import { runScaffoldTarget, OFFERED_TARGETS } from './commands/scaffold.js';
+import { runSmartScaffold } from './commands/scaffold-flow.js';
+import { setAutoAnswers } from './utils/ask.js';
+import { printBanner } from './utils/banner.js';
 import { MODE_FLAG_CHOICES } from './utils/repo-context.js';
 import { SINGLE_REPO_OFFERED_ROLES } from './commands/agents.js';
 
@@ -68,6 +71,12 @@ program
       'opt-in escape hatch for writeIfAbsent\'s normal "never overwrite" guarantee, use with care',
     false
   )
+  .option('--yes', 'bare scaffold: take every detected/recommended choice without asking (0 questions); stops with exit 1 when the tracker is ambiguous', false)
+  .option('--tracker <tracker>', 'bare scaffold: ticket tracker, skipping detection (linear|jira|github|gitlab)')
+  .option('--apps <apps>', 'bare scaffold: apps to scan for golden examples, comma-separated paths or slugs; "none" scans no app')
+  .option('--adr', 'bare scaffold: also draft ADRs for the technical decisions detected from the stack (none by default)', false)
+  .option('--agents <agents>', 'bare scaffold: agents to generate, comma-separated (planner,frontend,backend,validator,reviewer)')
+  .option('--no-banner', 'do not print the CAF banner (also: CAF_NO_BANNER=1)')
   .addOption(modeOption())
   .option(
     '--scope <dirs...>',
@@ -96,10 +105,34 @@ program
       process.exitCode = 1;
       return;
     }
-    if (!target) {
-      await runScaffold({ dir, dryRun, explicitGlobs: undefined, agentDir: cmdOpts.agentDir, overwrite, mode, scope, role });
+    if (target && (cmdOpts.tracker || cmdOpts.apps !== undefined || cmdOpts.agents !== undefined || cmdOpts.adr)) {
+      console.error(kleur.red('scaffold: --tracker, --apps, --agents and --adr are for bare `caf-init scaffold` (no target)'));
+      process.exitCode = 1;
       return;
     }
+    const interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY);
+    // D11: banner at the start of scaffold; hidden without a TTY, with --yes, --no-banner or CAF_NO_BANNER.
+    printBanner({ yes: Boolean(cmdOpts.yes), noBanner: cmdOpts.banner === false });
+    if (!target) {
+      await runSmartScaffold({
+        dir,
+        dryRun,
+        agentDir: cmdOpts.agentDir,
+        overwrite,
+        mode,
+        scope,
+        role,
+        interactive,
+        yes: Boolean(cmdOpts.yes),
+        tracker: cmdOpts.tracker,
+        apps: cmdOpts.apps,
+        agents: cmdOpts.agents,
+        adr: Boolean(cmdOpts.adr),
+      });
+      return;
+    }
+    // --yes (or no TTY) on a single target: its questions take their defaults instead of being asked.
+    if (cmdOpts.yes || !interactive) setAutoAnswers(true);
     await runScaffoldTarget(target, {
       dir,
       dryRun,
@@ -212,6 +245,8 @@ program
   });
 
 async function main() {
+  // `caf-init` with no argument: banner (same hide rules), then the usual help.
+  printBanner();
   program.help();
 }
 

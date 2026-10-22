@@ -1,52 +1,62 @@
-import path from 'node:path';
-import prompts from 'prompts';
 import kleur from 'kleur';
-import { exists, readFileSafe, section } from '../util.js';
+import ask from '../utils/ask.js';
+import { isAutoAnswers } from '../utils/ask.js';
+import { section } from '../util.js';
+import { detectProject } from '../utils/detect.js';
+import { detectTrackerSignals, TRACKERS } from '../utils/tracker-signals.js';
+import { recommendTracker } from '../utils/recommend.js';
 
 /**
- * Step 3: detect ticket tracker. Never silently defaults — asks the user
- * when there's no clear signal.
+ * Picker without a preselected choice (D2): the tracker is never guessed. `initial` is left at the
+ * first entry only because `prompts` needs one; the message says nothing is preselected.
  */
-export async function detectTracker({ dir }) {
-  section('Step 3 — Detect ticket tracker');
-
-  if (exists(path.join(dir, '.linear'))) {
-    console.log(kleur.green('  detected: Linear (.linear/ present)'));
-    return { tracker: 'Linear', source: '.linear/' };
-  }
-
-  if (exists(path.join(dir, 'atlassian.yml'))) {
-    console.log(kleur.green('  detected: Jira (atlassian.yml present)'));
-    return { tracker: 'Jira', source: 'atlassian.yml' };
-  }
-
-  const readme = readFileSafe(path.join(dir, 'README.md')) || '';
-  const lower = readme.toLowerCase();
-  if (lower.includes('linear')) {
-    console.log(kleur.green('  detected: Linear (mentioned in README.md)'));
-    return { tracker: 'Linear', source: 'README.md' };
-  }
-  if (lower.includes('jira') || lower.includes('atlassian')) {
-    console.log(kleur.green('  detected: Jira (mentioned in README.md)'));
-    return { tracker: 'Jira', source: 'README.md' };
-  }
-
-  console.log(kleur.yellow('  no tracker signal found — asking'));
-  const { tracker } = await prompts({
+export async function pickTracker({ message = 'Which ticket tracker does this project use?' } = {}) {
+  const { tracker } = await ask({
     type: 'select',
     name: 'tracker',
-    message: 'Which ticket tracker does this project use?',
-    choices: [
-      { title: 'Linear', value: 'Linear' },
-      { title: 'Jira', value: 'Jira' },
-      { title: 'GitHub Issues', value: 'GitHub Issues' },
-    ],
+    message,
+    initial: 0,
+    choices: TRACKERS.map((t) => ({ title: t.name, value: t.name })),
   });
+  return tracker ?? null;
+}
 
-  if (tracker === undefined) {
-    console.log(kleur.dim('  cancelled by user'));
-    return { tracker: null, source: null };
+/**
+ * Step 3: detect ticket tracker. Never silently defaults — exactly one tracker with a signal is
+ * used (and the reason shown); none or several asks, unless answers are automatic, in which case
+ * nothing is chosen and the caller must stop (the message points at `--tracker`).
+ *
+ * `trackerOverride` is the display name from `--tracker`, `gitHost` comes from `detectProject`.
+ * Returns `{ tracker, source, status, candidates }`; `tracker` is null when cancelled/ambiguous.
+ */
+export async function detectTracker({ dir, gitHost, trackerOverride = null } = {}) {
+  section('Step 3 — Detect ticket tracker');
+
+  if (trackerOverride) {
+    console.log(kleur.green(`  tracker: ${trackerOverride} (--tracker)`));
+    return { tracker: trackerOverride, source: '--tracker', status: 'flag', candidates: [trackerOverride] };
   }
 
-  return { tracker, source: 'user prompt' };
+  const host = gitHost === undefined ? (await detectProject({ dir })).gitHost : gitHost;
+  const verdict = recommendTracker(await detectTrackerSignals({ dir, gitHost: host }));
+
+  if (verdict.status === 'single') {
+    const source = verdict.reasons.join('; ');
+    console.log(kleur.green(`  detected: ${verdict.name} (${source})`));
+    return { tracker: verdict.name, source, status: 'single', candidates: verdict.candidates };
+  }
+
+  const why = verdict.status === 'none' ? 'no tracker signal found' : `several trackers have a signal (${verdict.candidates.join(', ')})`;
+  if (isAutoAnswers()) {
+    console.log(kleur.yellow(`  ${why} — not guessing`));
+    return { tracker: null, source: null, status: verdict.status, candidates: verdict.candidates };
+  }
+
+  console.log(kleur.yellow(`  ${why} — asking`));
+  const tracker = await pickTracker();
+  if (tracker === null) {
+    console.log(kleur.dim('  cancelled by user'));
+    return { tracker: null, source: null, status: verdict.status, candidates: verdict.candidates };
+  }
+  return { tracker, source: 'user prompt', status: verdict.status, candidates: verdict.candidates };
 }

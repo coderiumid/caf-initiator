@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import prompts from 'prompts';
+import prompts from '../utils/ask.js';
 import kleur from 'kleur';
 
 import { section, writeIfAbsent, readFileSafe } from '../util.js';
@@ -114,6 +114,7 @@ async function resolveCustomTargets(picked) {
         type: 'text',
         name: 'customPath',
         message: 'Custom destination folder path (relative to --dir):',
+        initial: '',
       });
       if (!customPath) continue;
       resolved.push({

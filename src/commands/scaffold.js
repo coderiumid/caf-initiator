@@ -1,4 +1,4 @@
-import prompts from 'prompts';
+import prompts from '../utils/ask.js';
 import kleur from 'kleur';
 
 import { section } from '../util.js';
@@ -49,7 +49,7 @@ export const OFFERED_TARGETS = Object.keys(TARGETS).filter((key) => !HIDDEN_TARG
 // (whose draft inventory then includes the skills).
 export const CHAIN_ORDER = ['golden-examples', 'adr', 'agents', 'skills', 'task-completion', 'workflow', 'complete-drafts'];
 
-function printSummary(summary) {
+export function printSummary(summary) {
   console.log('');
   section('scaffold — summary');
   for (const entry of summary) {

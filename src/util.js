@@ -3,6 +3,44 @@ import path from 'node:path';
 import kleur from 'kleur';
 import { assertNoUnresolvedPlaceholders } from './utils/placeholder-check.js';
 
+// CAF-INIT-SMART-01: the smart scaffold flow previews a whole run (dry-run, console silenced) to
+// show which files would be created or skipped, and lets the user pick files to overwrite after a
+// conflict question (D8). Both hang off writeIfAbsent so every step is covered without threading
+// options through them. Neither changes the default: with no log and no policy this file behaves
+// exactly as before.
+let writeLog = null;
+let overwritePolicy = null;
+
+/** Starts collecting `{ path, result, same }` for every write decision; returns a stop function giving the entries. */
+export function recordWrites() {
+  writeLog = [];
+  const log = writeLog;
+  return () => {
+    if (writeLog === log) writeLog = null;
+    return log;
+  };
+}
+
+/** `fn(filePath) => boolean` decides per file whether an existing file is overwritten; null clears it. */
+export function setOverwritePolicy(fn) {
+  overwritePolicy = fn;
+}
+
+function logWrite(entry) {
+  if (writeLog) writeLog.push(entry);
+}
+
+/** Runs `fn` with console.log/info/warn/error silenced (the preview pass must not print). */
+export async function withSilentConsole(fn) {
+  const saved = { log: console.log, info: console.info, warn: console.warn, error: console.error };
+  console.log = console.info = console.warn = console.error = () => {};
+  try {
+    return await fn();
+  } finally {
+    Object.assign(console, saved);
+  }
+}
+
 export function exists(p) {
   return fs.existsSync(p);
 }
@@ -52,18 +90,22 @@ export function writeIfAbsent(
   { dryRun = false, overwrite = false, validatePlaceholders = true } = {}
 ) {
   const alreadyExists = exists(filePath);
+  if (!overwrite && alreadyExists && overwritePolicy?.(filePath)) overwrite = true;
   if (alreadyExists && !overwrite) {
     console.log(kleur.dim(`  skip  ${filePath} (already exists)`));
+    logWrite({ path: filePath, result: 'skipped', same: readFileSafe(filePath) === content });
     return 'skipped';
   }
   if (validatePlaceholders) assertNoUnresolvedPlaceholders(content, filePath);
   if (dryRun) {
     console.log(kleur.yellow(`  would ${alreadyExists ? 'overwrite' : 'write'}  ${filePath}`));
+    logWrite({ path: filePath, result: 'dry-run', overwrite: alreadyExists });
     return 'dry-run';
   }
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, content, 'utf8');
   console.log(kleur.green(`  ${alreadyExists ? 'overwritten' : 'created'}  ${filePath}`));
+  logWrite({ path: filePath, result: 'written', overwrite: alreadyExists });
   return 'written';
 }
 

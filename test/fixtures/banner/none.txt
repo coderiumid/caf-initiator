@@ -1,0 +1,8 @@
+ ██████  █████  ███████
+██      ██   ██ ██
+██      ███████ █████
+██      ██   ██ ██
+ ██████ ██   ██ ██
+
+Coderium Agent Framework — Spec-Driven Agentic Delivery
+Run 'caf-init --help' for usage information

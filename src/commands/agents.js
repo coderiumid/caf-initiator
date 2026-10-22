@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import prompts from 'prompts';
+import prompts from '../utils/ask.js';
 import kleur from 'kleur';
 
 import { section } from '../util.js';
@@ -9,6 +9,8 @@ import { detectStack } from '../steps/02-detect-stack.js';
 import { matchVerifyScripts, readPackageName } from '../utils/package-scripts.js';
 import { buildAgentMd, agentSlug, buildDirScopeSection, IMPLEMENTATION_KINDS } from '../templates/agent-md.js';
 import { REPO_MODE } from '../utils/repo-context.js';
+import { detectProject } from '../utils/detect.js';
+import { githubCommandsOffered } from '../utils/recommend.js';
 import { usableSkillPaths, collectVerifyApps } from './skills.js';
 import { buildPmAgentMd, buildUxDesignerAgentMd } from '../templates/discovery-commands.js';
 import { buildPlanTicketMd } from '../templates/ticket-preview-commands.js';
@@ -390,6 +392,7 @@ export async function agents({
   mode,
   scope: scopeOpt,
   role: roleOpt,
+  plan,
 }) {
   section('agents — draft agent definitions into .claude/agents/ (or equivalent)');
 
@@ -475,23 +478,29 @@ export async function agents({
     );
     console.log('');
   } else {
-    const roleApp = await pickRoleApps(apps);
+    // `plan` (CAF-INIT-SMART-01, from recommend()) replaces both app pickers: roles come from the
+    // recommended assignment and unassigned apps get no agent (caf-orchestrator does not route them).
+    const roleApp = plan
+      ? Object.fromEntries(FIXED_ROLES.map((role) => [role, apps.filter((a) => (plan.roleApp?.[role] || []).includes(a.path))]))
+      : await pickRoleApps(apps);
     const assignedPaths = new Set(Object.values(roleApp).flat().map((a) => a.path));
     const remaining = apps.filter((a) => !assignedPaths.has(a.path));
-    const extraApps = await pickExtraApps(remaining);
+    const extraApps = plan ? [] : await pickExtraApps(remaining);
 
     candidates = buildCandidates(roleApp, extraApps);
   }
 
-  const { picked } = await prompts({
-    type: 'multiselect',
-    name: 'picked',
-    message: 'Pick the agents to generate:',
-    instructions: false,
-    choices: candidates
-      .filter(isOfferedCandidate)
-      .map((c) => ({ title: c.name, value: c })),
-  });
+  // `plan.kinds` is the agent set of the summary screen (or --agents): nothing is asked.
+  const offered = candidates.filter(isOfferedCandidate);
+  const { picked } = plan
+    ? { picked: offered.filter((c) => plan.kinds.includes(c.kind)) }
+    : await prompts({
+        type: 'multiselect',
+        name: 'picked',
+        message: 'Pick the agents to generate:',
+        instructions: false,
+        choices: offered.map((c) => ({ title: c.name, value: c, selected: true })),
+      });
 
   if (!picked || picked.length === 0) {
     console.log(kleur.dim('no agents selected — done without generating'));
@@ -632,6 +641,14 @@ export async function agents({
   // cannot be detected from repo contents alone. So the generate decision is left to the human
   // via an explicit confirmation (default: no), the same pattern as the enforcement warning
   // in export.
+  // CAF-INIT-SMART-01: /caf-run (PR step), /caf-review and /caf-fix-review use `gh` and GitHub PRs
+  // only. With a non-GitHub remote they are neither offered nor written (backlog CAF-INIT-GITLAB-REVIEW).
+  const git = await detectProject({ dir, mode });
+  const githubOffered = githubCommandsOffered(git);
+  const notOffered = (names) => {
+    console.log('');
+    console.log(kleur.dim(`${names} not offered: they use the gh CLI and GitHub PRs (GitHub only), but this repo's remote is not GitHub (${git.remoteUrl}).`));
+  };
   const plannerPicked = selected.some((c) => c.kind === 'planner');
   const implementationCandidates = selected.filter((c) => IMPLEMENTATION_KINDS.includes(c.kind));
   const implementationRoles = implementationCandidates.map((c) => agentSlug(c.kind, c.app));
@@ -647,7 +664,8 @@ export async function agents({
     ])
   );
 
-  if (plannerPicked && implementationRoles.length > 0) {
+  if (plannerPicked && implementationRoles.length > 0 && !githubOffered) notOffered('/caf-run');
+  if (plannerPicked && implementationRoles.length > 0 && githubOffered) {
     console.log('');
     section('Planner + implementation agent(s) selected — offer the /caf-run command (optional)');
 
@@ -673,7 +691,9 @@ export async function agents({
       type: 'confirm',
       name: 'generateRun',
       message: 'Generate /caf-run?',
-      initial: false,
+      // Default Y, same as the unattended scaffold flow; the warning above (branch checkout, code
+      // written, push + PR on SUCCESS) is still shown first.
+      initial: true,
     });
 
     if (generateRun) {
@@ -717,7 +737,8 @@ export async function agents({
   // auto-generated as soon as Reviewer is selected) — its side effects are real on GitHub
   // (public reply to someone else's PR), not just writing a local file.
   const reviewerPicked = selected.some((c) => c.kind === 'reviewer');
-  if (reviewerPicked) {
+  if (reviewerPicked && !githubOffered) notOffered('/caf-review and /caf-fix-review');
+  if (reviewerPicked && githubOffered) {
     console.log('');
     section('Reviewer selected — offer the /caf-fix-review command (optional)');
 

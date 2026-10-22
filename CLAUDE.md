@@ -1188,3 +1188,19 @@ the bare chain and in `scaffold golden-examples` (one function serves both). The
   `RULES.md` files (a dry run counts the file it would write). Not printed in a single repo.
 - Choosing N apps writes N `RULES.md`, each the same shape as the single-app file (4 `TODO` each): no new kind
   of file. No fixture, golden, snapshot or sha256 file changed.
+
+## Smart `scaffold` (CAF-INIT-SMART-01)
+
+Bare `scaffold` is `runSmartScaffold` (`src/commands/scaffold-flow.js`): `detectProject` (`utils/detect.js`,
+read-only) + `detectTrackerSignals` (`utils/tracker-signals.js`) feed the pure `recommend()`
+(`utils/recommend.js`, the one source for the picker, the summary and `--yes`); then a summary and
+`Proceed? (Y/n/e)`. `runScaffold` in `scaffold.js` (the old per-step confirms) is kept for tests and is no
+longer what the CLI calls.
+- Prompts go through `utils/ask.js`. Interactive it is `prompts`; in auto mode (`--yes`, no TTY, or the steps
+  after `Proceed?`) it returns each question's default, or its `auto:` value. A new prompt needs a default
+  (`initial`/`selected`) and a destructive one defaults to N; `test/prompt-defaults.test.js` scans `src/`.
+- The summary's file list is a silent dry run of the whole chain recorded through `recordWrites` (`util.js`);
+  D8 overwrites go through `setOverwritePolicy`. `writeIfAbsent` still never overwrites by default.
+- Tracker: exactly one tracker with a signal is used, otherwise it is asked, never guessed; a README mention is
+  not a signal (a deliberate change). The tracker is a string rendered into CLAUDE.md/AGENTS.md/tasks README.
+- Test fixtures `mono-pnpm` and `single-nuxt` carry a `.linear/` marker for that reason.

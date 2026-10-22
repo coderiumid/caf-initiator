@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import prompts from 'prompts';
+import prompts from '../utils/ask.js';
 import kleur from 'kleur';
 
 import { section, exists, readFileSafe, writeIfAbsent } from '../util.js';

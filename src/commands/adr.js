@@ -1,6 +1,6 @@
 import path from 'node:path';
 import fs from 'node:fs';
-import prompts from 'prompts';
+import prompts from '../utils/ask.js';
 import kleur from 'kleur';
 
 import { section, writeIfAbsent } from '../util.js';
@@ -33,6 +33,7 @@ async function pickScope(stack, appOpt) {
     type: 'select',
     name: 'scope',
     message: 'Pick an app, or the whole repo for a root-level decision:',
+    initial: 0,
     choices: [
       { title: 'Whole repo / root-level decision', value: WHOLE_REPO },
       ...stack.apps.map((a) => ({ title: `${a.name} (${a.path})`, value: a })),
@@ -65,6 +66,8 @@ export async function adr({ dir, app: appOpt, dryRun = false, mode }) {
       name: 'picked',
       message: 'Pick the technical decisions to document as ADRs:',
       instructions: false,
+      // Unattended runs draft every decision the stack evidence supports (reasons stay TODO).
+      auto: candidates,
       choices: candidates.map((c) => ({ title: c.label, value: c })),
     });
     if (picked && picked.length > 0) {
@@ -78,6 +81,7 @@ export async function adr({ dir, app: appOpt, dryRun = false, mode }) {
     type: 'text',
     name: 'customInput',
     message: 'Any other decisions to add as blank ADRs? (comma-separated, leave empty if none)',
+    initial: '',
   });
   if (customInput) {
     const customTitles = customInput
@@ -100,7 +104,19 @@ export async function adr({ dir, app: appOpt, dryRun = false, mode }) {
   console.log('');
   const written = [];
   const skipped = [];
+  // Idempotent (CAF-INIT-SMART-01): a decision that already has an ADR file, whatever its number,
+  // is not drafted again under the next number.
+  const slugOf = (name) => name.replace(ADR_FILE_RE, '');
+  const existingSlugs = new Set(fs.existsSync(decisionsDir) ? fs.readdirSync(decisionsDir).map(slugOf) : []);
   for (const { title, evidence } of selected) {
+    const existing = slugOf(adrFilename(number, title));
+    if (existingSlugs.has(existing)) {
+      const existingPath = path.join(decisionsDir, fs.readdirSync(decisionsDir).find((f) => slugOf(f) === existing));
+      console.log(kleur.dim(`  skip  ${existingPath} (already exists)`));
+      skipped.push(existingPath);
+      continue;
+    }
+    existingSlugs.add(existing);
     const filename = adrFilename(number, title);
     const filePath = path.join(decisionsDir, filename);
     const content = buildAdr({ number, title, evidence });

@@ -10,7 +10,7 @@ import { generateDrafts } from '../steps/04-generate-drafts.js';
  * Returns { ok: false, reason } if stopped early, otherwise
  * { ok: true, stack, tracker, written, skipped }.
  */
-export async function runSetup({ dir, dryRun, explicitGlobs, mode }) {
+export async function runSetup({ dir, dryRun, explicitGlobs, mode, trackerResult }) {
   console.log(kleur.bold(`caf-initiator — target: ${dir}${dryRun ? kleur.yellow(' (dry-run)') : ''}`));
 
   const audit = await auditExistingTools({ dir });
@@ -19,7 +19,8 @@ export async function runSetup({ dir, dryRun, explicitGlobs, mode }) {
   }
 
   const stack = await detectStack({ dir, explicitGlobs, mode });
-  const tracker = await detectTracker({ dir });
+  // The smart flow (CAF-INIT-SMART-01) resolves the tracker before Setup runs and passes it in.
+  const tracker = trackerResult || (await detectTracker({ dir }));
 
   if (!tracker.tracker) {
     console.log(kleur.dim('\nno tracker selected — stopping'));
