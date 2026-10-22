@@ -171,6 +171,7 @@ test('listDraftFiles: only files that exist, including RULES.md, and never the d
   const dir = await scaffold({ withCommand: false });
   fs.mkdirSync(path.join(dir, 'docs', 'product'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'docs', 'product', 'prd.md'), '# PRD\n');
+  fs.mkdirSync(path.join(dir, '.caf', 'knowledge', 'golden-examples'), { recursive: true });
   fs.writeFileSync(path.join(dir, '.caf', 'knowledge', 'golden-examples', 'RULES.md'), buildRulesMd({ entries: [] }));
   const drafts = await listDraftFiles(dir);
   assert.ok(!drafts.includes('docs/product/prd.md'));
@@ -248,6 +249,7 @@ test('check-drafts: leftover placeholder fails; runtime tokens do not', async ()
 test('check-drafts: golden-example path must exist (FAIL); a missing path cited in prose is only a WARN', async () => {
   const dir = await scaffold();
   const rules = '.caf/knowledge/golden-examples/RULES.md';
+  fs.mkdirSync(path.join(dir, '.caf', 'knowledge', 'golden-examples'), { recursive: true });
   fs.writeFileSync(
     path.join(dir, rules),
     buildRulesMd({
