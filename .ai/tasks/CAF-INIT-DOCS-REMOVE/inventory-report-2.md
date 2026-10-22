@@ -159,3 +159,18 @@ Angka bersifat jumlah file yang *memuat* path atau frasa, bukan jumlah baris yan
 - **AC-11**: terpenuhi — tabel bagian 2 mengklasifikasikan seluruh file dan folder yang ditulis ke `.caf/knowledge/` dan `.caf/tasks/`, dengan bukti. Yang belum bisa dibuktikan: pemakaian `scaffold golden-examples`/`adr` secara interaktif (dibaca dari kode, tidak dijalankan).
 - **AC-16**: terpenuhi — bagian 4 memuat perintah grep, daftar referensi, dan pernyataan nol untuk `.caf/knowledge`.
 - Task 9 tidak menunggu hasil grep manusia (repo orchestrator tersedia).
+
+## Keputusan checkpoint
+
+Dari Ganjar, atas laporan ini. Menggantikan rekomendasi di atas bila berbeda.
+
+1. **Opsi A.** Hapus `.caf/knowledge/INDEX.md` dan dua `ensureDir` (`decisions/`, `golden-examples/`) dari scaffold. `tasks/README.md` dipertahankan.
+2. **`curate` Layer 1.** Hapus entri `INDEX.md` dari `audit.js` (dan `canonical-sections.js` bila perlu). `curate` tidak boleh melaporkan `INDEX.md` sebagai missing. `INDEX.md` di proyek yang sudah ter-scaffold dibiarkan, tidak ditandai apa pun. `KNOWLEDGE_INDEX_DOCS` dan pengecekannya di step 04 dibersihkan bila tidak ada konsumen lain.
+3. **Pointer `claude-md.js:89-90` tidak diubah.** Syarat: `scaffold golden-examples` dan `scaffold adr` membuat folder tujuannya sendiri. Diverifikasi di awal Task 10: keduanya menulis lewat `writeIfAbsent`, yang memanggil `fs.mkdirSync(path.dirname(filePath), { recursive: true })` (`src/util.js`), dan `nextAdrNumber` menangani folder yang belum ada (`adr.js:14`). Syarat terpenuhi.
+4. **Banner `DRAFT — must be reviewed` di `tasks/README.md` tidak diubah.**
+5. **`RULES.md` dan ADR hanya dicatat.** Isi `TODO` di keduanya memang rancangan alur `complete-drafts` (diisi lewat `/caf-complete-drafts`, dijaga `check-drafts`).
+6. **Tracker `null`** diuji eksplisit; hasilnya dicatat di `verify-report.md` sebagai pengecualian AC-12. Tidak ada perubahan karenanya.
+
+Persetujuan perubahan test/fixture: test `sdd03c2b` AC-7, `sdd03c2` AC-11, `sdd03c3`, `single-repo-scaffold` (dua titik), dan `audit.js`; 32 fixture yang terdampak opsi A. Hanya baris terkait, diff dilampirkan di `verify-report.md`. Larangan regenerate tetap berlaku. **Berhenti dan lapor** bila snapshot beku, file yang dikunci sha256, atau file di luar daftar ini ikut berubah.
+
+**AC-14 diubah:** `curate --audit-only` pada hasil scaffold baru exit 0 dan tidak melaporkan `INDEX.md` sebagai missing.
