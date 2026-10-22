@@ -56,41 +56,6 @@
             "message": "already in sync",
             "syncCommand": null,
             "severity": "required"
-          },
-          {
-            "status": "gap",
-            "filePath": "docs/product/prd.md",
-            "message": "missing (optional)",
-            "syncCommand": "caf-init docs",
-            "severity": "optional"
-          },
-          {
-            "status": "gap",
-            "filePath": "docs/architecture/system-overview.md",
-            "message": "missing (optional)",
-            "syncCommand": "caf-init docs",
-            "severity": "optional"
-          },
-          {
-            "status": "gap",
-            "filePath": "docs/schema/erd.md",
-            "message": "missing (optional)",
-            "syncCommand": "caf-init docs",
-            "severity": "optional"
-          },
-          {
-            "status": "gap",
-            "filePath": "docs/testing-strategy.md",
-            "message": "missing (optional)",
-            "syncCommand": "caf-init docs",
-            "severity": "optional"
-          },
-          {
-            "status": "gap",
-            "filePath": "docs/api-contract.md",
-            "message": "missing (optional)",
-            "syncCommand": "caf-init docs",
-            "severity": "optional"
           }
         ]
       },
@@ -209,7 +174,7 @@
       }
     ],
     "requiredGaps": 1,
-    "optionalGaps": 5,
+    "optionalGaps": 0,
     "declined": 0,
     "sectionCounts": {
       "IN_SYNC": 59,
