@@ -100,7 +100,12 @@ Format JSON tiap file dipertahankan (indent 1 spasi di `pre-sdd03c3/*`, 2 spasi 
 ## Temuan di luar scope
 1. `src/templates/discovery-commands.js:35-36, 58-59` menyebut `docs/product/prd.md` untuk agent PM/UX (tidak lagi di-scaffold). Golden `frozen-kinds` memegangnya (D6).
 2. Planner `## Input` (`agent-md.js:86, 119-147`) dan skill `caf-design` (`skill-md.js:443`) tetap menyebut path docs sebagai bacaan pasif (D1, D2). Pengecualian AC-8.
-3. `.caf/knowledge/INDEX.md` tetap berisi tabel status 5 dokumen docs (`KNOWLEDGE_INDEX_DOCS`) dan `scaffold` menulisnya. Hanya baris "Run `caf-init docs`" yang dihapus. Tabel status kini menampilkan ✗ missing untuk dokumen yang tidak bisa lagi di-scaffold. Keputusan manusia (bagian dari penyederhanaan `knowledge/`).
+3. **Harus selesai sebelum `npm publish`:** `.caf/knowledge/INDEX.md` tetap berisi tabel status 5 dokumen docs (`KNOWLEDGE_INDEX_DOCS`) dan `scaffold` menulisnya. Tabel itu menampilkan ✗ missing untuk dokumen yang tidak bisa lagi di-scaffold. Hanya baris "Run `caf-init docs`" yang dihapus (Task 5). Bahan tiket penyederhanaan `knowledge/`, empat titik keterkaitan:
+   1. `test/sdd03c2b-planner-clarify.test.js:319` membandingkan INDEX.md dengan golden sampai heading `## Reference Documents`.
+   2. `test/sdd03c2-validator-default.test.js:385` mensyaratkan teks `Reference Documents`.
+   3. `src/steps/04-generate-drafts.js:6,54-55` memakai `KNOWLEDGE_INDEX_DOCS` dan `exists()` per dokumen; ekspor itu di `knowledge-index-md.js` ikut jadi kode mati.
+   4. Laporan `curate` Layer 1: `audit.js:91` memeriksa INDEX.md dengan daftar heading kanonik kosong (`canonical-sections.js`, cabang default). Bila seluruh section `## Reference Documents` dihapus, file tak punya heading `##` dan baris `✓ INDEX.md` hilang dari laporan; bila heading dipertahankan, laporan tetap.
+   14 golden INDEX.md juga ikut berubah (sama dengan `170516b`).
 4. `listDraftFiles`/`INDEX.md` masih memakai ekspor `KNOWLEDGE_INDEX_DOCS`; `src/commands/audit.js` masih punya mekanisme `severity: 'optional'` (`optionalGaps`) walau tak ada lagi entri optional. Dibiarkan agar bentuk laporan tidak berubah.
 5. `CAF.md:73-108, 223, 352-377, 494-496, 585-587, 928` masih menjelaskan dokumen docs sebagai konsep Layer 1 opsional (pasif, P2). `src/templates/task-completion-md.js:62` memakai `api-contract.md` sebagai contoh bebas.
 6. Tidak ada `CHANGELOG.md` (D5: tidak dibuat). Tidak ada lint/build.
@@ -137,3 +142,7 @@ $ git log --oneline origin/HEAD..HEAD
 10 commit lokal (daftar di laporan akhir); tidak ada push, publish, atau PR.
 ```
 File yang berubah: `src/` (index, audit, complete-drafts, check-drafts, 2 template; 2 file dihapus), `test/` (3 test, 26 fixture golongan a), `README.md`, `CLAUDE.md`, `CAF.md` (D6), `.ai/tasks/CAF-INIT-DOCS-REMOVE/`. Tidak ada file di luar scope; `requirements.md` tidak diedit.
+
+## Task 8 — dibatalkan (opsi C)
+
+Task 8 (hapus tabel status 5 dokumen docs dari template INDEX.md) dibatalkan atas keputusan manusia. Tidak ada kode yang diubah. Alasan: perubahannya merembet ke dua test (`sdd03c2b-planner-clarify.test.js:319`, `sdd03c2-validator-default.test.js:385`), step 04 (`KNOWLEDGE_INDEX_DOCS`), dan laporan `curate` Layer 1, sehingga melewati syarat "hanya template INDEX.md dan golden-nya". Penyelesaiannya dipindah ke tiket penyederhanaan `knowledge/` (temuan 3 di atas). Test dan AC tidak dijalankan ulang karena tidak ada kode yang berubah sejak laporan terakhir.
