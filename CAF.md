@@ -363,7 +363,7 @@ AGENTS.md                       ← instructions for every AI coding agent (cros
 {{APP_2}}/CLAUDE.md             ← {{APP_2}}-specific conventions (e.g. backend)
 
 .caf/knowledge/                 ← CAF-generated, written by caf-initiator — different from docs/ below
-  INDEX.md                       ← status bridge (✓/✗) to the docs/ documents below, see the note
+                                   (created when the first ADR or golden example is written; Setup does not create it)
   decisions/                    ← ADRs: why technical decisions were made
     adr-001-*.md
   golden-examples/               ← REFERENCES to real code, not copies (see Principles below)
@@ -409,8 +409,7 @@ docs/                            ← project-owned, read-only for CAF — NEVER 
   CAF — they are reference documents that may come from other teams (Product/Design), read by agents
   when available (see Layer 2), but **never a mandatory prerequisite** before the pipeline
   runs. If they're absent, agents keep working from the ticket description as usual.
-  `.caf/knowledge/INDEX.md` links to these documents with a ✓ present/✗ not yet present status,
-  so agents know what's available without probing the filesystem themselves.
+  caf-initiator does not generate them and does not keep an index of them.
 
 > **`.caf/discovery/{{slug}}/prd.md` is not `docs/product/prd.md`.** The first is a per-feature
 > draft artifact written by the PM Agent during Cluster 1 (see the Cluster 1 structure above) — not
@@ -824,8 +823,7 @@ project-root/
 │       └── caf-complete-drafts.md   ← Layer 2, AI-assisted draft completion
 │
 ├── .caf/
-│   ├── knowledge/                   ← Layer 1, CAF-generated (different from docs/ below)
-│   │   ├── INDEX.md                 ← ✓/✗ status of the docs/ documents below
+│   ├── knowledge/                   ← Layer 1, CAF-generated on first use (different from docs/ below)
 │   │   ├── decisions/               ← ADRs
 │   │   └── golden-examples/         ← code references (paths to the original files, not copies)
 │   │       ├── {{app_2}}/

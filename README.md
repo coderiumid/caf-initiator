@@ -84,10 +84,9 @@ npm link                          # makes `caf-init` available globally
 ├── AGENTS.md                        # concrete rules for agents (draft)
 ├── .caf/
 │   ├── tasks/README.md              # per-ticket artifact convention
-│   ├── knowledge/
-│   │   ├── INDEX.md                 # status of the optional reference docs
-│   │   ├── golden-examples/         # RULES.md pointing at your best files
-│   │   └── decisions/               # ADR drafts
+│   ├── knowledge/                   # created on first use, not by Setup
+│   │   ├── golden-examples/         # RULES.md pointing at your best files (`scaffold golden-examples`)
+│   │   └── decisions/               # ADR drafts (`scaffold adr`)
 │   ├── workflows/
 │   │   ├── task-completion.md       # Definition of Done
 │   │   ├── piv-workflow.md          # Plan → Implement → Verify
@@ -116,7 +115,7 @@ Setup also appends ignore rules for `.caf/discovery/*/` and `.caf/audits/*/` to 
 
 Every command accepts `--dir <path>` (default: current directory). `--dry-run` shows what would happen without writing.
 
-The `docs` command, which scaffolded optional reference documents under `docs/`, was removed before the first publish (CAF-INIT-DOCS-REMOVE). Existing `docs/` files in a repo are untouched and `curate` no longer audits them.
+The `docs` command, which scaffolded optional reference documents under `docs/`, was removed before the first publish (CAF-INIT-DOCS-REMOVE). Existing `docs/` files in a repo are untouched and `curate` no longer audits them. Setup also no longer writes `.caf/knowledge/INDEX.md` (a status table of those documents, with no reader) or the empty `knowledge/decisions/` and `knowledge/golden-examples/` folders: `scaffold adr` and `scaffold golden-examples` create their folder when they write. A repo that already has `INDEX.md` keeps it; `curate` ignores it.
 
 ### `caf-init scaffold`
 
@@ -124,7 +123,7 @@ Bare `scaffold` runs these steps in order, asking before each one after Setup:
 
 | Step | Target name | Output |
 |---|---|---|
-| Setup | (always first) | `CLAUDE.md`, `AGENTS.md`, `.caf/tasks/README.md`, `.caf/knowledge/INDEX.md`. Checks for existing AI-tool config first; detects stack and tracker |
+| Setup | (always first) | `CLAUDE.md`, `AGENTS.md`, `.caf/tasks/README.md`. Writes nothing under `.caf/knowledge/`. Checks for existing AI-tool config first; detects stack and tracker |
 | Golden Examples | `golden-examples` | Lets you pick reference files; writes `RULES.md` with a do/don't skeleton |
 | ADR | `adr` | ADR drafts for technical decisions already visible in the repo |
 | Agents | `agents` | Agent definitions you select, plus their companion slash commands |
@@ -439,7 +438,7 @@ The spec-driven design dropped five agents and eight commands. A new repo does n
 - **Implementer is replaced.** Since CAF-SDD-03c3 `SINGLE_REPO` gets `caf-frontend` and `caf-backend` instead (see [SINGLE_REPO](#repo-mode-monorepo-vs-single_repo)). `implementer` is filtered out of the picker like `qa` (a superseded kind, not a hidden one); its kind is still known, so `caf-init curate` reads a `caf-implementer.md` already in a repo as before.
 - **Architect is no longer offered** (CAF-CHORE-INIT-01): the Planner writes `design.md` with the `caf-design` skill, which is active. Like QA, it is a superseded kind, not a dropped one: the kind and any `caf-architect.md` already in a repo are untouched by `curate`. QA is no longer offered (see [The default roster](#the-default-roster-validator-and-caf-plan)); its kind and any `caf-qa.md` already in a repo are untouched.
 - **A new repo has no Documentation agent**, so `/caf-run` is written with its "no Documentation Agent" stage, and `piv-workflow.md` lists the role as not scaffolded.
-- **Some generated text still mentions them**: the `.gitignore` lines for `.caf/discovery/` and `.caf/audits/` (kept on purpose). The planner's `## Input` and, since CAF-SDD-03c2b, its `## Constraints` no longer point at the Discovery fallback, the review commands no longer name `/caf-review-ticket`, and `.caf/knowledge/INDEX.md` names neither the PM agent (CAF-SDD-03c2) nor `.caf/discovery/` (CAF-SDD-03c2b).
+- **Some generated text still mentions them**: the `.gitignore` lines for `.caf/discovery/` and `.caf/audits/` (kept on purpose). The planner's `## Input` and, since CAF-SDD-03c2b, its `## Constraints` no longer point at the Discovery fallback, the review commands no longer name `/caf-review-ticket`. (`.caf/knowledge/INDEX.md` is no longer scaffolded at all; see below.)
 - **Released.** This change ships in 0.1.10 and later. caf-orchestrator is meant to skip its documentation stage when `caf-documentation` is absent (CAF-SDD-04a); check the orchestrator repository for the exact behavior.
 
 ### The agents and commands the design ends with
