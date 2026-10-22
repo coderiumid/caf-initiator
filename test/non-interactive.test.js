@@ -103,3 +103,14 @@ test('splitList accepts commas and repeats', () => {
   assert.deepEqual(splitList(['a', 'b,c']), ['a', 'b', 'c']);
   assert.deepEqual(splitList(undefined), []);
 });
+
+test('ADR: --yes drafts no ADR; --yes --adr does', () => {
+  const plain = copyFixture(FIXTURE);
+  assert.equal(cli(plain, ['--yes']).code, 0);
+  assert.ok(!fs.existsSync(path.join(plain, '.caf', 'knowledge', 'decisions')));
+  const withAdr = copyFixture(FIXTURE);
+  const r = cli(withAdr, ['--yes', '--adr']);
+  assert.equal(r.code, 0, r.err);
+  assert.ok(fs.readdirSync(path.join(withAdr, '.caf', 'knowledge', 'decisions')).length > 0);
+  assert.notEqual(cli(copyFixture(FIXTURE), ['adr', '--adr']).code, 0);
+});

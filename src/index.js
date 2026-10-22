@@ -74,6 +74,7 @@ program
   .option('--yes', 'bare scaffold: take every detected/recommended choice without asking (0 questions); stops with exit 1 when the tracker is ambiguous', false)
   .option('--tracker <tracker>', 'bare scaffold: ticket tracker, skipping detection (linear|jira|github|gitlab)')
   .option('--apps <apps>', 'bare scaffold: apps to scan for golden examples, comma-separated paths or slugs; "none" scans no app')
+  .option('--adr', 'bare scaffold: also draft ADRs for the technical decisions detected from the stack (none by default)', false)
   .option('--agents <agents>', 'bare scaffold: agents to generate, comma-separated (planner,frontend,backend,validator,reviewer)')
   .option('--no-banner', 'do not print the CAF banner (also: CAF_NO_BANNER=1)')
   .addOption(modeOption())
@@ -104,8 +105,8 @@ program
       process.exitCode = 1;
       return;
     }
-    if (target && (cmdOpts.tracker || cmdOpts.apps !== undefined || cmdOpts.agents !== undefined)) {
-      console.error(kleur.red('scaffold: --tracker, --apps and --agents are for bare `caf-init scaffold` (no target)'));
+    if (target && (cmdOpts.tracker || cmdOpts.apps !== undefined || cmdOpts.agents !== undefined || cmdOpts.adr)) {
+      console.error(kleur.red('scaffold: --tracker, --apps, --agents and --adr are for bare `caf-init scaffold` (no target)'));
       process.exitCode = 1;
       return;
     }
@@ -126,6 +127,7 @@ program
         tracker: cmdOpts.tracker,
         apps: cmdOpts.apps,
         agents: cmdOpts.agents,
+        adr: Boolean(cmdOpts.adr),
       });
       return;
     }

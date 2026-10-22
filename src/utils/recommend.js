@@ -66,8 +66,15 @@ export function recommendAgents(detected) {
   return { kinds, roleApp };
 }
 
+// ADR drafts are a human decision about which decisions matter: the recommendation is none. They are
+// made only when chosen in the `e` editor or with --adr.
+export function recommendAdr() {
+  return false;
+}
+
 export function recommend(detected, signals = {}) {
   return {
+    adr: recommendAdr(),
     tracker: recommendTracker(signals),
     goldenApps: recommendGoldenApps(detected),
     agents: recommendAgents(detected),

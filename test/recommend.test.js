@@ -131,3 +131,8 @@ test('AC5: the golden-examples picker preselects the recommended apps, and --yes
   const detected = await detectProject({ dir });
   assert.deepEqual(recommend(detected, {}).goldenApps, ['apps/web']);
 });
+
+test('ADR: the recommendation is none', async () => {
+  const detected = await detectProject({ dir: makeRepo({ 'package.json': { name: 's' } }) });
+  assert.equal(recommend(detected, {}).adr, false);
+});

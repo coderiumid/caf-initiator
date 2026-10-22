@@ -154,7 +154,7 @@ test('AC-1: scaffold has no flag that selects an agent kind past the picker', ()
   assert.ok(AGENT_KINDS.every((kind) => !HIDDEN_CANDIDATE_KINDS.includes(kind) && !SUPERSEDED_CANDIDATE_KINDS.includes(kind)));
   const help = execFileSync(process.execPath, [path.join(HERE, '..', 'src', 'index.js'), 'scaffold', '--help'], { encoding: 'utf8' });
   const flags = [...new Set(help.match(/^\s+--[a-z-]+/gm).map((f) => f.trim()))];
-  assert.deepEqual(sorted(flags), sorted(['--dir', '--dry-run', '--app', '--all-apps', '--agent-dir', '--command-dir', '--force', '--mode', '--scope', '--role', '--yes', '--tracker', '--apps', '--agents', '--no-banner']));
+  assert.deepEqual(sorted(flags), sorted(['--dir', '--dry-run', '--app', '--all-apps', '--agent-dir', '--command-dir', '--force', '--mode', '--scope', '--role', '--yes', '--tracker', '--apps', '--adr', '--agents', '--no-banner']));
 });
 
 // ---------------------------------------------------------------------------------------------

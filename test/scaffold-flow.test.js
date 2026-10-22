@@ -100,3 +100,29 @@ test('--dry-run through the flow writes nothing', async () => {
   assert.equal(result.ok, true);
   assert.deepEqual(snapshotTree(dir), before);
 });
+
+// --- ADR is opt-in (follow-up 1) ------------------------------------------------------------
+
+const adrDir = (dir) => path.join(dir, '.caf', 'knowledge', 'decisions');
+
+test('ADR: not drafted by default — recommendation is none, the summary says how to add it', async () => {
+  const dir = copyFixture(FIXTURE);
+  const result = await flow(dir, ['Y']);
+  assert.equal(result.selection.adr, false);
+  assert.ok(!fs.existsSync(adrDir(dir)));
+});
+
+test('ADR: e can opt in, and the drafts are written', async () => {
+  const dir = copyFixture(FIXTURE);
+  const result = await flow(dir, ['e', ['adr'], true, 'Y']);
+  assert.equal(result.selection.adr, true);
+  assert.ok(fs.readdirSync(adrDir(dir)).some((f) => /^adr-001-/.test(f)));
+});
+
+test('ADR: --adr opts in without a question', async () => {
+  const dir = copyFixture(FIXTURE);
+  const result = await flow(dir, ['Y'], { adr: true });
+  assert.equal(result.selection.adr, true);
+  assert.equal(promptCount(), 1);
+  assert.ok(fs.readdirSync(adrDir(dir)).length > 0);
+});

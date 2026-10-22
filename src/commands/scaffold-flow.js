@@ -46,6 +46,11 @@ export async function runChain(ctx, sel) {
       summary.push({ step: label, ran: false });
       continue;
     }
+    if (key === 'adr' && !sel.adr) {
+      console.log(kleur.dim('adr: none selected — skipped'));
+      summary.push({ step: label, ran: false });
+      continue;
+    }
     try {
       let result;
       if (key === 'golden-examples') {
@@ -111,6 +116,7 @@ export function renderSummary(detected, sel, preview) {
   lines.push(`  Repo:             ${detected.mode}${pm} — ${detected.apps.length} app${detected.apps.length === 1 ? '' : 's'}`);
   lines.push(`  Tracker:          ${sel.tracker.name}${sel.tracker.source ? kleur.dim(` (${sel.tracker.source})`) : ''}`);
   lines.push(`  Golden examples:  ${sel.goldenApps.length > 0 ? sel.goldenApps.join(', ') : 'none'}`);
+  lines.push(`  ADR drafts:       ${sel.adr ? 'decisions detected from the stack' : 'none (add with e or --adr)'}`);
   lines.push(`  Agents:           ${agentLine(detected, sel)}`);
   lines.push(`  Files:            ${preview.create.length} to create, ${preview.unchanged.length} already identical, ${preview.conflicts.length} exist and differ (skipped)`);
   for (const { rel } of preview.conflicts.slice(0, 8)) lines.push(kleur.dim(`                      skip  ${rel}`));
@@ -129,6 +135,7 @@ async function editSelection(detected, sel) {
     choices: [
       { title: 'Tracker', value: 'tracker' },
       { title: 'Golden-example apps', value: 'apps' },
+      { title: 'ADR drafts', value: 'adr' },
       { title: 'Agents', value: 'agents' },
     ],
   });
@@ -145,6 +152,15 @@ async function editSelection(detected, sel) {
       choices: detected.apps.map((a) => ({ title: `${a.name} (${a.path})`, value: a.path, selected: sel.goldenApps.includes(a.path) })),
     });
     if (picked) sel.goldenApps = picked;
+  }
+  if (what.includes('adr')) {
+    const { draft } = await ask({
+      type: 'confirm',
+      name: 'draft',
+      message: 'Draft ADRs for the technical decisions detected from the stack?',
+      initial: false,
+    });
+    sel.adr = Boolean(draft);
   }
   if (what.includes('agents')) {
     const { picked } = await ask({
@@ -201,6 +217,7 @@ function applyFlags(opts, detected, sel) {
       sel.goldenApps = resolved.apps.map((a) => a.path);
     }
   }
+  if (opts.adr) sel.adr = true;
   if (opts.agents !== undefined) {
     const values = splitList(opts.agents);
     const unknown = values.filter((v) => !AGENT_KINDS.includes(v));
@@ -249,6 +266,7 @@ async function smartScaffold(opts) {
   let sel = {
     tracker: rec.tracker.status === 'single' ? { name: rec.tracker.name, source: rec.tracker.reasons.join('; '), status: 'single' } : null,
     goldenApps: rec.goldenApps,
+    adr: rec.adr,
     kinds: rec.agents.kinds,
     roleApp: rec.agents.roleApp,
   };
