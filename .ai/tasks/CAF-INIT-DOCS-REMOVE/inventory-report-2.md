@@ -72,7 +72,7 @@ Bukan cangkang TODO secara harfiah (nol `TODO`), tetapi tidak lolos aturan (a)/(
 
 ### 3.3 Folder kosong `decisions/` dan `golden-examples/` (rekomendasi: on-demand)
 - Test: `single-repo-scaffold.test.js:109` mengharuskan `golden-examples/` ada dan kosong (`fs.readdirSync(...)` melempar bila folder tidak ada). `complete-drafts.test.js:174` menulis ke folder itu sendiri (menyiapkan fixture, perlu dicek saat Task 10 apakah `mkdir` sudah ada).
-- Fixture/golden: folder kosong tidak muncul di daftar file mana pun (`file-set.*` hanya berisi file). Jadi 0 golden berubah karena folder.
+- Fixture/golden: folder kosong tidak muncul di daftar file mana pun (`file-set.*` hanya berisi file). Jadi 0 golden berubah karena folder. **[Salah, dikoreksi di Task 11: lihat "Koreksi laporan" di bawah.]**
 - Template/audit: `audit.js:100-103` memakai `dirHasContent` yang mengembalikan `false` untuk folder yang tidak ada → aman. `curate` tidak melaporkan folder kosong yang hilang.
 - Teks yang menyebut path (planner `## Input` dan `## Output`, `CLAUDE.md` template, `AGENTS.md` template, `complete-drafts-command.js:195-197`, `skill-md.js:243,322`) memakai kata "if they exist"/"holds ADRs" — tidak mengasumsikan folder ada. Pengecualian yang perlu dibaca ulang saat Task 10: `claude-md.js:89-90` ("See `.caf/knowledge/golden-examples/` for code references", "See `.caf/knowledge/decisions/` for ADRs") — pointer tanpa kata bersyarat, akan menunjuk folder yang belum ada.
 
@@ -128,7 +128,7 @@ Dihitung dengan `grep -rlE` pada `test/fixtures` (semua direktori `pre-sdd*`, `s
 |---|---|---|---|
 | **A** (rekomendasi) | Hapus `INDEX.md` + `ensureDir` dua folder dari scaffold; pertahankan `tasks/README.md` | 32 file (`knowledge/INDEX` atau `Knowledge Index`): `pre-sdd03c1` 8, `pre-sdd03c2` 4, `pre-sdd03c2b` 4, `pre-sdd03c2c` 6, `pre-sdd03c3` 4, `pre-sdd03g` 6 (snapshot beku tidak berubah) | `sdd03c2b` (AC-7), `sdd03c2` (AC-11), `sdd03c3` (konstanta), `single-repo-scaffold` (dua titik: `:92` dan `:109`), `curate` Layer 1 (`audit.js`) |
 | **B** | A + hapus `tasks/README.md` dari scaffold | 35 file (union INDEX dan README; ditambah `pre-sdd05a/tasks-readme.json`, `pre-sdd05b/tasks-readme.json`, `snapshots/mono-pnpm.json`) | A + `sdd05a`, `sdd05b` (golden `tasks-readme.json` dan `buildTasksReadme`), helper `mono-snapshot.js`, `since-05a/05b.js`, `record-sdd05*.mjs`; `claude-md.js:91` dan `complete-drafts.js:23` |
-| **C** | Hanya hapus dua `ensureDir` | 0 fixture (folder kosong tidak tercatat di file-set) | `single-repo-scaffold.test.js:109`; cek `complete-drafts.test.js:174` |
+| **C** | Hanya hapus dua `ensureDir` | ~~0 fixture~~ 14 file `file-set` (baris `dirs`, lihat "Koreksi laporan") | `single-repo-scaffold.test.js:109`; cek `complete-drafts.test.js:174` |
 
 Catatan: `snapshots/mono-pnpm.json` memuat `.caf/tasks/README.md` tetapi bukan `INDEX.md`. Opsi A tidak menyentuh snapshot beku; opsi B menyentuhnya (hapus satu entri) dan perlu persetujuan eksplisit dengan diff terlampir.
 
@@ -174,3 +174,10 @@ Dari Ganjar, atas laporan ini. Menggantikan rekomendasi di atas bila berbeda.
 Persetujuan perubahan test/fixture: test `sdd03c2b` AC-7, `sdd03c2` AC-11, `sdd03c3`, `single-repo-scaffold` (dua titik), dan `audit.js`; 32 fixture yang terdampak opsi A. Hanya baris terkait, diff dilampirkan di `verify-report.md`. Larangan regenerate tetap berlaku. **Berhenti dan lapor** bila snapshot beku, file yang dikunci sha256, atau file di luar daftar ini ikut berubah.
 
 **AC-14 diubah:** `curate --audit-only` pada hasil scaffold baru exit 0 dan tidak melaporkan `INDEX.md` sebagai missing.
+
+## Koreksi laporan (Task 11)
+
+Dua klaim di bagian 3.3 dan tabel bagian 6 salah dan dikoreksi di sini:
+
+1. **"Folder kosong tidak muncul di golden mana pun / 0 fixture berubah."** Salah. 14 golden `file-set` (`pre-sdd03c1` 6, `pre-sdd03c2` 2, `pre-sdd03c2c` 6) mencatat daftar folder dalam array `dirs` (`"knowledge"`, `"knowledge/decisions"`, `"knowledge/golden-examples"`). Pencarian saya memakai kata `knowledge/INDEX`, jadi baris `dirs` tidak ketahuan. Akibat: dua test `sdd03c1` AC-3 dan `sdd03c2c` AC-1 dan `sdd03c2` AC-1/2 gagal sampai baris itu dihapus. Dampaknya tetap di 32 file fixture yang sama yang sudah disetujui; tidak ada file fixture baru. Opsi C sendiri berdampak pada 14 file itu, bukan 0.
+2. **Daftar test yang terdampak** tidak menyebut `test/complete-drafts.test.js`. Dua test di sana menulis `RULES.md` ke `.caf/knowledge/golden-examples/` yang dulu dibuat `ensureDir`. Sudah diperbaiki setelah persetujuan (hanya `mkdirSync`, commit `1c11924`).
