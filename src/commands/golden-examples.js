@@ -135,12 +135,14 @@ async function scanApp({ dir, app, dryRun }) {
 
   const destinations = [];
   const skipped = [];
+  // A dry run writes nothing but still counts toward the closing summary of what would exist.
+  const planned = [];
 
   // CAF-INIT-DOCS-REMOVE amendment 4: a RULES.md that already exists is never overwritten, so
   // asking the category questions would only throw the answers away — say so up front instead.
   if (rulesExistedBefore) {
     console.log(kleur.dim(`${rulesPath} already exists, skipped (sudah ada, skip)`));
-    return { written: destinations, skipped: [rulesPath] };
+    return { written: destinations, skipped: [rulesPath], planned };
   }
 
   // RULES.md is a mandatory pair for every golden-examples/{{app}}/ folder (CAF.md Layer 1).
@@ -211,6 +213,7 @@ async function scanApp({ dir, app, dryRun }) {
     const result = writeIfAbsent(rulesPath, rulesContent, { dryRun });
     if (result === 'written') destinations.push(rulesPath);
     else if (result === 'skipped') skipped.push(rulesPath);
+    else if (result === 'dry-run') planned.push(rulesPath);
   }
 
   console.log('');
@@ -223,7 +226,7 @@ async function scanApp({ dir, app, dryRun }) {
     }
   }
 
-  return { written: destinations, skipped };
+  return { written: destinations, skipped, planned };
 }
 
 /**
@@ -270,6 +273,7 @@ export async function goldenExamples({ dir, app: appOpt, allApps = false, dryRun
 
   const written = [];
   const skipped = [];
+  const planned = [];
   for (const [i, app] of apps.entries()) {
     if (apps.length > 1) {
       console.log('');
@@ -278,9 +282,10 @@ export async function goldenExamples({ dir, app: appOpt, allApps = false, dryRun
     const result = await scanApp({ dir, app, dryRun });
     written.push(...result.written);
     skipped.push(...result.skipped);
+    planned.push(...result.planned);
   }
 
-  if (stack.apps.length > 1) printMissingSummary(dir, stack, written);
+  if (stack.apps.length > 1) printMissingSummary(dir, stack, [...written, ...planned]);
 
   return { written, skipped };
 }
