@@ -32,7 +32,6 @@ The full CAF specification is in [`CAF.md`](./CAF.md).
   - [`scaffold skills`](#caf-init-scaffold-skills)
   - [`scaffold complete-drafts`](#caf-init-scaffold-complete-drafts)
   - [`curate`](#caf-init-curate)
-  - [`docs`](#caf-init-docs)
   - [`export`](#caf-init-export)
 - [Working with caf-orchestrator](#working-with-caf-orchestrator)
 - [Repo mode](#repo-mode-monorepo-vs-single_repo)
@@ -113,10 +112,11 @@ Setup also appends ignore rules for `.caf/discovery/*/` and `.caf/audits/*/` to 
 | `caf-init curate` | Audit an existing CAF setup, then offer to sync agent sections with the current templates |
 | `caf-init curate --check-drafts` | Read-only check of the drafts after they were filled in |
 | `caf-init curate baseline` | Record the current agent sections as the tracking baseline |
-| `caf-init docs` | Scaffold optional reference docs under `docs/` |
 | `caf-init export` | Copy agent definitions and commands to other AI runners |
 
 Every command accepts `--dir <path>` (default: current directory). `--dry-run` shows what would happen without writing.
+
+The `docs` command, which scaffolded optional reference documents under `docs/`, was removed before the first publish (CAF-INIT-DOCS-REMOVE). Existing `docs/` files in a repo are untouched and `curate` no longer audits them.
 
 ### `caf-init scaffold`
 
@@ -359,21 +359,6 @@ Read-only check after `/caf-complete-drafts` or manual editing. Exit code 1 on a
 
 The check covers what code can verify. Whether the business content is true is still yours to review. Agent frontmatter (`tools:`) is not covered by the baseline; check it in the diff.
 
-### `caf-init docs`
-
-Scaffolds optional reference docs. None of them is required for the CAF pipeline, existing files are never overwritten, and interactive mode asks per item.
-
-| Item (`--include`) | File |
-|---|---|
-| `product` | `docs/product/prd.md` |
-| `architecture` | `docs/architecture/system-overview.md` |
-| `schema` | `docs/schema/erd.md` |
-| `testing-strategy` | `docs/testing-strategy.md` |
-| `api-contract` | `docs/api-contract.md` (only offered when frontend and backend are separate apps in the same repo) |
-| `--feature <name...>` | `docs/product/features/<name>.md` |
-
-Also accepts `--dir`, `--dry-run` and `--mode`.
-
 ### `caf-init export`
 
 Copies the Claude Code agent definitions, slash commands or both to other AI runners, converting the format where needed.
@@ -571,7 +556,7 @@ Every command that runs stack detection first decides the repo mode.
 - **`MONOREPO`**: the root has a `workspaces` field, `pnpm-workspace.yaml`, `turbo.json`, `nx.json` or `lerna.json`, or `apps/*` / `packages/*` contain a `package.json`. The apps are the workspace packages.
 - **`SINGLE_REPO`**: anything else. This is not an error. The repo root is the only app.
 
-`--mode single` or `--mode mono` overrides detection on `scaffold`, `docs` and `curate`. The mode is not stored; pass it again on later runs.
+`--mode single` or `--mode mono` overrides detection on `scaffold` and `curate`. The mode is not stored; pass it again on later runs.
 
 What changes in `SINGLE_REPO`:
 
