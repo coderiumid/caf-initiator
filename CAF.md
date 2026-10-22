@@ -373,9 +373,7 @@ AGENTS.md                       ← instructions for every AI coding agent (cros
       RULES.md                    ← path to the original file + pattern name + do/don't reasons
 
 docs/                            ← project-owned, read-only for CAF — NEVER written by
-                                     caf-initiator itself (one exception: the optional
-                                     `caf-init docs` command may scaffold EMPTY placeholders
-                                     at the user's explicit request; humans still write the content)
+                                     caf-initiator itself (humans write the content)
   product/
     prd.md                       ← optional, product-level reference (see the note below)
     feature-catalog.md           ← catalog of existing capabilities, synced from code

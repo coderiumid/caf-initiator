@@ -1,11 +1,7 @@
 // .caf/knowledge/INDEX.md — a status bridge into the project-owned docs/ reference material
-// (CAF.md AC2). CAF never writes into docs/ itself (see reference-docs.js for the one deliberate
-// exception, left untouched by CAF-REORG-01 — see requirements.md AC2 backlog note); this file
-// just links to the standard optional docs and reports ✓/✗ so an agent can see at a glance what's
-// available without probing the filesystem itself. Not redundant with reference-docs.js: this
-// module only reports status, reference-docs.js is the tool that actually scaffolds the missing
-// files (see the closing line in buildKnowledgeIndexMd below, and reference-docs.js's own
-// docstring for the reverse pointer) — keep both in sync if either side changes.
+// (CAF.md AC2). CAF never writes into docs/; this file just links to the standard optional docs
+// and reports ✓/✗ so an agent can see at a glance what's available without probing the
+// filesystem itself.
 export const KNOWLEDGE_INDEX_DOCS = [
   { label: 'PRD', path: 'docs/product/prd.md' },
   { label: 'System Overview', path: 'docs/architecture/system-overview.md' },
@@ -37,8 +33,5 @@ export function buildKnowledgeIndexMd({ items }) {
 | Dokumen | Path | Status |
 |---|---|---|
 ${rows}
-
-Run \`caf-init docs\` to generate empty placeholders for documents that don't exist yet
-(optional — see the note above, never a hard requirement).
 `;
 }

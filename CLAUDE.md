@@ -28,7 +28,7 @@ whole text.
 - Main subcommands: `scaffold [target]` (init pipeline — see Architecture), `curate`
   (Layer 1-4 compliance audit + optional sync into `.claude/agents/*.md`, plus `curate baseline`
   for manifest backfill — see "Content-level section tracking" below), `export` (copy agent
-  definitions to other AI runner targets), `docs` (optional Layer 1 reference docs). Run
+  definitions to other AI runner targets). Run
   `node src/index.js --help` or `<command> --help` for full flags.
 - `npm test` runs `node --test test/*.test.js` (Node's built-in test runner, no extra dependency).
   No linter or build step is configured in `package.json` — don't invent commands that don't
@@ -77,7 +77,7 @@ touching the filesystem — keep write paths and dry-run paths going through the
 `detectRepoContext` (`src/utils/repo-context.js`) is the only place that decides the repo mode;
 don't re-derive it elsewhere — read `stack.mode` (or the legacy `stack.isMonorepo`). No
 workspaces is **not** an error or a warning: it is `SINGLE_REPO` with
-`apps = [{ name, path: '.' }]`. `--mode single|mono` (on `scaffold`, `docs`, `curate`) overrides
+`apps = [{ name, path: '.' }]`. `--mode single|mono` (on `scaffold`, `curate`) overrides
 detection and must be threaded to every `detectStack` call a command makes.
 
 - The app list is in a deterministic order: `findApps` sorts it by app path, in code-unit order
