@@ -130,4 +130,10 @@ $ grep -niE "docs" README.md
 5/88/119: kalimat umum, catatan penghapusan; 353-354: aturan check-drafts untuk file milik pengguna di docs/
 ```
 
-### AC-10 — lihat bagian akhir (diisi setelah commit Task 7)
+### AC-10 — LULUS
+```
+$ git status --short            (kosong sebelum commit laporan ini)
+$ git log --oneline origin/HEAD..HEAD
+10 commit lokal (daftar di laporan akhir); tidak ada push, publish, atau PR.
+```
+File yang berubah: `src/` (index, audit, complete-drafts, check-drafts, 2 template; 2 file dihapus), `test/` (3 test, 26 fixture golongan a), `README.md`, `CLAUDE.md`, `CAF.md` (D6), `.ai/tasks/CAF-INIT-DOCS-REMOVE/`. Tidak ada file di luar scope; `requirements.md` tidak diedit.
