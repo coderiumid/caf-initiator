@@ -1165,3 +1165,26 @@ skills).
 - Chain-then-pointer leaves one extra blank line in an agent file compared with skills-before-agents
   (insertion vs native render); `.claude/skills/` is byte-identical either way.
 - No fixture, golden, snapshot or sha256 file changed.
+
+## `golden-examples` picks several apps in one run (CAF-INIT-DOCS-REMOVE, amendment 4)
+
+`goldenExamples` (`src/commands/golden-examples.js`) loops the per-app body (`scanApp`) over the chosen apps, in
+the bare chain and in `scaffold golden-examples` (one function serves both). The layout did not change:
+`RULES.md` was already per app (`golden-examples/<app path>/RULES.md`, at the folder root in SINGLE_REPO).
+`test/golden-examples-multiapp.test.js` holds the ticket.
+- One detected app: no picker, output as before. Several: a multiselect with nothing ticked. `--app` (path or
+  slug, repeatable; `resolveAppSelectors`) or `--all-apps` replaces **only** the app picker; the per-category
+  file questions still run, because which files are golden examples is a human decision, and RULES.md is never
+  filled in on its own. Unknown value, ambiguous slug (error names both paths) or `--all-apps` with `--app`:
+  error, exit 1, nothing written.
+- `--app` is repeatable on the commander option, but a repeated `--app` or `--all-apps` on any other target or on
+  the bare chain is refused in `src/index.js` before anything runs. A single `--app` on `adr`/`agents`/
+  `task-completion` is passed as before (`apps[0]`). `sdd03c1` AC-1 pins the `scaffold --help` flag list and now
+  includes `--all-apps`.
+- An app whose `RULES.md` exists is skipped up front (`already exists, skipped (sudah ada, skip)`), with no
+  category question; it is counted in `skipped`. Enter on every category of an app writes nothing for it (no
+  TODO-only RULES.md), same as before.
+- With more than one detected app the step ends with `apps without golden example: ...`, counted from the
+  `RULES.md` files (a dry run counts the file it would write). Not printed in a single repo.
+- Choosing N apps writes N `RULES.md`, each the same shape as the single-app file (4 `TODO` each): no new kind
+  of file. No fixture, golden, snapshot or sha256 file changed.

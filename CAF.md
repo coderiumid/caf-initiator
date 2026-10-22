@@ -69,6 +69,11 @@ NOT an error and NOT a gap** — it is `SINGLE_REPO` mode, a fully supported mod
   the framework. In the CLI: `caf-init scaffold agents --role frontend|backend` for just one of
   the two (default: both). The names `caf-frontend`/`caf-backend` are the ones `caf-orchestrator`
   routes.
+- In `MONOREPO`, the golden examples of several apps can be written in one run. In the CLI:
+  `caf-init scaffold golden-examples` shows every app with none ticked; `--app <slug-or-path>`
+  (repeatable) or `--all-apps` replaces only that app picker. Which files become golden examples is
+  still asked per app and per pattern. An app that already has a `RULES.md` is skipped, so the step
+  can be run again later to add the apps that have none.
 
 **Also check for these optional Layer 1 documents** (they come from the Product/Design domain
 and are not created by CAF — CAF only reads them if present):

@@ -121,7 +121,7 @@ Bare `scaffold` runs these steps in order, asking before each one after Setup:
 | Step | Target name | Output |
 |---|---|---|
 | Setup | (always first) | `CLAUDE.md`, `AGENTS.md`, `.caf/tasks/README.md`. Writes nothing under `.caf/knowledge/`. Checks for existing AI-tool config first; detects stack and tracker |
-| Golden Examples | `golden-examples` | Lets you pick reference files; writes `RULES.md` with a do/don't skeleton |
+| Golden Examples | `golden-examples` | Lets you pick reference files; writes `RULES.md` (one per app) with a do/don't skeleton. In a monorepo you tick the apps to scan (none ticked by default), and can run the step again later to add the apps that have none; an app whose `RULES.md` exists is skipped |
 | ADR | `adr` | ADR drafts for technical decisions already visible in the repo |
 | Agents | `agents` | Agent definitions you select, plus their companion slash commands |
 | Skills | `skills` | `.claude/skills/caf-*/SKILL.md`; offers a `## Skills` pointer section to the agent definitions from the previous step (a confirmation per agent) |
@@ -145,7 +145,8 @@ Options:
 |---|---|---|
 | `--dir <path>` | Target repo directory | current directory |
 | `--dry-run` | Show detection results without writing anything | `false` |
-| `--app <app-path>` | Restrict to one app. Used by `golden-examples`, `adr`, `agents`, `task-completion` | all apps |
+| `--app <app>` | Restrict to one app, by path (`apps/api`) or slug (`api`). Used by `golden-examples`, `adr`, `agents`, `task-completion`. Repeatable (`--app api --app web`) for `scaffold golden-examples` only; elsewhere repeating it is an error | all apps |
+| `--all-apps` | `scaffold golden-examples` only: scan every detected app without the app picker (the question of which files to use still runs per app). Cannot be combined with `--app` | off |
 | `--agent-dir <path>` | Where agent definitions are read and written | `.claude/agents` |
 | `--command-dir <path>` | Where slash commands are written | `.claude/commands` |
 | `--force` | Overwrite existing files. `agents` target: agent definitions and their commands. `skills` target: `SKILL.md` files only. Manual edits in an overwritten file are lost and the `curate` manifest is not updated | `false` |
