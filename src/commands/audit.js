@@ -87,12 +87,6 @@ function auditKnowledgeBase(dir, stack) {
   entries.push(
     ...auditSingleFile(dir, 'AGENTS.md', 'agents-md', { createCommand: 'caf-init scaffold', partialSyncCommand: null })
   );
-  entries.push(
-    ...auditSingleFile(dir, path.join('.caf', 'knowledge', 'INDEX.md'), 'knowledge-index-md', {
-      createCommand: 'caf-init scaffold',
-      partialSyncCommand: null,
-    })
-  );
 
   // RULES.md is a mandatory pair for every non-empty .caf/knowledge/golden-examples/{{app}}/
   // folder (CAF.md Layer 1) — same rule golden-examples.js already enforces.

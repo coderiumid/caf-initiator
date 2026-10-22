@@ -49,13 +49,6 @@
             "message": "already in sync",
             "syncCommand": null,
             "severity": "required"
-          },
-          {
-            "status": "ok",
-            "filePath": ".caf/knowledge/INDEX.md",
-            "message": "already in sync",
-            "syncCommand": null,
-            "severity": "required"
           }
         ]
       },

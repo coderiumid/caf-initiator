@@ -378,18 +378,11 @@ for (const fixture of FIXTURE_NAMES) {
     assert.match(input, /App-tag requirement/);
   });
 
-  test(`AC-11: ${fixture} — INDEX.md does not name the PM Agent, the review commands not /caf-review-ticket`, async () => {
+  test(`AC-11: ${fixture} — INDEX.md is no longer scaffolded (CAF-INIT-DOCS-REMOVE), the review commands do not name /caf-review-ticket`, async () => {
     const set = await renderDefaultFileSet({ fixture });
-    const index = read(set.dir, '.caf/knowledge/INDEX.md');
-    assert.ok(!/PM Agent/.test(index));
-    assert.ok(index.includes('Reference Documents'), 'the rest of the file is there');
+    assert.ok(!fs.existsSync(path.join(set.dir, '.caf/knowledge/INDEX.md')));
     for (const name of ['caf-review.md', 'caf-fix-review.md']) {
       assert.ok(!/caf-review-ticket/.test(read(set.dir, `.claude/commands/${name}`)), name);
-    }
-    const old = golden(`index.${fixture}.json`).content;
-    const lines = old.split('\n').filter((l) => !/PM Agent/.test(l));
-    for (const line of lines.filter((l) => l.trim() && !/^per-feature drafts|^necessarily final|^\*\*Difference|^the opposite/.test(l))) {
-      assert.ok(index.includes(line), `still present: ${line}`);
     }
   });
 }

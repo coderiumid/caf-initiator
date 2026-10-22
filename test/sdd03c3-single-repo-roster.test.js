@@ -59,9 +59,10 @@ const RUN_PIPELINE = '.claude/commands/caf-run.md';
 const COMPLETE_DRAFTS = '.claude/commands/caf-complete-drafts.md';
 const HANDOFF = '.caf/workflows/agent-handoff.md';
 const PIV = '.caf/workflows/piv-workflow.md';
-// The two files CAF-SDD-03c2b changed on purpose (the planner's Output and Constraints, INDEX.md):
-// test/sdd03c2b-planner-clarify.test.js compares them against a golden of its own.
-const CHANGED_BY_03C2B = ['.claude/agents/caf-planner.md', '.caf/knowledge/INDEX.md'];
+// The file CAF-SDD-03c2b changed on purpose (the planner's Output and Constraints):
+// test/sdd03c2b-planner-clarify.test.js compares it against a golden of its own. (INDEX.md, the
+// other file it changed, is no longer scaffolded and is gone from the goldens.)
+const CHANGED_BY_03C2B = ['.claude/agents/caf-planner.md'];
 
 /** Lines printed by `fn` (colour codes removed), console.log restored afterwards. */
 async function printed(fn) {

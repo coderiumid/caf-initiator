@@ -22,7 +22,6 @@
     "caf-run-pipeline.md"
   ],
   "files": [
-    ".caf/knowledge/INDEX.md",
     ".caf/tasks/README.md",
     ".caf/workflows/agent-handoff.md",
     ".caf/workflows/piv-workflow.md",
@@ -41,9 +40,6 @@
     "CLAUDE.md"
   ],
   "cafDirs": [
-    "knowledge",
-    "knowledge/decisions",
-    "knowledge/golden-examples",
     "tasks",
     "workflows"
   ]
