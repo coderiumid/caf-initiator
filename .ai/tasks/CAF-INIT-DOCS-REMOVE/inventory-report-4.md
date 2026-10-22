@@ -104,3 +104,15 @@ About 7 files: 3 `src`, 1 new test, 3 docs. **No existing test, golden, fixture,
 3. `--app` repeatable: ok to touch the three other targets' call sites by a one-line normalization, or restrict repeat to golden-examples only?
 4. AC-28: option A (app prompt removed, file prompts stay) or B (prompt-free but TODO-only `RULES.md`)?
 5. Skip per app: Enter on all category lists (default) or an explicit per-app confirm?
+
+## Keputusan checkpoint (Ganjar)
+
+1. **AC-32** dibaca "tidak ada jenis file TODO baru": memilih N app menghasilkan N file `RULES.md` identik dengan versi satu app, tanpa file lain.
+2. **`--app`** menerima slug dan path. Slug ambigu (mis. `apps/web` dan `packages/web`) menjadi error yang menyebut kedua path. Nilai yang tidak dikenal menjadi error yang jelas, exit non-zero, tanpa menulis apa pun.
+3. **`--app` boleh diulang dan `--all-apps`** hanya untuk `scaffold golden-examples`. Di target lain (`adr`, `task-completion`, `agents`) dan di rantai `scaffold` tanpa target, pengulangan `--app` atau `--all-apps` menghasilkan error yang jelas ("hanya untuk scaffold golden-examples"), bukan diam-diam memakai satu nilai. Tiga pemanggil lain tidak disentuh di luar yang dibutuhkan untuk error itu.
+4. **AC-28 diamandemen:** `--app`/`--all-apps` hanya menghilangkan prompt pemilihan app; prompt kategori file tetap muncul. `RULES.md` tidak dibuat otomatis.
+5. **Skip per app:** tanpa konfirmasi tambahan. Skip = perilaku hari ini bila semua kategori dijawab Enter. Jika Enter di semua kategori tetap menulis `RULES.md` ber-TODO, perilaku itu dipertahankan dan dicatat di `verify-report.md`. Tidak didesain ulang.
+6. **`RULES.md` sudah ada** untuk app itu: dilewati di awal dengan pesan "sudah ada, skip", tanpa menanyakan kategori. Berlaku juga di repo tunggal; AC-25 membandingkan file yang ditulis, bukan jumlah prompt.
+7. **Ringkasan akhir** "app tanpa golden example" dihitung dari ada tidaknya `RULES.md` per app.
+
+Persetujuan perubahan: 3 file di `src` (`golden-examples.js`, plus `index.js`/`scaffold.js` seperlunya untuk menolak `--app` berulang di tempat lain), 1 file test baru, 3 dokumen. Tidak ada test, fixture, golden, snapshot, atau sha256 lama yang boleh berubah; bila ada yang berubah, berhenti dan lapor.
