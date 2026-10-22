@@ -10,6 +10,7 @@ import { checkDrafts } from './commands/check-drafts.js';
 import { runScaffoldTarget, OFFERED_TARGETS } from './commands/scaffold.js';
 import { runSmartScaffold } from './commands/scaffold-flow.js';
 import { setAutoAnswers } from './utils/ask.js';
+import { printBanner } from './utils/banner.js';
 import { MODE_FLAG_CHOICES } from './utils/repo-context.js';
 import { SINGLE_REPO_OFFERED_ROLES } from './commands/agents.js';
 
@@ -109,6 +110,8 @@ program
       return;
     }
     const interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY);
+    // D11: banner at the start of scaffold; hidden without a TTY, with --yes, --no-banner or CAF_NO_BANNER.
+    printBanner({ yes: Boolean(cmdOpts.yes), noBanner: cmdOpts.banner === false });
     if (!target) {
       await runSmartScaffold({
         dir,
@@ -240,6 +243,8 @@ program
   });
 
 async function main() {
+  // `caf-init` with no argument: banner (same hide rules), then the usual help.
+  printBanner();
   program.help();
 }
 
