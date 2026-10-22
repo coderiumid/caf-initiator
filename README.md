@@ -44,16 +44,13 @@ The full CAF specification is in [`CAF.md`](./CAF.md).
 # 1. Preview — detects the stack and lists what would be written
 npx -p caf-initiator caf-init scaffold --dry-run
 
-# 2. Generate the drafts (asks before each step)
+# 2. Generate the drafts and the CAF skills (asks before each step)
 npx -p caf-initiator caf-init scaffold
 
-# 3. Optional: add the CAF skills
-npx -p caf-initiator caf-init scaffold skills
-
-# 4. In your AI runner (e.g. Claude Code), fill in the TODOs
+# 3. In your AI runner (e.g. Claude Code), fill in the TODOs
 /caf-complete-drafts
 
-# 5. Check the result, then review the diff and commit
+# 4. Check the result, then review the diff and commit
 npx -p caf-initiator caf-init curate --check-drafts
 ```
 
@@ -95,7 +92,7 @@ npm link                          # makes `caf-init` available globally
 └── .claude/
     ├── agents/caf-*.md              # agent definitions
     ├── commands/caf-*.md            # companion slash commands
-    └── skills/caf-*/SKILL.md        # only with `scaffold skills`
+    └── skills/caf-*/SKILL.md        # written by the Skills step of `scaffold`
 ```
 
 Setup also appends ignore rules for `.caf/discovery/*/` and `.caf/audits/*/` to `.gitignore`.
@@ -127,19 +124,15 @@ Bare `scaffold` runs these steps in order, asking before each one after Setup:
 | Golden Examples | `golden-examples` | Lets you pick reference files; writes `RULES.md` with a do/don't skeleton |
 | ADR | `adr` | ADR drafts for technical decisions already visible in the repo |
 | Agents | `agents` | Agent definitions you select, plus their companion slash commands |
+| Skills | `skills` | `.claude/skills/caf-*/SKILL.md`; offers a `## Skills` pointer section to the agent definitions from the previous step (a confirmation per agent) |
 | Task Completion | `task-completion` | `.caf/workflows/task-completion.md` from the verify scripts in `package.json` |
 | Workflow | `workflow` | `piv-workflow.md` and `agent-handoff.md` from the agent roster |
 | AI Draft Completion | `complete-drafts` | The `/caf-complete-drafts` command |
 
-One more target exists but only runs when named explicitly:
-
-| Target | Output | Why it is not in the chain |
-|---|---|---|
-| `skills` | `.claude/skills/caf-*/SKILL.md` | It offers to edit agent definitions that already exist |
-
 Notes:
 
 - `scaffold workflow` needs an agent roster; run `scaffold agents` first.
+- The Skills step runs after Agents, so its pointers reach the agents you just generated. `.claude/skills/*/SKILL.md` then appear in the draft list of `/caf-complete-drafts`, as they already do after a standalone `scaffold skills`; the command edits only a skill that still has its `DRAFT` banner. Answer no to the step to skip it; skills that already exist are never replaced.
 - Agents on offer: Planner, Frontend and Backend (per assigned app; in `SINGLE_REPO` one whole-repo Frontend and one Backend, or just one with `--role`; Implementer is not offered), extra per-app implementation agents, Validator, Reviewer. Architect is not offered either: the Planner writes `design.md` with the `caf-design` skill (CAF-CHORE-INIT-01). CAF recommends starting with Planner plus one implementation agent. QA is no longer offered: the Validator replaces it (see [The default roster](#the-default-roster-validator-and-caf-plan)).
 - Commands written: `/caf-plan` with the Planner, `/caf-run` (Planner plus an implementation agent; it was `/caf-run-pipeline` before CAF-SDD-03c2c), `/caf-fix-review` and `/caf-review` (Reviewer) after a confirmation each, and `/caf-complete-drafts` from its own step.
 - Five agents and eight commands are no longer scaffolded. See [No longer scaffolded](#no-longer-scaffolded).
@@ -162,7 +155,7 @@ Options:
 
 ### `caf-init scaffold skills`
 
-Writes seven universal skills into `.claude/skills/<name>/SKILL.md`.
+Writes the nine universal skills into `.claude/skills/<name>/SKILL.md`. This is also the Skills step of bare `scaffold` (right after Agents); run the target on its own to re-run it, for example in a repo that was scaffolded earlier.
 
 | Skill | What it tells the reader | Agents that point at it |
 |---|---|---|
