@@ -509,3 +509,35 @@ Daftar file: 3 di `src/` (`audit.js`, `04-generate-drafts.js`, `knowledge-index-
 
 ### AC-16 — LULUS
 `inventory-report-2.md` bagian 4: perintah grep, daftar referensi `.caf/tasks` (per tiket), pernyataan nol untuk `.caf/knowledge`.
+
+## Task 12 dan verifikasi akhir (HEAD `938d70e`, semua dijalankan ulang)
+
+Task 12 mengubah `README.md` dan `CAF.md` saja: pohon scaffold dan baris Setup tidak lagi menyebut `INDEX.md`, `knowledge/` ditulis "dibuat saat pertama dipakai", paragraf Layer 1 di `CAF.md` tidak lagi mengklaim indeks ✓/✗, dan ada satu kalimat di README bahwa `INDEX.md` lama dibiarkan dan diabaikan `curate`. Tanpa `CHANGELOG.md`.
+
+| AC | Perintah | Hasil |
+|---|---|---|
+| AC-1 | `node src/index.js --help \| grep -cE '^\s+docs\b'` | `0` — LULUS |
+| AC-2 | `grep -rn "caf-init docs" --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.ai .` | `0` baris — LULUS |
+| AC-3 | `scaffold` penuh di salinan fixture, satu agent | exit 0, `.caf/` berisi 7 entri (lihat AC-13) — LULUS |
+| AC-4 | `curate --audit-only` pada hasil scaffold | exit 0, laporan tidak menyebut dokumen docs — LULUS |
+| AC-5 | `npm test` | 1037 pass, 0 fail, 0 skipped — LULUS |
+| AC-7 | `scaffold --help` | `complete-drafts` ada di daftar target; `check-drafts` pada hasil scaffold: `5 draft(s) checked — 0 fail, 0 warn` — LULUS |
+| AC-8 | `grep -rniE "docs/(prd\|feature-spec\|...)\|caf-init docs" src` | 2 baris: `agent-md.js:147` (D1, planner `## Input`), `skill-md.js:443` (D2, `caf-design`) — LULUS dengan pengecualian D1/D2 |
+| AC-9 | `grep -niE docs README.md` | `docs` tidak ada sebagai command aktif; baris 118 mencatat penghapusan — LULUS |
+| AC-10 | `git status --short`, `git log origin/HEAD..HEAD` | working tree bersih; 17 commit lokal, tanpa push — LULUS |
+| AC-11 | baca `inventory-report-2.md` | semua item terklasifikasi — LULUS |
+| AC-12 | `grep -rlsE TODO .caf/tasks .caf/knowledge` | tanpa output — LULUS; pengecualian tracker `null`: lihat bagian AC-12 di atas |
+| AC-13 | `find .caf -mindepth 1` | `.generate-manifest.json`, `tasks/README.md`, tiga file `workflows/`; tanpa `knowledge/` — LULUS |
+| AC-14 | `curate --audit-only` | exit 0, `0 required gap(s)`, tanpa entri `INDEX.md` — LULUS |
+| AC-15 | `npm test`; `git diff --name-only d8fe450..HEAD` | lulus; hanya 3 file `src/`, 5 test yang disetujui, 32 fixture, README, CAF.md, dokumen tiket; tanpa snapshot beku, `frozen-kinds`, `legacy-manifest`, atau test ber-sha256 — LULUS |
+| AC-16 | baca `inventory-report-2.md` bagian 4 | perintah grep dan daftar referensi ada — LULUS |
+
+AC-6 tetap dihapus (amendment-1).
+
+## Temuan di luar scope (tidak diubah)
+1. **Banner `DRAFT — must be reviewed` di `tasks/README.md`**: file itu berisi teks final (nol `TODO` bila tracker terdeteksi), tetapi bannernya menyuruh pengguna meninjaunya. `check-drafts` tidak memeriksa banner file ini (`BANNER_EXPECTED` tidak mencakupnya).
+2. **Pointer `claude-md.js:89-90`** ke `.caf/knowledge/golden-examples/` dan `.caf/knowledge/decisions/` tanpa kata bersyarat: di repo baru kedua folder tidak ada sampai `scaffold golden-examples`/`scaffold adr` dijalankan.
+3. **Draf `RULES.md`/ADR awal**: apakah perlu dibuat di awal scaffold atau hanya lewat `scaffold golden-examples`/`adr` dan `/caf-complete-drafts`. Isi `TODO` di kedua file memang rancangan alur `complete-drafts`; bukan cangkang yang perlu dihapus.
+4. **Cabang `tracker: null` tak terjangkau**: `tasks-readme.js:10` mempertahankan `TODO: fill in tracker`, tetapi `setup.js:24-27` berhenti sebelum `generateDrafts`. Kode mati lewat CLI; hanya terpanggil dari test atau kode lain.
+5. **`README.md` dan `CLAUDE.md` memuat narasi sejarah** yang menyebut `INDEX.md` (`CLAUDE.md` bagian 03c2/03c2b, bagian "Commands"). Tidak diedit karena Task 12 hanya mencakup README dan `CAF.md`, dan bagian itu menjelaskan keadaan di tiketnya sendiri.
+6. **Tabel Status baseline helper**: `renderDefaultFileSet` tidak menjalankan `task-completion`, sehingga hasilnya punya satu gap lain di `curate`; bukan masalah produk.
