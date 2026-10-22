@@ -33,6 +33,7 @@ async function pickScope(stack, appOpt) {
     type: 'select',
     name: 'scope',
     message: 'Pick an app, or the whole repo for a root-level decision:',
+    initial: 0,
     choices: [
       { title: 'Whole repo / root-level decision', value: WHOLE_REPO },
       ...stack.apps.map((a) => ({ title: `${a.name} (${a.path})`, value: a })),
@@ -80,6 +81,7 @@ export async function adr({ dir, app: appOpt, dryRun = false, mode }) {
     type: 'text',
     name: 'customInput',
     message: 'Any other decisions to add as blank ADRs? (comma-separated, leave empty if none)',
+    initial: '',
   });
   if (customInput) {
     const customTitles = customInput

@@ -36,6 +36,7 @@ export async function auditExistingTools({ dir }) {
     type: 'select',
     name: 'choice',
     message: 'How do you want to proceed?',
+    initial: 0,
     choices: [
       { title: 'Coexist — keep everything, caf-initiator adds alongside', value: 'coexist' },
       { title: 'Consolidate — pick one source of truth (manual migration, not automated)', value: 'consolidate' },

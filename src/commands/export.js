@@ -114,6 +114,7 @@ async function resolveCustomTargets(picked) {
         type: 'text',
         name: 'customPath',
         message: 'Custom destination folder path (relative to --dir):',
+        initial: '',
       });
       if (!customPath) continue;
       resolved.push({

@@ -497,7 +497,7 @@ export async function agents({
         name: 'picked',
         message: 'Pick the agents to generate:',
         instructions: false,
-        choices: offered.map((c) => ({ title: c.name, value: c })),
+        choices: offered.map((c) => ({ title: c.name, value: c, selected: true })),
       });
 
   if (!picked || picked.length === 0) {
