@@ -115,7 +115,7 @@ export async function completeDrafts({
     console.log(kleur.green(`generated ${filePath}`));
     console.log('  Next steps:');
     console.log('    1. open your AI runner (e.g. Claude Code) in this repo and run /caf-complete-drafts');
-    console.log('    2. answer its questions — business context, PRD, ADR reasons and golden examples are yours to decide');
+    console.log('    2. answer its questions — business context, ADR reasons and golden examples are yours to decide');
     console.log('    3. run `caf-init curate --check-drafts`, then review the diff before committing');
   } else if (result === 'skipped') {
     console.log(kleur.dim(`${filePath} already exists — not overwritten`));
