@@ -117,12 +117,15 @@ test('AC-26: monorepo — choosing two apps writes a RULES.md for both in one ru
   assert.match(output, /App 2\/2: web \(apps\/web\)/);
 });
 
-test('AC-26: monorepo — the picker is a multiselect over every detected app and nothing is ticked by default', async () => {
+// CAF-INIT-SMART-01 (D4) reversed the old "nothing ticked by default": apps recommend() finds
+// worth scanning start ticked (held by test/recommend.test.js); nothing else is pre-ticked.
+test('AC-26: monorepo — the picker is a multiselect over every detected app; only recommended apps start ticked', async () => {
   const src = fs.readFileSync(path.join(HERE, '..', 'src', 'commands', 'golden-examples.js'), 'utf8');
   const picker = src.slice(src.indexOf('async function pickApps'), src.indexOf('function printMissingSummary'));
   assert.match(picker, /type: 'multiselect'/);
   assert.match(picker, /stack\.apps\.map/);
-  assert.ok(!/selected:|initial:/.test(picker), 'no choice is pre-ticked');
+  assert.match(picker, /selected: recommended\.includes\(a\.path\)/);
+  assert.ok(!/initial:/.test(picker));
 });
 
 // ---------------------------------------------------------------------------------------------

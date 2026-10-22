@@ -8,6 +8,8 @@ import { detectStack } from '../steps/02-detect-stack.js';
 import { scoreFile } from '../utils/scoring.js';
 import { buildRulesMd } from '../templates/golden-example-rules-md.js';
 import { agentSlug } from '../templates/agent-md.js';
+import { detectProject } from '../utils/detect.js';
+import { recommendGoldenApps } from '../utils/recommend.js';
 
 // `suffixes` is a fallback/addition to `dirs`, not a replacement — a file matches a category
 // if it sits in one of `dirs` OR its filename ends in `.{suffix}.{ext}` (e.g. `*.controller.ts`).
@@ -101,15 +103,18 @@ export function resolveAppSelectors(stack, selectors) {
   return { apps: stack.apps.filter((a) => picked.includes(a)) };
 }
 
-async function pickApps(stack, dir) {
+// CAF-INIT-SMART-01 (D4): apps recommend() finds worth scanning start ticked — this reverses the
+// older "none ticked by default". Shared packages and config-only packages stay unticked.
+async function pickApps(stack, dir, recommended) {
   const { picked } = await prompts({
     type: 'multiselect',
     name: 'picked',
-    message: 'Pick the apps to scan (space to tick, none ticked by default):',
+    message: 'Pick the apps to scan (space to tick; apps worth scanning are ticked):',
     instructions: false,
     choices: stack.apps.map((a) => ({
       title: `${a.name} (${a.path})${exists(rulesPathFor(dir, a)) ? ' — RULES.md already exists' : ''}`,
       value: a.path,
+      selected: recommended.includes(a.path) && !exists(rulesPathFor(dir, a)),
     })),
   });
   if (!picked) return [];
@@ -264,7 +269,7 @@ export async function goldenExamples({ dir, app: appOpt, allApps = false, dryRun
   } else if (stack.apps.length === 1) {
     apps = stack.apps;
   } else {
-    apps = await pickApps(stack, dir);
+    apps = await pickApps(stack, dir, recommendGoldenApps(await detectProject({ dir, mode })));
   }
 
   if (apps.length === 0) {

@@ -10,6 +10,7 @@ import { detectTracker } from '../src/steps/03-detect-tracker.js';
 import { withAutoAnswers } from '../src/utils/ask.js';
 import { detectProject } from '../src/utils/detect.js';
 import { makeRepo } from './helpers/make-repo.js';
+import { goldenExamples } from '../src/commands/golden-examples.js';
 import { silenced } from './helpers/mono-snapshot.js';
 
 const verdictOf = async (files, gitHost = null) => recommendTracker(await detectTrackerSignals({ dir: makeRepo(files), gitHost }));
@@ -111,4 +112,22 @@ test('AC5: recommend() is pure — same input, same output, input untouched', as
   assert.deepEqual(recommend(detected, {}), recommend(detected, {}));
   assert.equal(JSON.stringify(detected), frozen);
   assert.deepEqual(recommendAgents(detected).roleApp, { frontend: ['.'], backend: ['.'] });
+});
+
+test('AC5: the golden-examples picker preselects the recommended apps, and --yes (auto answers) takes exactly those', async () => {
+  const dir = makeRepo({
+    'package.json': { name: 'm', workspaces: ['apps/*', 'packages/*'] },
+    'apps/web/package.json': { name: 'web', scripts: { dev: 'nuxt dev' }, dependencies: { nuxt: '^3' } },
+    'apps/web/components/Button.vue': '<template><button/></template>',
+    'packages/ui/package.json': { name: 'ui', scripts: { build: 'tsc' }, dependencies: { vue: '^3' } },
+    'packages/ui/components/Card.vue': '<template><div/></template>',
+  });
+  const result = await silenced(() => withAutoAnswers(() => goldenExamples({ dir, dryRun: false })));
+  const rules = (p) => fs.existsSync(path.join(dir, '.caf', 'knowledge', 'golden-examples', p, 'RULES.md'));
+  assert.equal(rules('apps/web'), true);
+  assert.equal(rules('packages/ui'), false);
+  assert.equal(result.written.length, 1);
+  // The smart flow's plan and the picker come from the same recommend().
+  const detected = await detectProject({ dir });
+  assert.deepEqual(recommend(detected, {}).goldenApps, ['apps/web']);
 });
