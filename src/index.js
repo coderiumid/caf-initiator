@@ -7,7 +7,6 @@ import { agentsPublish } from './commands/export.js';
 import { curate } from './commands/curate.js';
 import { curateBaseline } from './commands/curate-baseline.js';
 import { checkDrafts } from './commands/check-drafts.js';
-import { referenceDocs } from './commands/reference-docs.js';
 import { runScaffold, runScaffoldTarget, OFFERED_TARGETS } from './commands/scaffold.js';
 import { MODE_FLAG_CHOICES } from './utils/repo-context.js';
 import { SINGLE_REPO_OFFERED_ROLES } from './commands/agents.js';
@@ -193,32 +192,6 @@ program
       mode,
       dryRun: Boolean(cmdOpts.dryRun),
       repoMode: cmdOpts.mode,
-    });
-  });
-
-program
-  .command('docs')
-  .description(
-    'scaffold optional Layer 1 reference docs (PRD, Feature Spec, system-overview, api-contract, ERD, testing-strategy) — all read-only/optional, never required for the pipeline to run'
-  )
-  .option('--dir <path>', 'target repo directory', process.cwd())
-  .option('--dry-run', 'show detection results without writing anything', false)
-  .option(
-    '--include <items...>',
-    'non-interactive: only generate these items (product, architecture, schema, testing-strategy, api-contract)'
-  )
-  .option('--feature <name...>', 'non-interactive: Feature Spec names to generate placeholders for')
-  .addOption(modeOption())
-  .action(async (cmdOpts) => {
-    const dir = path.resolve(cmdOpts.dir);
-    const interactive = !cmdOpts.include && !cmdOpts.feature;
-    await referenceDocs({
-      dir,
-      dryRun: Boolean(cmdOpts.dryRun),
-      interactive,
-      include: cmdOpts.include || [],
-      features: cmdOpts.feature || [],
-      mode: cmdOpts.mode,
     });
   });
 

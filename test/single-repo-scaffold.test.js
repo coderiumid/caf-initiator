@@ -340,7 +340,7 @@ test('CLAUDE.md: MONOREPO and mode-less rendering carry no Repo mode line (uncha
 test('CLI: --mode is documented in --help and overrides auto-detection', () => {
   const run = (args) => spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8', input: '' });
 
-  for (const command of ['scaffold', 'docs', 'curate']) {
+  for (const command of ['scaffold', 'curate']) {
     const help = run([command, '--help']).stdout;
     assert.match(help, /--mode <mode>/, `${command} --help should document --mode`);
     assert.match(help, /choices: "single", "mono"/);
